@@ -1,0 +1,33 @@
+{
+  "name": "abc-design-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ABC Design — 企业级中后台前端设计系统、无头核心库、解耦组件库、图表套件与多模态布局框架",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @abc-design/playground dev",
+    "build": "pnpm run build:libs && pnpm --filter @abc-design/playground build",
+    "build:libs": "pnpm --filter @abc-design/tokens build && pnpm --filter @abc-design/core build && pnpm --filter @abc-design/react build && pnpm --filter @abc-design/charts build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm --filter @abc-design/react test"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.9",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^22.13.14",
+    "@types/react": "^19.0.12",
+    "@types/react-dom": "^19.0.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "echarts": "^5.6.0",
+    "jsdom": "^26.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.0.9",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.6",
+    "vite-plugin-dts": "^4.5.3",
+    "vitest": "^3.1.1"
+  },
+  "packageManager": "pnpm@10.6.2"
+}

@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@abc-design/charts": ["../../packages/charts/src/index.ts"],
+      "@abc-design/core": ["../../packages/core/src/index.ts"],
+      "@abc-design/react": ["../../packages/react/src/index.ts"],
+      "@abc-design/tokens": ["../../packages/tokens/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

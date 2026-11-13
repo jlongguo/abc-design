@@ -1,0 +1,165 @@
+# ABC Design (`@abc-design/*`) — Full LLM & AI Agent Reference (`llms-full.txt`)
+
+Version: 0.1.0
+Packages:
+1. `@abc-design/tokens` — 3-tier semantic CSS custom properties (`--abc-*`), 6 enterprise brand palettes (`blue`, `indigo`, `violet`, `emerald`, `amber`, `rose`), 3 densities (`compact`, `default`, `comfortable`), 4 border-radius presets (`none`, `sm`, `md`, `lg`), View Transitions theme engine.
+2. `@abc-design/core` — Zero-dependency pure TypeScript headless logic kernel: Chinese pinyin initials matching (`matchKeywordWithPinyin`), cascade tree check/half-check (`computeTreeCheckState`, `toggleTreeNodeCheck`, `filterTreeNodes`), client table filter/sort & URL query sync (`filterAndSortClientRows`, `cleanQueryObject`, `readQueryFromUrlSearch`, `writeQueryToUrlSearch`), 42-cell calendar grid (`buildCalendarMonthGrid`).
+3. `@abc-design/react` — 45+ zero-business-coupled enterprise UI components, `<AbcProvider>` adapter container, 5-mode `<ProLayout>` (`sidebar`, `top`, `mix`, `dual-column`, `auth`), `<ProTable>`, `<ProConfigForm>`, `<PermissionGuard>` (`Permission`), `<DictSelect>` / `<DictTag>`.
+4. `@abc-design/charts` — Tree-shaken ECharts 5 theme/resize-adaptive `<AbcChart>` (`<Chart>`) and `<StatCard>`.
+
+================================================================================
+SECTION 1: INSTALLATION & CSS INTEGRATION
+================================================================================
+
+Install:
+```bash
+pnpm add @abc-design/tokens @abc-design/core @abc-design/react @abc-design/charts echarts lucide-react
+```
+
+CSS Mode A (Standard Vite / Next.js / Webpack without Tailwind v4):
+```tsx
+import '@abc-design/react/styles.css'
+```
+
+CSS Mode B (Host uses Tailwind CSS v4):
+```css
+@import "tailwindcss";
+@import "@abc-design/tokens/styles/index.css";
+
+@source "../../node_modules/@abc-design/react/dist/**/*.js";
+@source "../../node_modules/@abc-design/charts/dist/**/*.js";
+```
+
+================================================================================
+SECTION 2: ROOT PROVIDER & 5 ADAPTERS (`@abc-design/react`)
+================================================================================
+
+```tsx
+import { AbcProvider } from '@abc-design/react'
+
+<AbcProvider
+  defaultTheme={{ mode: 'system', brand: 'blue', density: 'default', radius: 'md' }}
+  defaultPageTransition="fade-slide"
+  watermarkText={['Internal Console', 'Confidential']}
+  defaultWatermarkEnabled={false}
+  uploadAdapter={async (file: File): Promise<string> => {
+    // Upload file to OSS/S3/backend and return URL string
+    return uploadedUrl
+  }}
+  dictAdapter={async (dictCode: string) => {
+    // Return Array<{ label: string; value: string | number; tone?: 'neutral'|'primary'|'success'|'warning'|'danger'|'info'; disabled?: boolean }>
+    return options
+  }}
+  permissionAdapter={(permission: string | string[], mode: 'any' | 'all' = 'any'): boolean => {
+    // Check user RBAC permission codes
+    return true
+  }}
+  captchaAdapter={async () => {
+    // Optional: return { nonceStr, blockSrc, blockY, canvasSrc } for <SliderVerify />
+    return captchaPayload
+  }}
+  toastAdapter={{
+    // Optional: omit to use built-in zero-dependency <AbcToastViewport />
+    success: (msg) => {},
+    error: (msg) => {},
+    info: (msg) => {},
+    warning: (msg) => {},
+  }}
+>
+  {children}
+</AbcProvider>
+```
+
+================================================================================
+SECTION 3: 5-MODE PROLAYOUT & ROUTER WIRING
+================================================================================
+
+```tsx
+import { ProLayout, PageContainer, type AbcMenuItem } from '@abc-design/react'
+
+const menus: AbcMenuItem[] = [
+  { key: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: 'LayoutDashboard' },
+  {
+    key: 'system',
+    label: 'System',
+    icon: 'Settings',
+    children: [
+      { key: 'users', label: 'Users', path: '/system/users', icon: 'Users' },
+      { key: 'roles', label: 'Roles', path: '/system/roles', icon: 'ShieldCheck' },
+    ],
+  },
+]
+
+<ProLayout
+  brand={{
+    name: 'Acme Enterprise',
+    subtitle: 'Multi-Tenant SaaS',
+    logo: '<svg ...>...</svg>', // Accepts image URL, raw <svg> string, or ReactNode
+    onEditBrand: () => setBrandModalOpen(true), // Optional multi-tenant brand editor trigger
+  }}
+  menuItems={menus}
+  pathname={location.pathname}
+  onNavigate={(path) => navigate(path)}
+  defaultSettings={{
+    mode: 'sidebar', // 'sidebar' | 'top' | 'mix' | 'dual-column' | 'auth'
+    sidebarTone: 'dark',
+    sidebarCollapsed: false,
+    sidebarAccordion: true,
+    showTabs: true,
+    keepAlive: true,
+    contentWidth: 'fluid',
+  }}
+  headerExtra={<TenantSwitcher />}
+  user={{
+    name: 'Admin',
+    role: 'Super Admin',
+    avatar: '',
+    menuItems: [
+      { key: 'logout', label: 'Sign out', danger: true, onClick: handleLogout },
+    ],
+  }}
+>
+  <PageContainer title="Users" subtitle="Manage enterprise accounts">
+    {pageContent}
+  </PageContainer>
+</ProLayout>
+```
+
+================================================================================
+SECTION 4: EXACT COMPONENT SIGNATURES & ANTI-HALLUCINATION RULES
+================================================================================
+
+1. `Button`: `variant?: 'primary'|'secondary'|'outline'|'danger'|'success'|'warning'|'ghost'|'text'`, `size?: 'xs'|'sm'|'md'|'lg'`, `loading?: boolean`, `icon?: ReactNode`, `block?: boolean`.
+2. `Icon`: `name?: string` (120+ Lucide names, `el-icon-*` legacy names), `text?: string` (Chinese semantic fallback), `size?: number`.
+3. `IconPicker`:
+   - Inline form mode: `<IconPicker value={icon} onChange={setIcon} clearable />`
+   - Controlled modal mode: `<IconPicker open={open} current={icon} onClose={...} onSelect={...} />`
+4. `Input`: `value`, `onChange: (e: ChangeEvent<HTMLInputElement>) => void`, `clearable`/`allowClear`, `passwordToggle`, `showCount`, `prefix`/`prefixIcon`, `suffix`/`suffixIcon`, `label`, `error`, `helperText`.
+5. `InputNumber`: `value?: number | null`, `onChange?: (val: number | null) => void`, `min`, `max`, `step`.
+6. `Textarea`: `value`, `onChange: (e: ChangeEvent<HTMLTextAreaElement>) => void`, `showCount`, `label`, `error`, `helperText`.
+7. `Select` & `DictSelect`:
+   - IMPORTANT: `onChange` passes the VALUE directly (`string | number` or `Array<string | number>` when `multiple={true}`), NEVER a DOM ChangeEvent!
+   - Props: `options`, `value`, `onChange`, `multiple`, `searchable` (built-in Chinese pinyin matching), `clearable`/`allowClear`, `label`, `error`, `helperText`.
+   - `DictSelect`: `dictCode` (or `dictKey`), `prependOptions`, `appendOptions`.
+8. `Checkbox` & `Switch`:
+   - `Checkbox`: `checked?: boolean`, `indeterminate?: boolean`, `onChange?: (checked: boolean) => void`, `label?: ReactNode`, `description?: ReactNode`.
+   - `Switch`: `checked?: boolean`, `loading?: boolean`, `size?: 'sm'|'md'|'small'|'default'`, `onChange?: (checked: boolean) => void`.
+9. `RadioGroup`: `options`, `value`, `onChange: (val: string | number) => void`, `variant?: 'radio' | 'segmented'`.
+10. `DatePicker` & `DateRangePicker`:
+    - `DatePicker`: `value?: string` (`YYYY-MM-DD`), `onChange?: (isoDate: string) => void`.
+    - `DateRangePicker`: `value?: [string, string] | { start?: string; end?: string }`, `onChange?: (range: [string, string]) => void`.
+11. `Tree`: `treeData: AbcTreeNode[]`, `checkable?: boolean`, `checkStrictly?: boolean`, `searchable?: boolean`, `checkedKeys?: Array<string | number>`, `onCheck?: (checkedKeys, info) => void`.
+12. `TagInput`: `value?: string[]`, `onChange?: (tags: string[]) => void`, `maxTags?: number`.
+13. `ImageUpload`: `value?: string`, `onChange?: (url: string) => void`, `customUpload?: (file: File) => Promise<string>`, `label`, `helperText`.
+14. `SliderVerify`: `onSuccess: (payload: { nonceStr: string; value: number }) => void`, `fetchCaptcha?: () => Promise<AbcCaptchaData>`.
+15. `TableCore<T>`: `columns: AbcColumn<T>[]` (supports `fixed: 'left'|'right'`, `sortable`, `filterable`, `tooltip`, `valueType`, `options`, `linkToView`, `copyable`, `ellipsis`), `data: T[]`, `rowKey`, `loading`, `density`, `selectedKeys`, `onSelectionChange`, `sortState`, `onSortChange`, `headerFilterMode`, `headerFilterRender`, `columnWidths`, `onColumnResize`, `columnFixed`, `onColumnPin`, `onColumnHide`, `onResetColumns`, `onColumnReorder`, `expandable`, `maxHeight`.
+16. `ProTable<T>`: `storageKey`, `title`, `columns`, `fields` (supports `'text'|'number'|'select'|'textarea'|'switch'|'date'|'dateRange'|'tags'|'icon'`, `multiple`, `span`, `validator`), `dataSource`, `request`, `rowKey`, `clientFilter`, `showClientFilterSwitch`, `defaultSearchCollapsed`, `autoRefresh`, `exportable`, `onExport`, `syncToUrl`, `viewable`, `formContainer: 'dialog' | 'drawer'`, `formColumns: 1 | 2`, `rowActions`, `maxInlineActions`, `rowSelection`, `batchActions`, `expandable`, `permissions`, `onSaveRecord`, `onDeleteRecords`.
+17. `ProConfigForm`: `groups`, `initialValues`, `layoutMode: 'split' | 'grid'`, `onSubmit`.
+18. `Dialog` & `Drawer`:
+    - `Dialog`: Native Top Layer `<dialog>`, draggable header, double-click fullscreen, `open` (or `isOpen`), `onClose`, `title`, `size` (`'sm'|'md'|'lg'|'xl'|'full'`), `footer`. Never lock `document.body` scroll manually.
+    - `Drawer`: Multi-level push stack (`L1`/`L2`), edge drag resize (`resizable`), `open`, `onClose`, `placement`, `size`, `footer`.
+19. `abcConfirm` (aliases `confirm`, `useConfirm`): `const ok = await abcConfirm({ title, message, tone: 'danger' })`.
+20. `Descriptions`, `Collapse` (`items: [{ key, label, children, extra }]`), `Timeline` (`tone?: 'neutral'|'primary'|'success'|'warning'|'danger'`), `Popover`, `Tooltip`, `Dropdown`, `Tabs`, `Breadcrumb`, `Steps`, `StatusTag` (`DictTag`), `Badge`, `Avatar`, `ImagePreview` (supports raster URL & inline `<svg>`), `CopyableText`, `EmptyState`, `Pagination`, `Skeleton` (`SkeletonCard`, `SkeletonTable`, `SkeletonChart`), `Alert`, `Progress`, `Result` (`status`, `title`, `subTitle`, `extra`), `Loading`, `Watermark`, `ErrorBoundary`, `TabErrorBoundary`, `PermissionGuard` (`Permission`).
+21. `@abc-design/charts`:
+    - `<StatCard title="..." prefix="¥" value="128,400" trend={12.5} trendLabel="MoM" footer="..." loading={false} />`
+    - `<AbcChart option={echartsOption} height={300} loading={false} empty={false} onEvents={{ click: fn }} />` (alias `<Chart />`).

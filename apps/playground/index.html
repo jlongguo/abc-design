@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      try {
+        document.querySelector('meta[name="color-scheme"]').content =
+          localStorage.getItem('color-scheme') ?? 'light dark'
+      } catch (e) {}
+    </script>
+    <title>ABC Design — 企业级前端设计系统与多模态布局工作台</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
