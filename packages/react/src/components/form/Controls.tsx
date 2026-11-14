@@ -1,5 +1,7 @@
 import React, { useEffect, useId, useImperativeHandle, useRef } from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { Check, Loader2, Minus } from 'lucide-react'
+import { useAbcMotion, useAbcSize } from '../../hooks/useAbcDefaults'
 import { useControllableState } from '../../hooks/useControllableState'
 import { cn } from '../../utils/cn'
 
@@ -11,12 +13,35 @@ export interface CheckboxProps
   indeterminate?: boolean
   onChange?: (checked: boolean, e: React.ChangeEvent<HTMLInputElement>) => void
   disabled?: boolean
+  size?: AbcSize
+  motion?: AbcMotionPreset
   label?: React.ReactNode
   description?: React.ReactNode
   className?: string
 }
 
-/** 复选框组件（支持半选态 indeterminate、辅助描述与键盘无障碍操作） */
+const CHECKBOX_BOX_SIZE: Record<AbcSize, string> = {
+  xs: 'h-3.5 w-3.5',
+  sm: 'h-4 w-4',
+  md: 'h-4.5 w-4.5',
+  lg: 'h-5 w-5',
+}
+
+const CHECKBOX_ICON_SIZE: Record<AbcSize, string> = {
+  xs: 'h-2.5 w-2.5',
+  sm: 'h-3 w-3',
+  md: 'h-3.5 w-3.5',
+  lg: 'h-3.5 w-3.5',
+}
+
+const CHECKBOX_LABEL_TEXT: Record<AbcSize, string> = {
+  xs: 'text-xs',
+  sm: 'text-xs',
+  md: 'text-sm',
+  lg: 'text-sm',
+}
+
+/** 复选框组件（支持四档尺寸、动效规格、半选态 indeterminate、辅助描述与键盘无障碍操作） */
 export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
   (
     {
@@ -26,6 +51,8 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
       indeterminate = false,
       onChange,
       disabled = false,
+      size,
+      motion,
       label,
       description,
       className,
@@ -33,6 +60,8 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
     },
     ref
   ) => {
+    const resolvedSize = useAbcSize(size, 'sm')
+    const resolvedMotion = useAbcMotion(motion)
     const generatedId = useId()
     const id = externalId || generatedId
     const innerRef = useRef<HTMLInputElement | null>(null)
@@ -54,14 +83,22 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
     return (
       <label
         htmlFor={id}
+        data-motion={resolvedMotion}
         className={cn(
-          'inline-flex text-xs text-[var(--abc-fg-secondary)] select-none',
+          'inline-flex text-[var(--abc-fg-secondary)] select-none',
+          CHECKBOX_LABEL_TEXT[resolvedSize],
           hasContent ? 'items-start gap-2' : 'items-center justify-center',
           disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
           className
         )}
       >
-        <span className={cn('relative inline-flex h-4 w-4 shrink-0 items-center justify-center', hasContent && 'mt-0.5')}>
+        <span
+          className={cn(
+            'relative inline-flex shrink-0 items-center justify-center',
+            CHECKBOX_BOX_SIZE[resolvedSize],
+            hasContent && 'mt-0.5'
+          )}
+        >
           <input
             {...rest}
             ref={innerRef}
@@ -79,7 +116,8 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
           />
           <span
             className={cn(
-              'flex h-4 w-4 items-center justify-center rounded-[var(--abc-radius-xs)] border transition-all duration-150',
+              'flex items-center justify-center rounded-[var(--abc-radius-xs)] border abc-motion-control',
+              CHECKBOX_BOX_SIZE[resolvedSize],
               'peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--abc-ring)]',
               isChecked || indeterminate
                 ? 'border-[var(--abc-primary)] bg-[var(--abc-primary)] text-[var(--abc-primary-fg)]'
@@ -87,9 +125,11 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
             )}
           >
             {indeterminate ? (
-              <Minus className="h-3 w-3 stroke-[2.5]" />
+              <Minus className={cn(CHECKBOX_ICON_SIZE[resolvedSize], 'stroke-[2.5] abc-motion-pop')} />
             ) : (
-              isChecked && <Check className="h-3 w-3 stroke-[2.5]" />
+              isChecked && (
+                <Check className={cn(CHECKBOX_ICON_SIZE[resolvedSize], 'stroke-[2.5] abc-motion-pop')} />
+              )
             )}
           </span>
         </span>
@@ -113,7 +153,8 @@ export interface SwitchProps {
   onChange?: (checked: boolean) => void
   disabled?: boolean
   loading?: boolean
-  size?: 'sm' | 'md' | 'small' | 'default'
+  size?: AbcSize | 'small' | 'default'
+  motion?: AbcMotionPreset
   checkedLabel?: React.ReactNode
   uncheckedLabel?: React.ReactNode
   checkedChildren?: React.ReactNode
@@ -122,14 +163,36 @@ export interface SwitchProps {
   className?: string
 }
 
-/** 拨动开关组件（支持异步 loading 防重入态与双尺寸映射） */
+const SWITCH_TRACK_CLASS: Record<AbcSize, string> = {
+  xs: 'h-4 w-7',
+  sm: 'h-4.5 w-8',
+  md: 'h-5.5 w-10',
+  lg: 'h-6.5 w-12',
+}
+
+const SWITCH_THUMB_ON: Record<AbcSize, string> = {
+  xs: 'h-3 w-3 translate-x-3',
+  sm: 'h-3.5 w-3.5 translate-x-3.5',
+  md: 'h-4.5 w-4.5 translate-x-4.5',
+  lg: 'h-5.5 w-5.5 translate-x-5.5',
+}
+
+const SWITCH_THUMB_OFF: Record<AbcSize, string> = {
+  xs: 'h-3 w-3 translate-x-0.5',
+  sm: 'h-3.5 w-3.5 translate-x-0.5',
+  md: 'h-4.5 w-4.5 translate-x-0.5',
+  lg: 'h-5.5 w-5.5 translate-x-0.5',
+}
+
+/** 拨动开关组件（支持四档尺寸规格、动效规格、异步 loading 防重入态与旧尺寸别名兼容） */
 export const Switch: React.FC<SwitchProps> = ({
   checked,
   defaultChecked = false,
   onChange,
   disabled = false,
   loading = false,
-  size = 'md',
+  size,
+  motion,
   checkedLabel,
   uncheckedLabel,
   checkedChildren,
@@ -137,13 +200,17 @@ export const Switch: React.FC<SwitchProps> = ({
   ariaLabel,
   className,
 }) => {
+  const mappedPropSize: AbcSize | undefined =
+    size === 'small' ? 'sm' : size === 'default' ? 'md' : size
+  const resolvedSize = useAbcSize(mappedPropSize, 'md')
+  const resolvedMotion = useAbcMotion(motion)
+
   const [isOn, setIsOn] = useControllableState({
     value: checked,
     defaultValue: defaultChecked,
     onChange,
   })
 
-  const isSmall = size === 'sm' || size === 'small'
   const isDisabled = Boolean(disabled || loading)
   const onText = checkedLabel ?? checkedChildren
   const offText = uncheckedLabel ?? unCheckedChildren
@@ -155,24 +222,27 @@ export const Switch: React.FC<SwitchProps> = ({
       aria-checked={isOn}
       aria-label={ariaLabel}
       disabled={isDisabled}
+      data-motion={resolvedMotion}
       onClick={() => {
         if (!isDisabled) setIsOn(!isOn)
       }}
       className={cn(
-        'relative inline-flex shrink-0 items-center rounded-full border border-transparent transition-colors duration-200 cursor-pointer select-none',
+        'relative inline-flex shrink-0 items-center rounded-full border border-transparent transition-colors duration-[var(--abc-motion-base,220ms)] cursor-pointer select-none abc-motion-control',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)]',
         'disabled:opacity-50 disabled:cursor-not-allowed',
-        isSmall ? 'h-4.5 w-8' : 'h-5.5 w-10',
+        SWITCH_TRACK_CLASS[resolvedSize],
         isOn ? 'bg-[var(--abc-primary)]' : 'bg-[var(--abc-border-strong)]',
         className
       )}
     >
       <span
+        style={{
+          transitionDuration: 'var(--abc-motion-base, 220ms)',
+          transitionTimingFunction: 'var(--abc-ease-active, cubic-bezier(0.16, 1, 0.3, 1))',
+        }}
         className={cn(
-          'pointer-events-none inline-flex items-center justify-center rounded-full bg-white shadow-xs transition-transform duration-200',
-          isSmall
-            ? cn('h-3.5 w-3.5', isOn ? 'translate-x-3.5' : 'translate-x-0.5')
-            : cn('h-4.5 w-4.5', isOn ? 'translate-x-4.5' : 'translate-x-0.5')
+          'pointer-events-none inline-flex items-center justify-center rounded-full bg-white shadow-xs transition-transform',
+          isOn ? SWITCH_THUMB_ON[resolvedSize] : SWITCH_THUMB_OFF[resolvedSize]
         )}
       >
         {loading && <Loader2 className="h-2.5 w-2.5 animate-spin text-[var(--abc-primary)]" />}
@@ -196,20 +266,62 @@ export interface RadioGroupProps {
   defaultValue?: string | number
   onChange?: (val: string | number) => void
   variant?: 'default' | 'segmented'
+  size?: AbcSize
+  motion?: AbcMotionPreset
   disabled?: boolean
   className?: string
 }
 
-/** 单选组（支持常规圆点与分段胶囊卡片双样式） */
+const SEGMENTED_CONTAINER_CLASS: Record<AbcSize, string> = {
+  xs: 'p-0.5 gap-0.5',
+  sm: 'p-0.5 gap-0.5',
+  md: 'p-1 gap-1',
+  lg: 'p-1 gap-1',
+}
+
+const SEGMENTED_ITEM_CLASS: Record<AbcSize, string> = {
+  xs: 'px-2 py-0.5 text-[11px]',
+  sm: 'px-2.5 py-1 text-xs',
+  md: 'px-3.5 py-1.5 text-sm',
+  lg: 'px-4 py-2 text-sm',
+}
+
+const RADIO_CIRCLE_CLASS: Record<AbcSize, string> = {
+  xs: 'h-3.5 w-3.5',
+  sm: 'h-4 w-4',
+  md: 'h-4.5 w-4.5',
+  lg: 'h-5 w-5',
+}
+
+const RADIO_DOT_CLASS: Record<AbcSize, string> = {
+  xs: 'h-1.5 w-1.5',
+  sm: 'h-2 w-2',
+  md: 'h-2 w-2',
+  lg: 'h-2.5 w-2.5',
+}
+
+const RADIO_TEXT_CLASS: Record<AbcSize, string> = {
+  xs: 'text-xs gap-1.5',
+  sm: 'text-xs gap-2',
+  md: 'text-sm gap-2',
+  lg: 'text-sm gap-2.5',
+}
+
+/** 单选组（支持常规圆点与分段胶囊卡片双样式、全四档尺寸规格及动效规格） */
 export const RadioGroup: React.FC<RadioGroupProps> = ({
   options,
   value,
   defaultValue,
   onChange,
   variant = 'default',
+  size,
+  motion,
   disabled = false,
   className,
 }) => {
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
+
   const [current, setCurrent] = useControllableState<string | number>({
     value,
     defaultValue: defaultValue ?? options[0]?.value ?? '',
@@ -220,8 +332,10 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
     return (
       <div
         role="radiogroup"
+        data-motion={resolvedMotion}
         className={cn(
-          'inline-flex items-center gap-0.5 rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-muted)] p-0.5',
+          'inline-flex items-center rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-muted)]',
+          SEGMENTED_CONTAINER_CLASS[resolvedSize],
           className
         )}
       >
@@ -237,7 +351,8 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
               disabled={isDisabled}
               onClick={() => setCurrent(opt.value)}
               className={cn(
-                'rounded-[var(--abc-radius-sm)] px-2.5 py-1 text-xs font-medium transition-all cursor-pointer select-none',
+                'rounded-[var(--abc-radius-sm)] font-medium cursor-pointer select-none abc-motion-control',
+                SEGMENTED_ITEM_CLASS[resolvedSize],
                 active
                   ? 'bg-[var(--abc-bg-surface)] text-[var(--abc-primary)] shadow-2xs'
                   : 'text-[var(--abc-fg-muted)] enabled:hover:text-[var(--abc-fg)]',
@@ -253,7 +368,11 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
   }
 
   return (
-    <div role="radiogroup" className={cn('inline-flex flex-wrap items-center gap-4', className)}>
+    <div
+      role="radiogroup"
+      data-motion={resolvedMotion}
+      className={cn('inline-flex flex-wrap items-center gap-4', className)}
+    >
       {options.map((opt) => {
         const active = String(current) === String(opt.value)
         const isDisabled = Boolean(disabled || opt.disabled)
@@ -261,7 +380,8 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
           <label
             key={String(opt.value)}
             className={cn(
-              'inline-flex items-center gap-2 text-xs text-[var(--abc-fg-secondary)] select-none',
+              'inline-flex items-center text-[var(--abc-fg-secondary)] select-none',
+              RADIO_TEXT_CLASS[resolvedSize],
               isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
             )}
           >
@@ -274,13 +394,21 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
             />
             <span
               className={cn(
-                'flex h-4 w-4 items-center justify-center rounded-full border transition-all',
+                'flex items-center justify-center rounded-full border abc-motion-control',
+                RADIO_CIRCLE_CLASS[resolvedSize],
                 active
                   ? 'border-[var(--abc-primary)]'
                   : 'border-[var(--abc-border-strong)] bg-[var(--abc-bg-surface)]'
               )}
             >
-              {active && <span className="h-2 w-2 rounded-full bg-[var(--abc-primary)]" />}
+              {active && (
+                <span
+                  className={cn(
+                    'rounded-full bg-[var(--abc-primary)] abc-motion-pop',
+                    RADIO_DOT_CLASS[resolvedSize]
+                  )}
+                />
+              )}
             </span>
             <span>{opt.label}</span>
           </label>

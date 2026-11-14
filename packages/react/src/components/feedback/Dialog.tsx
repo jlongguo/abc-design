@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import type { AbcMotionPreset } from '@abc-design/tokens'
 import { Maximize2, Minimize2, X } from 'lucide-react'
+import { useAbcMotion } from '../../hooks'
 import { usePresence } from '../../hooks/usePresence'
 import { cn } from '../../utils/cn'
 
-export type DialogSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl'
+export type DialogSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl'
 
 export interface DialogProps {
   /** 控制模态框显隐（兼容 open / visible / isOpen 三种命名习惯） */
@@ -39,11 +41,14 @@ export interface DialogProps {
   onFullscreenChange?: (fullscreen: boolean) => void
   /** 是否启用焦点锁定（原生 showModal 天然支持，保留字段兼容既有调用） */
   focusTrap?: boolean
+  /** 面板显隐动效规格 */
+  motion?: AbcMotionPreset
   /** 面板附加类名 */
   className?: string
 }
 
 const SIZE_WIDTH_MAP: Record<string, string> = {
+  xs: 'max-w-sm',
   sm: 'max-w-md',
   md: 'max-w-lg',
   lg: 'max-w-2xl',
@@ -76,10 +81,12 @@ export const Dialog: React.FC<DialogProps> = ({
   fullscreenable = true,
   fullscreen: controlledFullscreen,
   onFullscreenChange,
+  motion,
   className,
 }) => {
   const isOpen = open ?? visible ?? isOpenProp ?? false
-  const { isMounted, isVisible } = usePresence(isOpen, 180)
+  const resolvedMotion = useAbcMotion(motion)
+  const { isMounted, isVisible } = usePresence(isOpen, resolvedMotion === 'none' ? 0 : 180)
   const titleId = useId()
   const descId = useId()
 
@@ -224,6 +231,7 @@ export const Dialog: React.FC<DialogProps> = ({
   return createPortal(
     <dialog
       ref={dialogRef}
+      data-motion={resolvedMotion}
       aria-labelledby={title ? titleId : undefined}
       aria-label={!title ? '对话框' : undefined}
       aria-describedby={description ? descId : undefined}
@@ -245,12 +253,13 @@ export const Dialog: React.FC<DialogProps> = ({
       className={cn(
         'fixed inset-0 z-[1000] m-0 h-dvh max-h-none w-dvw max-w-none border-0 bg-transparent p-4 open:flex items-center justify-center',
         isFullscreen && 'p-0',
-        isVisible ? 'abc-animate-fade-in' : 'abc-animate-fade-out'
+        resolvedMotion !== 'none' && (isVisible ? 'abc-animate-fade-in' : 'abc-animate-fade-out')
       )}
     >
       <div
         ref={panelRef}
         data-dialog-panel=""
+        data-motion={resolvedMotion}
         style={{
           width: !isFullscreen && width ? width : undefined,
           transform:
@@ -263,7 +272,7 @@ export const Dialog: React.FC<DialogProps> = ({
           isFullscreen
             ? 'h-dvh w-dvw rounded-none'
             : cn('max-h-[88dvh] w-full rounded-[var(--abc-radius-xl)]', !width && sizeClass),
-          isVisible ? 'abc-animate-modal-in' : 'abc-animate-modal-out',
+          resolvedMotion !== 'none' && (isVisible ? 'abc-animate-modal-in' : 'abc-animate-modal-out'),
           className
         )}
       >

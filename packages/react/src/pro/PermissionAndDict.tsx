@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { Tooltip } from '../components/display/Overlays'
 import { StatusTag, type StatusTone } from '../components/display/StatusTag'
 import { Select, type SelectOption, type SelectProps } from '../components/form/Select'
@@ -156,6 +157,8 @@ export interface DictTagProps {
   dictKey?: string
   value: string | number | undefined | null
   dot?: boolean
+  size?: AbcSize
+  motion?: AbcMotionPreset
   emptyText?: string
   fallbackTone?: StatusTone
   className?: string
@@ -167,6 +170,8 @@ export const DictTag: React.FC<DictTagProps> = ({
   dictKey,
   value,
   dot = true,
+  size,
+  motion,
   emptyText = '-',
   fallbackTone = 'neutral',
   className,
@@ -180,7 +185,13 @@ export const DictTag: React.FC<DictTagProps> = ({
 
   const hit = options.find((item) => String(item.value) === String(value))
   return (
-    <StatusTag tone={hit?.tone ?? fallbackTone} dot={dot} className={className}>
+    <StatusTag
+      tone={hit?.tone ?? fallbackTone}
+      dot={dot}
+      size={size}
+      motion={motion}
+      className={className}
+    >
       {hit?.label ?? String(value)}
     </StatusTag>
   )

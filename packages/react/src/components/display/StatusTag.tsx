@@ -1,4 +1,6 @@
 import React, { useState } from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
+import { useAbcMotion, useAbcSize } from '../../hooks'
 import { cn } from '../../utils/cn'
 
 export type StatusTone =
@@ -28,7 +30,8 @@ export interface StatusTagProps extends React.HTMLAttributes<HTMLSpanElement> {
   dot?: boolean
   /** 圆点是否带呼吸脉冲（适合运行中/处理中） */
   pulse?: boolean
-  size?: 'sm' | 'md'
+  size?: AbcSize
+  motion?: AbcMotionPreset
 }
 
 const TONE_STYLES: Record<StatusTone, { tag: string; dot: string }> = {
@@ -96,7 +99,8 @@ export const StatusTag: React.FC<StatusTagProps> = ({
   label,
   dot = true,
   pulse = false,
-  size = 'sm',
+  size,
+  motion,
   className,
   children,
   ...rest
@@ -104,12 +108,22 @@ export const StatusTag: React.FC<StatusTagProps> = ({
   const resolved = resolveTone(tone, status, color)
   const palette = TONE_STYLES[resolved]
   const content = text ?? label ?? children
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
+
+  const sizeClasses: Record<AbcSize, string> = {
+    xs: 'px-1.5 py-0 text-[10px]',
+    sm: 'px-2 py-0.5 text-[11px]',
+    md: 'px-2.5 py-1 text-xs',
+    lg: 'px-3 py-1.5 text-sm',
+  }
 
   return (
     <span
+      data-motion={resolvedMotion}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-[var(--abc-radius-sm)] border font-medium whitespace-nowrap',
-        size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs',
+        'abc-motion-pop inline-flex items-center gap-1.5 rounded-[var(--abc-radius-sm)] border font-medium whitespace-nowrap',
+        sizeClasses[resolvedSize],
         palette.tag,
         className
       )}
@@ -138,6 +152,8 @@ export interface BadgeProps {
   maxCount?: number
   dot?: boolean
   tone?: 'danger' | 'primary' | 'success'
+  size?: AbcSize
+  motion?: AbcMotionPreset
   children?: React.ReactNode
   className?: string
 }
@@ -148,9 +164,14 @@ export const Badge: React.FC<BadgeProps> = ({
   maxCount = 99,
   dot = false,
   tone = 'danger',
+  size,
+  motion,
   children,
   className,
 }) => {
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
+
   const bgClass =
     tone === 'primary'
       ? 'bg-[var(--abc-primary)]'
@@ -161,14 +182,44 @@ export const Badge: React.FC<BadgeProps> = ({
   const show = dot || count > 0
   const text = count > maxCount ? `${maxCount}+` : String(count)
 
+  const standaloneDotSize: Record<AbcSize, string> = {
+    xs: 'h-1.5 w-1.5',
+    sm: 'h-2 w-2',
+    md: 'h-2.5 w-2.5',
+    lg: 'h-3 w-3',
+  }
+  const standalonePillSize: Record<AbcSize, string> = {
+    xs: 'h-4 min-w-4 px-1 text-[9px]',
+    sm: 'h-4.5 min-w-4.5 px-1.5 text-[10px]',
+    md: 'h-5 min-w-5 px-1.5 text-[11px]',
+    lg: 'h-6 min-w-6 px-2 text-xs',
+  }
+  const overlayDotSize: Record<AbcSize, string> = {
+    xs: 'h-1.5 w-1.5',
+    sm: 'h-2 w-2',
+    md: 'h-2.5 w-2.5',
+    lg: 'h-3 w-3',
+  }
+  const overlayPillSize: Record<AbcSize, string> = {
+    xs: 'h-3.5 min-w-3.5 px-1 text-[9px]',
+    sm: 'h-4 min-w-4 px-1 text-[10px]',
+    md: 'h-4.5 min-w-4.5 px-1.5 text-[11px]',
+    lg: 'h-5 min-w-5 px-1.5 text-xs',
+  }
+
   if (!children) {
     if (!show) return null
     return dot ? (
-      <span className={cn('inline-block h-2 w-2 rounded-full', bgClass, className)} />
+      <span
+        data-motion={resolvedMotion}
+        className={cn('abc-motion-pop inline-block rounded-full', standaloneDotSize[resolvedSize], bgClass, className)}
+      />
     ) : (
       <span
+        data-motion={resolvedMotion}
         className={cn(
-          'inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1.5 font-mono text-[10px] font-semibold text-white tabular-nums',
+          'abc-motion-pop inline-flex items-center justify-center rounded-full font-mono font-semibold text-white tabular-nums',
+          standalonePillSize[resolvedSize],
           bgClass,
           className
         )}
@@ -179,20 +230,22 @@ export const Badge: React.FC<BadgeProps> = ({
   }
 
   return (
-    <span className={cn('relative inline-flex shrink-0', className)}>
+    <span data-motion={resolvedMotion} className={cn('relative inline-flex shrink-0', className)}>
       {children}
       {show &&
         (dot ? (
           <span
             className={cn(
-              'absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full ring-2 ring-[var(--abc-bg-surface)]',
+              'abc-motion-pop absolute -top-0.5 -right-0.5 rounded-full ring-2 ring-[var(--abc-bg-surface)]',
+              overlayDotSize[resolvedSize],
               bgClass
             )}
           />
         ) : (
           <span
             className={cn(
-              'absolute -top-1.5 -right-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-mono text-[10px] font-semibold text-white tabular-nums ring-2 ring-[var(--abc-bg-surface)]',
+              'abc-motion-pop absolute -top-1.5 -right-2 inline-flex items-center justify-center rounded-full font-mono font-semibold text-white tabular-nums ring-2 ring-[var(--abc-bg-surface)]',
+              overlayPillSize[resolvedSize],
               bgClass
             )}
           >
@@ -206,11 +259,12 @@ export const Badge: React.FC<BadgeProps> = ({
 export interface AvatarProps {
   src?: string
   name?: string
-  size?: 'xs' | 'sm' | 'md' | 'lg'
+  size?: AbcSize
+  motion?: AbcMotionPreset
   className?: string
 }
 
-const AVATAR_SIZE = {
+const AVATAR_SIZE: Record<AbcSize, string> = {
   xs: 'h-6 w-6 text-[10px]',
   sm: 'h-7 w-7 text-xs',
   md: 'h-9 w-9 text-sm',
@@ -218,15 +272,18 @@ const AVATAR_SIZE = {
 }
 
 /** 用户/租户头像组件（图片加载失败时自动回退至名称首字符） */
-export const Avatar: React.FC<AvatarProps> = ({ src, name = 'U', size = 'sm', className }) => {
+export const Avatar: React.FC<AvatarProps> = ({ src, name = 'U', size, motion, className }) => {
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
   const [failed, setFailed] = useState(false)
   const initial = name.trim().slice(0, 1).toUpperCase() || 'U'
 
   return (
     <span
+      data-motion={resolvedMotion}
       className={cn(
-        'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--abc-primary-soft)] font-semibold text-[var(--abc-primary)] select-none',
-        AVATAR_SIZE[size],
+        'abc-motion-control inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--abc-primary-soft)] font-semibold text-[var(--abc-primary)] select-none',
+        AVATAR_SIZE[resolvedSize],
         className
       )}
     >

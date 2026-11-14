@@ -1,5 +1,7 @@
 import React, { useRef, useState } from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { ChevronLeft, ChevronRight, FolderSearch, RotateCcw } from 'lucide-react'
+import { useAbcMotion, useAbcSize } from '../../hooks'
 import { cn } from '../../utils/cn'
 import Button from '../button/Button'
 
@@ -12,7 +14,8 @@ export interface EmptyStateProps {
   onReset?: () => void
   /** 重置按钮文案 */
   resetText?: string
-  size?: 'sm' | 'md' | 'lg'
+  size?: AbcSize
+  motion?: AbcMotionPreset
   compact?: boolean
   className?: string
 }
@@ -25,19 +28,33 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   action,
   onReset,
   resetText = '重置筛选条件',
-  size = 'md',
+  size,
+  motion,
   compact = false,
   className,
 }) => {
-  const effectiveSize = compact ? 'sm' : size
-  const sizeStyles = {
+  const resolvedSize = useAbcSize(size, 'md')
+  const resolvedMotion = useAbcMotion(motion)
+  const effectiveSize = compact ? 'sm' : resolvedSize
+  const sizeStyles: Record<
+    AbcSize,
+    { container: string; iconBox: string; iconSize: string; title: string; desc: string; btnSize: AbcSize }
+  > = {
+    xs: {
+      container: 'py-4 px-3',
+      iconBox: 'h-8 w-8 rounded-lg',
+      iconSize: 'h-4 w-4',
+      title: 'text-[11px] font-semibold',
+      desc: 'mt-0.5 text-[10px]',
+      btnSize: 'xs',
+    },
     sm: {
       container: 'py-6 px-4',
       iconBox: 'h-10 w-10 rounded-xl',
       iconSize: 'h-5 w-5',
       title: 'text-xs font-semibold',
       desc: 'mt-1 text-[11px]',
-      btnSize: 'xs' as const,
+      btnSize: 'xs',
     },
     md: {
       container: 'py-10 px-4',
@@ -45,7 +62,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       iconSize: 'h-6 w-6',
       title: 'text-sm font-semibold',
       desc: 'mt-1.5 text-xs',
-      btnSize: 'sm' as const,
+      btnSize: 'sm',
     },
     lg: {
       container: 'py-16 px-6',
@@ -53,16 +70,19 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       iconSize: 'h-8 w-8',
       title: 'text-base font-semibold',
       desc: 'mt-2 text-xs',
-      btnSize: 'md' as const,
+      btnSize: 'md',
     },
-  }[effectiveSize]
+  }
+  const activeStyle = sizeStyles[effectiveSize]
 
   return (
     <div
       data-testid="empty-state"
+      data-motion={resolvedMotion}
       className={cn(
         'flex flex-col items-center justify-center text-center select-none',
-        sizeStyles.container,
+        activeStyle.container,
+        resolvedMotion !== 'none' && 'abc-animate-fade-in',
         className
       )}
     >
@@ -70,15 +90,15 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         data-testid="empty-state-icon"
         className={cn(
           'flex items-center justify-center border border-[var(--abc-border)] bg-[var(--abc-bg-muted)] text-[var(--abc-fg-muted)]',
-          sizeStyles.iconBox
+          activeStyle.iconBox
         )}
       >
-        {icon ?? <FolderSearch className={sizeStyles.iconSize} />}
+        {icon ?? <FolderSearch className={activeStyle.iconSize} />}
       </div>
       {title && (
         <h4
           data-testid="empty-state-title"
-          className={cn('mt-3 text-[var(--abc-fg)]', sizeStyles.title)}
+          className={cn('mt-3 text-[var(--abc-fg)]', activeStyle.title)}
         >
           {title}
         </h4>
@@ -86,7 +106,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       {description && (
         <p
           data-testid="empty-state-description"
-          className={cn('max-w-sm leading-relaxed text-[var(--abc-fg-muted)]', sizeStyles.desc)}
+          className={cn('max-w-sm leading-relaxed text-[var(--abc-fg-muted)]', activeStyle.desc)}
         >
           {description}
         </p>
@@ -96,7 +116,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           {action ?? (
             <Button
               variant="secondary"
-              size={sizeStyles.btnSize}
+              size={activeStyle.btnSize}
+              motion={resolvedMotion}
               icon={<RotateCcw className="h-3.5 w-3.5" />}
               onClick={onReset}
             >
@@ -114,7 +135,11 @@ export interface PaginationProps {
   currentPage?: number
   page?: number
   pageSize?: number
-  size?: number
+  /** 每页条数（数字）或控件尺寸规格（xs/sm/md/lg） */
+  size?: number | AbcSize
+  /** 分页器控件尺寸规格（避免与数字型 pageSize 冲突时的显式指定入口） */
+  controlSize?: AbcSize
+  motion?: AbcMotionPreset
   total: number
   pageSizeOptions?: number[]
   onChange?: (page: number, pageSize: number) => void
@@ -126,6 +151,40 @@ export interface PaginationProps {
   className?: string
 }
 
+const PAGINATION_SIZE_MAP: Record<
+  AbcSize,
+  { wrap: string; select: string; navBtn: string; pageBtn: string; input: string }
+> = {
+  xs: {
+    wrap: 'text-[11px]',
+    select: 'h-6 px-1.5 text-[11px]',
+    navBtn: 'h-6 w-6',
+    pageBtn: 'h-6 min-w-6 px-1.5 text-[11px]',
+    input: 'h-6 w-9 text-[11px]',
+  },
+  sm: {
+    wrap: 'text-xs',
+    select: 'h-7 px-2 text-xs',
+    navBtn: 'h-7 w-7',
+    pageBtn: 'h-7 min-w-7 px-2 text-xs',
+    input: 'h-7 w-11 text-xs',
+  },
+  md: {
+    wrap: 'text-sm',
+    select: 'h-8 px-2.5 text-xs',
+    navBtn: 'h-8 w-8',
+    pageBtn: 'h-8 min-w-8 px-2.5 text-xs',
+    input: 'h-8 w-12 text-xs',
+  },
+  lg: {
+    wrap: 'text-sm',
+    select: 'h-9 px-3 text-sm',
+    navBtn: 'h-9 w-9',
+    pageBtn: 'h-9 min-w-9 px-3 text-sm',
+    input: 'h-9 w-14 text-sm',
+  },
+}
+
 /** 企业级紧凑数据分页器（支持快速页码跳转、边界自动 Clamp 与零数据优雅提示） */
 export const Pagination: React.FC<PaginationProps> = ({
   current,
@@ -133,6 +192,8 @@ export const Pagination: React.FC<PaginationProps> = ({
   page,
   pageSize,
   size,
+  controlSize,
+  motion,
   total,
   pageSizeOptions = [10, 20, 50, 100],
   onChange,
@@ -144,7 +205,13 @@ export const Pagination: React.FC<PaginationProps> = ({
   className,
 }) => {
   const activePage = current ?? currentPage ?? page ?? 1
-  const activeSize = pageSize ?? size ?? 10
+  const activeSize = pageSize ?? (typeof size === 'number' ? size : undefined) ?? 10
+  const resolvedControlSize = useAbcSize(
+    controlSize ?? (typeof size === 'string' ? size : undefined),
+    'sm'
+  )
+  const resolvedMotion = useAbcMotion(motion)
+  const sizeCls = PAGINATION_SIZE_MAP[resolvedControlSize]
   const totalPages = Math.max(1, Math.ceil(total / Math.max(1, activeSize)))
 
   const [jumperVal, setJumperVal] = useState('')
@@ -154,8 +221,10 @@ export const Pagination: React.FC<PaginationProps> = ({
     return (
       <div
         data-testid="pagination-empty"
+        data-motion={resolvedMotion}
         className={cn(
-          'flex flex-wrap items-center justify-between gap-3 py-1 text-xs text-[var(--abc-fg-muted)] select-none',
+          'flex flex-wrap items-center justify-between gap-3 py-1 text-[var(--abc-fg-muted)] select-none',
+          sizeCls.wrap,
           className
         )}
       >
@@ -219,8 +288,10 @@ export const Pagination: React.FC<PaginationProps> = ({
 
   return (
     <div
+      data-motion={resolvedMotion}
       className={cn(
-        'flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--abc-fg-muted)] select-none',
+        'flex flex-wrap items-center justify-between gap-3 text-[var(--abc-fg-muted)] select-none',
+        sizeCls.wrap,
         className
       )}
     >
@@ -239,7 +310,10 @@ export const Pagination: React.FC<PaginationProps> = ({
           aria-label="每页条数"
           value={activeSize}
           onChange={(e) => triggerSize(Number(e.target.value))}
-          className="h-7 rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-2 text-xs text-[var(--abc-fg)] focus:border-[var(--abc-primary)] focus:outline-none cursor-pointer"
+          className={cn(
+            'rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] focus:border-[var(--abc-primary)] focus:outline-none cursor-pointer',
+            sizeCls.select
+          )}
         >
           {pageSizeOptions.map((opt) => (
             <option key={opt} value={opt}>
@@ -253,7 +327,10 @@ export const Pagination: React.FC<PaginationProps> = ({
           aria-label="上一页"
           disabled={activePage <= 1}
           onClick={() => triggerPage(activePage - 1)}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg-secondary)] enabled:hover:bg-[var(--abc-bg-subtle)] disabled:opacity-40 cursor-pointer"
+          className={cn(
+            'abc-motion-control inline-flex items-center justify-center rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg-secondary)] enabled:hover:bg-[var(--abc-bg-subtle)] disabled:opacity-40 cursor-pointer',
+            sizeCls.navBtn
+          )}
         >
           <ChevronLeft className="h-3.5 w-3.5" />
         </button>
@@ -269,7 +346,8 @@ export const Pagination: React.FC<PaginationProps> = ({
               type="button"
               onClick={() => triggerPage(item)}
               className={cn(
-                'inline-flex h-7 min-w-7 items-center justify-center rounded-[var(--abc-radius-sm)] px-2 font-mono text-xs tabular-nums transition-colors cursor-pointer',
+                'abc-motion-control inline-flex items-center justify-center rounded-[var(--abc-radius-sm)] font-mono tabular-nums transition-colors cursor-pointer',
+                sizeCls.pageBtn,
                 item === activePage
                   ? 'bg-[var(--abc-primary)] font-semibold text-[var(--abc-primary-fg)]'
                   : 'border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)]'
@@ -285,7 +363,10 @@ export const Pagination: React.FC<PaginationProps> = ({
           aria-label="下一页"
           disabled={activePage >= totalPages}
           onClick={() => triggerPage(activePage + 1)}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg-secondary)] enabled:hover:bg-[var(--abc-bg-subtle)] disabled:opacity-40 cursor-pointer"
+          className={cn(
+            'abc-motion-control inline-flex items-center justify-center rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg-secondary)] enabled:hover:bg-[var(--abc-bg-subtle)] disabled:opacity-40 cursor-pointer',
+            sizeCls.navBtn
+          )}
         >
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
@@ -313,7 +394,10 @@ export const Pagination: React.FC<PaginationProps> = ({
                 }
               }}
               onBlur={commitJump}
-              className="h-7 w-11 rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-1.5 text-center font-mono text-xs text-[var(--abc-fg)] tabular-nums focus:border-[var(--abc-primary)] focus:outline-none"
+              className={cn(
+                'rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-1.5 text-center font-mono text-[var(--abc-fg)] tabular-nums focus:border-[var(--abc-primary)] focus:outline-none',
+                sizeCls.input
+              )}
             />
             <span>页</span>
           </div>
@@ -329,6 +413,7 @@ export type SkeletonAnimation = 'wave' | 'pulse' | 'none'
 export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: SkeletonVariant
   animation?: SkeletonAnimation
+  motion?: AbcMotionPreset
   width?: number | string
   height?: number | string
 }
@@ -340,6 +425,7 @@ export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
 export const Skeleton: React.FC<SkeletonProps> = ({
   variant = 'text',
   animation = 'pulse',
+  motion,
   width,
   height,
   className,
@@ -347,6 +433,8 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   children,
   ...rest
 }) => {
+  const resolvedMotion = useAbcMotion(motion)
+  const effectiveAnimation = resolvedMotion === 'none' ? 'none' : animation
   const computedStyle: React.CSSProperties = {
     ...style,
     ...(width !== undefined ? { width: typeof width === 'number' ? `${width}px` : width } : {}),
@@ -358,6 +446,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
       role="status"
       aria-busy="true"
       aria-live="polite"
+      data-motion={resolvedMotion}
       style={computedStyle}
       className={cn(
         'bg-[var(--abc-bg-subtle)] bg-slate-200 dark:bg-slate-800',
@@ -365,8 +454,8 @@ export const Skeleton: React.FC<SkeletonProps> = ({
         variant === 'rectangular' && 'rounded-none',
         variant === 'rounded' && 'rounded-lg',
         variant === 'text' && cn('rounded-md', height === undefined && 'h-4'),
-        animation === 'wave' && 'abc-skeleton-wave skeleton-wave',
-        animation === 'pulse' && 'animate-pulse',
+        effectiveAnimation === 'wave' && 'abc-skeleton-wave skeleton-wave',
+        effectiveAnimation === 'pulse' && 'animate-pulse',
         className
       )}
       {...rest}

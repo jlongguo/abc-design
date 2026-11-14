@@ -119,8 +119,16 @@
 ## 三、表面容器与数据展示
 
 - **`Card` / `SpotlightCard` / `BorderBeam` / `AuroraBackground` / `Divider` / `Space`**：
-  `<Card title="标题" subtitle="副标题" extra={<Button>操作</Button>} padding="md" hoverable>`
-- **`TableCore<T>`**：支持 `columns: AbcColumn<T>[]`（`fixed: 'left' | 'right'` 多列累加粘性偏移、`sortable`、`filterable`、`tooltip`、`valueType` 语义自动格式化、`options` 状态标签映射、`linkToView`、`copyable`）、表头右键快捷菜单（排序/左右固定/隐藏列/重置）、`expandable` 子面板展开与树形 `children` 缩进、列宽拖拽 `onColumnResize`、列序拖拽 `onColumnReorder`、多选 `selectedKeys` / `onSelectionChange`、三种密度 `density`。
+  `<Card as="article" title="标题" subtitle="副标题" extra={<Button>操作</Button>} size="md" variant="default" cover={...} statusRibbon={{ text: '推荐', tone: 'primary' }} loading={false} hoverable motion="smooth">`
+  - 新增 `variant?: 'default' | 'bordered' | 'ghost' | 'elevated' | 'glass'`、`size?: AbcSize`（`xs | sm | md | lg`）、`loading`、`cover`、`statusRibbon` 与 `@container` 容器查询上下文。
+- **企业级卡片矩阵（`Cards` 模块）**：
+  - `MetricCard`：`title`, `value`, `prefix`, `suffix`, `trend?: { value, direction?: 'up' | 'down' | 'flat', label? }`, `sparkline?: number[]`, `icon`, `footer`, `loading`, `hoverable`, `size`, `motion`
+  - `CheckCardGroup` / `CheckCard`：`multiple`, `value`, `defaultValue`, `onChange`, `columns?: 1 | 2 | 3 | 4`, `disabled`, `size`, `motion`（`CheckCard`：`value`, `title`, `description`, `avatar`, `icon`, `extra`, `checked`, `disabled`）
+  - `ActionCard`：`title`, `description`, `icon`, `tags`, `extra`, `href`, `target`, `disabled`, `onClick`, `size`, `motion`（主卡片点击热区与右上角 `extra` 操作互斥隔离）
+  - `CollapsibleCard`：`title`, `subtitle`, `icon`, `extra`, `defaultOpen`, `open`, `onOpenChange`, `size`, `motion`
+  - `PricingCard`：`tier`, `price`, `period`, `description`, `features: Array<{ text; included? } | string>`, `recommended`, `badge`, `ctaText`, `disabled`, `loading`, `onSelect`, `size`, `motion`
+  - `BentoGrid` (`columns?: 2 | 3 | 4`, `gap?: AbcSize`) & `BentoCard` (`colSpan?: 1 | 2 | 3`, `rowSpan?: 1 | 2`, `eyebrow`, `title`, `description`, `icon`, `graphic`, `footer`, `hoverable`, `size`, `motion`)
+- **`TableCore<T>`**：支持 `columns: AbcColumn<T>[]`（`fixed: 'left' | 'right'` 多列累加粘性偏移、`sortable`、`filterable`、`tooltip`、`valueType` 语义自动格式化、`options` 状态标签映射、`linkToView`、`copyable`）、表头右键快捷菜单（排序/左右固定/隐藏列/重置）、`expandable` 子面板展开与树形 `children` 缩进、列宽拖拽 `onColumnResize`（含右侧固定列与 `__abc_actions__` 操作列左边缘拖拽调宽 + `<colgroup>`/`tableLayout: 'fixed'` 宽度锁定、`resizable` 控制与 `ProColumnSettingsPopover` 数值输入调宽）、表头实时 `onDragOver` 列序嵌入高亮与 FLIP 滑移动画（支持 `Escape` 取消回滚，`onColumnReorder`）、多选 `selectedKeys` / `onSelectionChange`、三种密度 `density` 与 `motion?: AbcMotionPreset`。
 - **`Descriptions`**：`<Descriptions title="详情" bordered column={2} items={[{ label: '订单号', children: 'ORD-1', span: 2 }]} />`
 - **`Collapse`**：基于原生 `<details>` 的无障碍折叠面板，`<Collapse accordion items={[{ key: '1', label: '标题', children: '内容' }]} />`
 - **`Timeline`**：`<Timeline items={[{ title: '节点标题', time: '10:00', description: '说明', tone: 'success' }]} />`
@@ -153,3 +161,13 @@
     <Button variant="danger">删除账号</Button>
   </Permission>
   ```
+
+## 全域规格 (`AbcSize`) 与统一动效体系 (`AbcMotionPreset`)
+
+- **四档通用规格 `AbcSize = 'xs' | 'sm' | 'md' | 'lg'`**：
+  - `AbcProvider` 支持全局 `defaultTheme={{ ..., componentSize: 'sm', motion: 'smooth' }}` 与运行时 `setComponentSize` / `setMotion`（均暴露在 `ThemeCustomizer` 主题配置器中）。
+  - 全部基础输入与展示组件（`Button`、`Input`、`InputNumber`、`Textarea`、`Select`、`DatePicker`、`DateRangePicker`、`Checkbox`、`RadioGroup`、`Switch`、`TagInput`、`IconPicker`、`ImageUpload`、`StatusTag`、`Badge`、`Avatar`、`Tabs`、`Descriptions`、`Collapse`、`Timeline`、`Breadcrumb`、`Steps`、`EmptyState`、`Loading`、`AbcToastViewport`、`Dialog`、`Drawer`、`Card` 等）均可自动通过 `useAbcSize` / `useAbcMotion` 继承全局配置并允许局部 `size` / `motion` 覆盖。
+  - 向后兼容注意：`Pagination` 保留 `size?: number | AbcSize` 与新增 `controlSize?: AbcSize`；`Switch` 兼容 `'small' | 'default'`；`Progress` 保留 `size?: number | AbcSize`。
+- **四档动效预设 `AbcMotionPreset = 'none' | 'subtle' | 'smooth' | 'spring'`**：
+  - 自动写入 `document.documentElement.dataset.abcMotion`，并向下游每个组件注入 `data-motion` 与 `@abc-design/tokens` 物理缓动变量（`--abc-ease-active` 过冲曲线仅用于位移/缩放，不用于 `opacity` 或颜色）。
+  - `motion="none"` 或系统开启 `prefers-reduced-motion: reduce` 时，自动关闭动画位移并令 `Dialog` / `Drawer` / `Dropdown` / `Popover` / `Tooltip` 零延迟即时卸载。

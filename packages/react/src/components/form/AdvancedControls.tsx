@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import {
   collectAllExpandableKeys,
   computeTreeCheckState,
@@ -16,6 +17,7 @@ import {
   Search,
   X,
 } from 'lucide-react'
+import { useAbcMotion, useAbcSize } from '../../hooks/useAbcDefaults'
 import { useAbcConfig } from '../../provider/AbcProvider'
 import type { AbcCaptchaAdapter, AbcCaptchaData } from '../../provider/types'
 import { cn } from '../../utils/cn'
@@ -52,9 +54,20 @@ export interface TreeProps {
   searchPlaceholder?: string
   /** 是否显示展开全部/收起全部快捷栏 */
   showToolbar?: boolean
+  /** 节点行尺寸规格 */
+  size?: AbcSize
+  /** 组件交互动效规格 */
+  motion?: AbcMotionPreset
   /** 自定义节点右侧扩展渲染区 */
   renderExtra?: (node: AbcTreeNode) => React.ReactNode
   className?: string
+}
+
+const TREE_ROW_SIZE: Record<AbcSize, string> = {
+  xs: 'py-0.5 text-[11px]',
+  sm: 'py-1 text-xs',
+  md: 'py-1.5 text-sm',
+  lg: 'py-2 text-sm',
 }
 
 /**
@@ -74,9 +87,13 @@ export const Tree: React.FC<TreeProps> = ({
   searchable = false,
   searchPlaceholder = '搜索节点名称（支持拼音首字母）...',
   showToolbar = false,
+  size,
+  motion,
   renderExtra,
   className,
 }) => {
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
   const [keyword, setKeyword] = useState('')
   const [expandedSet, setExpandedSet] = useState<Set<string | number>>(() =>
     defaultExpandAll ? new Set(collectAllExpandableKeys(treeData)) : new Set()
@@ -156,7 +173,8 @@ export const Tree: React.FC<TreeProps> = ({
               <div
                 style={{ paddingInlineStart: `${depth * 18 + 6}px` }}
                 className={cn(
-                  'group flex items-center justify-between gap-2 rounded-[var(--abc-radius-sm)] py-1 pr-2 text-xs transition-colors',
+                  'group flex items-center justify-between gap-2 rounded-[var(--abc-radius-sm)] pr-2 transition-colors',
+                  TREE_ROW_SIZE[resolvedSize],
                   isSelected
                     ? 'bg-[var(--abc-primary-soft)] font-medium text-[var(--abc-primary)]'
                     : 'text-[var(--abc-fg)] hover:bg-[var(--abc-bg-muted)]',
@@ -169,11 +187,11 @@ export const Tree: React.FC<TreeProps> = ({
                       type="button"
                       aria-label={isExpanded ? `收起 ${node.title}` : `展开 ${node.title}`}
                       onClick={() => toggleExpand(node.key)}
-                      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-xs text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+                      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-xs text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer abc-motion-control"
                     >
                       <ChevronRight
                         className={cn(
-                          'h-3.5 w-3.5 transition-transform duration-150',
+                          'h-3.5 w-3.5 transition-transform duration-[var(--abc-motion-fast,140ms)]',
                           isExpanded && 'rotate-90'
                         )}
                       />
@@ -184,6 +202,8 @@ export const Tree: React.FC<TreeProps> = ({
 
                   {checkable && (
                     <Checkbox
+                      size={resolvedSize}
+                      motion={resolvedMotion}
                       checked={isChecked}
                       indeterminate={isHalf}
                       disabled={node.disabled}
@@ -220,13 +240,14 @@ export const Tree: React.FC<TreeProps> = ({
   }
 
   return (
-    <div className={cn('space-y-2', className)}>
+    <div data-motion={resolvedMotion} className={cn('space-y-2', className)}>
       {(searchable || showToolbar) && (
         <div className="flex flex-wrap items-center gap-2">
           {searchable && (
             <div className="min-w-[180px] flex-1">
               <Input
-                size="xs"
+                size={resolvedSize}
+                motion={resolvedMotion}
                 allowClear
                 prefix={<Search className="h-3.5 w-3.5" />}
                 placeholder={searchPlaceholder}
@@ -278,12 +299,28 @@ export interface TagInputProps {
   placeholder?: string
   maxTags?: number
   disabled?: boolean
+  size?: AbcSize
+  motion?: AbcMotionPreset
   className?: string
+}
+
+const TAG_INPUT_MIN_H: Record<AbcSize, string> = {
+  xs: 'min-h-[var(--abc-control-h-xs)] text-xs',
+  sm: 'min-h-[var(--abc-control-h-sm)] text-xs',
+  md: 'min-h-[var(--abc-control-h-md)] text-sm',
+  lg: 'min-h-[var(--abc-control-h-lg)] text-sm',
+}
+
+const TAG_CHIP_SIZE: Record<AbcSize, string> = {
+  xs: 'px-1.5 py-0 text-[11px]',
+  sm: 'px-2 py-0.5 text-xs',
+  md: 'px-2.5 py-0.5 text-xs',
+  lg: 'px-2.5 py-1 text-sm',
 }
 
 /**
  * 多标签胶囊输入框 (TagInput)
- * 支持回车或英文逗号生成标签、自动去重与退格删除末尾项
+ * 支持四档规格、动效规格、回车或英文逗号生成标签、自动去重与退格删除末尾项
  */
 export const TagInput: React.FC<TagInputProps> = ({
   value: controlledValue,
@@ -292,8 +329,12 @@ export const TagInput: React.FC<TagInputProps> = ({
   placeholder = '输入后按回车添加标签...',
   maxTags = 20,
   disabled = false,
+  size,
+  motion,
   className,
 }) => {
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
   const [internalTags, setInternalTags] = useState<string[]>(defaultValue)
   const [draft, setDraft] = useState('')
   const tags = controlledValue !== undefined ? controlledValue : internalTags
@@ -321,8 +362,10 @@ export const TagInput: React.FC<TagInputProps> = ({
 
   return (
     <div
+      data-motion={resolvedMotion}
       className={cn(
-        'flex min-h-[var(--abc-control-h-sm)] flex-wrap items-center gap-1.5 px-2 py-1',
+        'flex flex-wrap items-center gap-1.5 px-2 py-1',
+        TAG_INPUT_MIN_H[resolvedSize],
         baseFieldControlClass,
         disabled && 'opacity-65 cursor-not-allowed',
         className
@@ -331,7 +374,10 @@ export const TagInput: React.FC<TagInputProps> = ({
       {tags.map((tag, idx) => (
         <span
           key={`${tag}_${idx}`}
-          className="inline-flex items-center gap-1 rounded-[var(--abc-radius-xs)] bg-[var(--abc-primary-soft)] px-2 py-0.5 text-xs font-medium text-[var(--abc-primary)]"
+          className={cn(
+            'inline-flex items-center gap-1 rounded-[var(--abc-radius-xs)] bg-[var(--abc-primary-soft)] font-medium text-[var(--abc-primary)] abc-motion-pop',
+            TAG_CHIP_SIZE[resolvedSize]
+          )}
         >
           <span>{tag}</span>
           {!disabled && (
@@ -362,7 +408,7 @@ export const TagInput: React.FC<TagInputProps> = ({
             removeAt(tags.length - 1)
           }
         }}
-        className="min-w-[110px] flex-1 bg-transparent text-xs text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] focus:outline-none"
+        className="min-w-[110px] flex-1 bg-transparent text-inherit text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] focus:outline-none"
       />
     </div>
   )
@@ -373,6 +419,8 @@ export const TagInput: React.FC<TagInputProps> = ({
 export interface SliderVerifyProps {
   canvasWidth?: number
   canvasHeight?: number
+  size?: AbcSize
+  motion?: AbcMotionPreset
   /** 验证通过回调，携带服务端 nonceStr 与滑块横向偏移像素值 */
   onSuccess: (data: { nonceStr: string; value: number }) => void
   onFail?: () => void
@@ -413,13 +461,24 @@ function createStandaloneSvgCaptcha(width: number, height: number): AbcCaptchaDa
  * 滑块拼图行为安全验证器 (SliderVerify)
  * 通过 AbcProvider.captchaAdapter 或 captchaFetcher 对接真实后端接口；未配置时自动回退离线矢量拼图校验
  */
+const SLIDER_TRACK_H: Record<AbcSize, string> = {
+  xs: 'h-[var(--abc-control-h-xs)]',
+  sm: 'h-[var(--abc-control-h-sm)]',
+  md: 'h-[var(--abc-control-h-md)]',
+  lg: 'h-[var(--abc-control-h-lg)]',
+}
+
 export const SliderVerify: React.FC<SliderVerifyProps> = ({
   canvasWidth = 320,
   canvasHeight = 155,
+  size,
+  motion,
   onSuccess,
   onFail,
   captchaFetcher,
 }) => {
+  const resolvedSize = useAbcSize(size, 'md')
+  const resolvedMotion = useAbcMotion(motion)
   const { captchaAdapter } = useAbcConfig()
   const activeFetcher = captchaFetcher ?? captchaAdapter
 
@@ -526,7 +585,7 @@ export const SliderVerify: React.FC<SliderVerifyProps> = ({
   }, [handleMove, handleEnd])
 
   return (
-    <div className="relative flex flex-col items-center select-none">
+    <div data-motion={resolvedMotion} className="relative flex flex-col items-center select-none">
       <div
         className="relative overflow-hidden rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-muted)]"
         style={{ width: canvasWidth, height: canvasHeight }}
@@ -574,7 +633,8 @@ export const SliderVerify: React.FC<SliderVerifyProps> = ({
 
       <div
         className={cn(
-          'relative mt-3.5 flex h-10 items-center overflow-hidden rounded-[var(--abc-radius-md)] border transition-colors',
+          'relative mt-3.5 flex items-center overflow-hidden rounded-[var(--abc-radius-md)] border transition-colors',
+          SLIDER_TRACK_H[resolvedSize],
           isSuccess
             ? 'border-[var(--abc-success)] bg-[var(--abc-success-soft)]'
             : isFail

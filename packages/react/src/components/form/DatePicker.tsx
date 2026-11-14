@@ -1,7 +1,8 @@
 import React, { useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import type { AbcMotionPreset } from '@abc-design/tokens'
 import { buildCalendarMonthGrid } from '@abc-design/core'
 import dayjs from 'dayjs'
+import { createPortal } from 'react-dom'
 import {
   Calendar,
   ChevronLeft,
@@ -10,6 +11,7 @@ import {
   ChevronsRight,
   X,
 } from 'lucide-react'
+import { useAbcMotion, useAbcSize } from '../../hooks/useAbcDefaults'
 import { getOverlayPortalContainer } from '../../hooks/useFloatingPosition'
 import { cn } from '../../utils/cn'
 import { baseFieldControlClass, type ControlSize } from './Input'
@@ -34,6 +36,7 @@ export interface DatePickerProps {
   minDate?: string
   maxDate?: string
   size?: ControlSize
+  motion?: AbcMotionPreset
   className?: string
 }
 
@@ -66,11 +69,14 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
       name,
       minDate,
       maxDate,
-      size = 'sm',
+      size,
+      motion,
       className,
     },
     ref
   ) => {
+    const resolvedSize = useAbcSize(size, 'sm')
+    const resolvedMotion = useAbcMotion(motion)
     const generatedId = useId()
     const pickerId = id || generatedId
     const rootRef = useRef<HTMLDivElement>(null)
@@ -180,6 +186,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
           ref={rootRef}
           id={pickerId}
           data-datepicker-trigger=""
+          data-motion={resolvedMotion}
           role="combobox"
           aria-expanded={open}
           aria-haspopup="dialog"
@@ -192,9 +199,9 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
             }
           }}
           className={cn(
-            'relative flex w-full items-center gap-2 px-2.5 cursor-pointer select-none',
+            'relative flex w-full items-center gap-2 px-2.5 cursor-pointer select-none abc-motion-control',
             baseFieldControlClass,
-            SIZE_H[size],
+            SIZE_H[resolvedSize],
             open && 'border-[var(--abc-primary)] ring-2 ring-[var(--abc-ring)]',
             disabled && 'opacity-65 cursor-not-allowed bg-[var(--abc-bg-muted)]',
             className
@@ -233,6 +240,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
               ref={panelRef}
               role="dialog"
               data-abc-floating=""
+              data-motion={resolvedMotion}
               aria-label="日期选择面板"
               style={{ top: pos.top, left: pos.left }}
               className="fixed z-[1300] w-[280px] rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] p-3 shadow-[var(--abc-shadow-popover)] abc-animate-popover-in select-none"
@@ -382,6 +390,7 @@ export interface DateRangePickerProps {
   minDate?: string
   maxDate?: string
   size?: ControlSize
+  motion?: AbcMotionPreset
   className?: string
 }
 
@@ -410,11 +419,14 @@ export const DateRangePicker = React.forwardRef<HTMLDivElement, DateRangePickerP
       id,
       minDate,
       maxDate,
-      size = 'sm',
+      size,
+      motion,
       className,
     },
     ref
   ) => {
+    const resolvedSize = useAbcSize(size, 'sm')
+    const resolvedMotion = useAbcMotion(motion)
     const generatedId = useId()
     const pickerId = id || generatedId
     const rootRef = useRef<HTMLDivElement>(null)
@@ -720,6 +732,7 @@ export const DateRangePicker = React.forwardRef<HTMLDivElement, DateRangePickerP
           ref={rootRef}
           id={pickerId}
           data-daterangepicker-trigger=""
+          data-motion={resolvedMotion}
           role="combobox"
           aria-expanded={open}
           aria-haspopup="dialog"
@@ -732,9 +745,9 @@ export const DateRangePicker = React.forwardRef<HTMLDivElement, DateRangePickerP
             }
           }}
           className={cn(
-            'relative flex w-full items-center gap-1.5 px-2.5 cursor-pointer select-none',
+            'relative flex w-full items-center gap-1.5 px-2.5 cursor-pointer select-none abc-motion-control',
             baseFieldControlClass,
-            SIZE_H[size],
+            SIZE_H[resolvedSize],
             open && 'border-[var(--abc-primary)] ring-2 ring-[var(--abc-ring)]',
             disabled && 'opacity-65 cursor-not-allowed bg-[var(--abc-bg-muted)]',
             className
@@ -782,6 +795,7 @@ export const DateRangePicker = React.forwardRef<HTMLDivElement, DateRangePickerP
               ref={panelRef}
               role="dialog"
               data-abc-floating=""
+              data-motion={resolvedMotion}
               aria-label="日期范围选择面板"
               style={{ top: pos.top, left: pos.left }}
               className="fixed z-[1300] max-w-[calc(100vw-16px)] overflow-x-auto rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] p-3.5 shadow-[var(--abc-shadow-popover)] abc-animate-popover-in select-none"

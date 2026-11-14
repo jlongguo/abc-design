@@ -1,5 +1,7 @@
 import React from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { HelpCircle } from 'lucide-react'
+import { useAbcMotion, useAbcSize } from '../../hooks/useAbcDefaults'
 import { Tooltip } from '../display/Overlays'
 import { cn } from '../../utils/cn'
 
@@ -20,8 +22,19 @@ export interface FormFieldProps {
   extra?: React.ReactNode
   /** 排版方向 */
   layout?: 'vertical' | 'horizontal'
+  /** 控件标签与间距规格（xs | sm | md | lg） */
+  size?: AbcSize
+  /** 组件交互动效规格 */
+  motion?: AbcMotionPreset
   className?: string
   children: React.ReactNode
+}
+
+const LABEL_SIZE_CLASS: Record<AbcSize, string> = {
+  xs: 'text-[11px]',
+  sm: 'text-xs',
+  md: 'text-sm',
+  lg: 'text-sm',
 }
 
 /**
@@ -37,11 +50,17 @@ export const FormField: React.FC<FormFieldProps> = ({
   helperText,
   extra,
   layout = 'vertical',
+  size,
+  motion,
   className,
   children,
 }) => {
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
+
   return (
     <div
+      data-motion={resolvedMotion}
       className={cn(
         layout === 'horizontal'
           ? 'grid grid-cols-1 items-start gap-2 sm:grid-cols-[140px_1fr] sm:gap-4'
@@ -59,7 +78,10 @@ export const FormField: React.FC<FormFieldProps> = ({
           {label && (
             <label
               htmlFor={htmlFor}
-              className="inline-flex items-center gap-1 text-xs font-medium text-[var(--abc-fg-secondary)] select-none"
+              className={cn(
+                'inline-flex items-center gap-1 font-medium text-[var(--abc-fg-secondary)] select-none',
+                LABEL_SIZE_CLASS[resolvedSize]
+              )}
             >
               <span>{label}</span>
               {required && (

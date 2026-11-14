@@ -1,31 +1,48 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import {
   AbcProvider,
+  ActionCard,
   Alert,
+  BentoCard,
+  BentoGrid,
   Breadcrumb,
   Button,
+  Card,
+  CheckCard,
+  CheckCardGroup,
+  Checkbox,
   Collapse,
+  CollapsibleCard,
   CommandPalette,
   DEFAULT_ABC_LAYOUT_SETTINGS,
   Descriptions,
   Dialog,
   DictTag,
   Drawer,
+  Dropdown,
   ErrorBoundary,
   IconPicker,
   ImagePreview,
   Input,
+  MetricCard,
+  Pagination,
   Permission,
   PermissionGuard,
+  PricingCard,
   ProConfigForm,
   ProLayout,
   ProTable,
   Progress,
+  RadioGroup,
   Result,
   Select,
+  SidebarNav,
+  StatusTag,
   Steps,
+  Switch,
+  Tabs,
   TagInput,
   ThemeCustomizer,
   Tooltip,
@@ -36,6 +53,7 @@ import {
   matchKeywordWithPinyin,
   readQueryFromUrlSearch,
   useAbcConfig,
+  useFloatingPosition,
   writeQueryToUrlSearch,
   type AbcLayoutMode,
   type AbcMenuItem,
@@ -788,5 +806,567 @@ describe('ABC Design System — 全栈四层架构单元测试', () => {
     )
     expect(csv.startsWith('\uFEFF')).toBe(true)
     expect(csv).toContain('"东京核心网关,A区",在线运行')
+  })
+
+  it('18. 全域 xs/sm/md/lg 四档规格继承 AbcProvider.componentSize 并支持局部覆写', () => {
+    function Matrix() {
+      const { theme, setComponentSize } = useAbcConfig()
+      const current = theme.componentSize ?? 'sm'
+      return (
+        <div>
+          <Button data-testid="switch-lg-btn" onClick={() => setComponentSize('lg')}>
+            切换全域LG
+          </Button>
+          <Button data-testid="inherited-btn">默认继承按钮</Button>
+          <Button data-testid="override-xs-btn" size="xs">
+            超小覆写
+          </Button>
+          <Input data-testid="inherited-input" aria-label="inherited-input" />
+          <Select
+            aria-label="inherited-select"
+            defaultValue="a"
+            options={[{ label: '选项A', value: 'a' }]}
+          />
+          <Switch aria-label="inherited-switch" defaultChecked />
+          <Checkbox aria-label="inherited-checkbox" label="复选框" />
+          <RadioGroup
+            aria-label="inherited-radio"
+            defaultValue="r1"
+            options={[{ label: '单选1', value: 'r1' }]}
+          />
+          <StatusTag>运行状态标签</StatusTag>
+          <Tabs
+            items={[
+              { key: 't1', label: '页签1' },
+              { key: 't2', label: '页签2' },
+            ]}
+          />
+          <Pagination total={40} pageSize={10} page={1} controlSize="xs" onChange={() => {}} />
+          <Progress percent={60} size={current} />
+          <Card data-testid="card-size" title="尺寸卡片">
+            内容
+          </Card>
+        </div>
+      )
+    }
+
+    render(
+      <AbcProvider persist={false} defaultTheme={{ componentSize: 'sm' }}>
+        <Matrix />
+      </AbcProvider>
+    )
+
+    const smBtnClass = screen.getByTestId('inherited-btn').className
+    const smTagClass = screen.getByText('运行状态标签').closest('span[data-motion]')!.className
+    expect(screen.getByTestId('card-size').getAttribute('data-size')).toBe('sm')
+
+    fireEvent.click(screen.getByTestId('switch-lg-btn'))
+
+    const lgBtnClass = screen.getByTestId('inherited-btn').className
+    const xsOverrideBtnClass = screen.getByTestId('override-xs-btn').className
+    const lgTagClass = screen.getByText('运行状态标签').closest('span[data-motion]')!.className
+
+    expect(lgBtnClass).not.toBe(smBtnClass)
+    expect(xsOverrideBtnClass).not.toBe(lgBtnClass)
+    expect(lgTagClass).not.toBe(smTagClass)
+    expect(screen.getByTestId('card-size').getAttribute('data-size')).toBe('lg')
+  })
+
+  it('19. 多规格动效体系 (none/subtle/smooth/spring) 透传 data-motion 且 none 模式零延迟卸载', () => {
+    function MotionSwitchDemo() {
+      const { theme, setMotion } = useAbcConfig()
+      const [open, setOpen] = useState(true)
+      return (
+        <div>
+          <span data-testid="motion-state">{theme.motion}</span>
+          <Button data-testid="motion-btn" onClick={() => setMotion('spring')}>
+            切换弹簧
+          </Button>
+          <Button variant="outline" onClick={() => setMotion('none')}>
+            关闭动效
+          </Button>
+          <Button variant="ghost" onClick={() => setOpen(false)}>
+            关闭弹窗
+          </Button>
+          <Dropdown
+            trigger="click"
+            items={[{ key: 'edit', label: '编辑配置' }]}
+            motion="none"
+          >
+            <Button>打开菜单</Button>
+          </Dropdown>
+          <Dialog open={open} onClose={() => setOpen(false)} title="零延迟弹窗" motion="none">
+            <span>弹窗正文</span>
+          </Dialog>
+        </div>
+      )
+    }
+
+    render(
+      <AbcProvider persist={false} defaultTheme={{ motion: 'smooth' }}>
+        <MotionSwitchDemo />
+      </AbcProvider>
+    )
+
+    expect(document.documentElement.dataset.abcMotion).toBe('smooth')
+    expect(screen.getByTestId('motion-btn').getAttribute('data-motion')).toBe('smooth')
+
+    fireEvent.click(screen.getByTestId('motion-btn'))
+    expect(document.documentElement.dataset.abcMotion).toBe('spring')
+    expect(screen.getByTestId('motion-btn').getAttribute('data-motion')).toBe('spring')
+
+    // Dialog 使用 motion="none" 时，关闭应同步即时卸载
+    expect(screen.getByText('弹窗正文')).toBeTruthy()
+    fireEvent.click(screen.getByText('关闭弹窗'))
+    expect(screen.queryByText('弹窗正文')).toBeNull()
+  })
+
+  it('20. ProTable 操作列支持左边缘拖拽调宽、列设置数值修改及表头实时嵌入重排与 Esc 回滚', async () => {
+    const rows = [{ id: '1', name: '上海网关', region: '华东区', qps: 5000 }]
+
+    render(
+      <AbcProvider persist={false}>
+        <ProTable
+          rowKey="id"
+          dataSource={rows}
+          columns={[
+            { key: 'name', title: '实例名称', dataIndex: 'name', width: 160 },
+            { key: 'region', title: '可用区', dataIndex: 'region', width: 140 },
+            { key: 'qps', title: '峰值QPS', dataIndex: 'qps', width: 120 },
+          ]}
+          viewable
+        />
+      </AbcProvider>
+    )
+
+    // 1) 操作列左边缘拖拽调宽与 <col> 锁定
+    const actionCol = document.querySelector<HTMLTableColElement>('col[data-col-width-key="__abc_actions__"]')
+    expect(actionCol).not.toBeNull()
+    const initialActionWidth = parseInt(actionCol?.style.width || '0', 10)
+    expect(initialActionWidth).toBeGreaterThanOrEqual(80)
+
+    const actionHeader = screen.getByText('操作').closest('th') as HTMLTableCellElement
+    const actionSeparator = actionHeader.querySelector('[role="separator"]') as HTMLElement
+    expect(actionSeparator).not.toBeNull()
+
+    // 向左拖拽 40px 应增宽右侧固定操作列
+    fireEvent.mouseDown(actionSeparator, { clientX: 500 })
+    fireEvent.mouseMove(window, { clientX: 460 })
+    fireEvent.mouseUp(window, { clientX: 460 })
+    const resizedWidth = parseInt(actionCol?.style.width || '0', 10)
+    expect(resizedWidth).toBeGreaterThan(initialActionWidth)
+
+    // 2) 通过 ProColumnSettingsPopover 中的 "操作 列宽" 输入框调节列宽
+    const settingsBtn = screen.getByLabelText('列与密度设置')
+    fireEvent.click(settingsBtn)
+    const widthInput = await screen.findByLabelText('操作 列宽')
+    fireEvent.change(widthInput, { target: { value: '240' } })
+    fireEvent.blur(widthInput)
+    expect(actionCol?.style.width).toBe('240px')
+
+    // 3) 表头实时 dragOver 重排 + data-dragging + Escape 回滚
+    const nameTh = document.querySelector('th[data-col-key="name"]') as HTMLTableCellElement
+    const regionTh = document.querySelector('th[data-col-key="region"]') as HTMLTableCellElement
+    const qpsTh = document.querySelector('th[data-col-key="qps"]') as HTMLTableCellElement
+
+    nameTh.getBoundingClientRect = () => ({ left: 0, right: 160, width: 160, top: 0, bottom: 40, height: 40, x: 0, y: 0, toJSON: () => ({}) })
+    regionTh.getBoundingClientRect = () => ({ left: 160, right: 300, width: 140, top: 0, bottom: 40, height: 40, x: 160, y: 0, toJSON: () => ({}) })
+    qpsTh.getBoundingClientRect = () => ({ left: 300, right: 420, width: 120, top: 0, bottom: 40, height: 40, x: 300, y: 0, toJSON: () => ({}) })
+
+    const headerLabels = () =>
+      Array.from(document.querySelectorAll('thead th')).map((th) => th.textContent?.trim() ?? '')
+
+    const initialOrder = headerLabels()
+    const nameIdxBefore = initialOrder.findIndex((t) => t.includes('实例名称'))
+    const regionIdxBefore = initialOrder.findIndex((t) => t.includes('可用区'))
+    expect(nameIdxBefore).toBeLessThan(regionIdxBefore)
+
+    const dt = { setData: vi.fn(), effectAllowed: 'move' }
+    fireEvent.dragStart(nameTh, { dataTransfer: dt, clientX: 80 })
+    expect(nameTh.getAttribute('data-dragging')).toBe('true')
+
+    // 拖入目标右半区 (left=160, width=140 -> 65%+ 处 clientX=270) 在未 drop 时即应完成实时换位
+    fireEvent.dragOver(regionTh, { dataTransfer: dt, clientX: 270 })
+    const swappedOrder = headerLabels()
+    expect(swappedOrder.findIndex((t) => t.includes('实例名称'))).toBeGreaterThan(
+      swappedOrder.findIndex((t) => t.includes('可用区'))
+    )
+
+    // 按 Escape 取消拖拽应回滚到拖拽前顺序
+    fireEvent.keyDown(document, { key: 'Escape' })
+    const rolledBackOrder = headerLabels()
+    expect(rolledBackOrder.findIndex((t) => t.includes('实例名称'))).toBeLessThan(
+      rolledBackOrder.findIndex((t) => t.includes('可用区'))
+    )
+    expect(nameTh.getAttribute('data-dragging')).not.toBe('true')
+  })
+
+  it('21. 全新企业级卡片矩阵 (MetricCard/CheckCard/ActionCard/CollapsibleCard/PricingCard/BentoGrid) 交互正确', () => {
+    const onSingleChange = vi.fn()
+    const onMultiChange = vi.fn()
+    const onCardClick = vi.fn()
+    const onExtraClick = vi.fn()
+    const onPricingSelect = vi.fn()
+
+    render(
+      <AbcProvider persist={false}>
+        <div>
+          <MetricCard
+            title="核心吞吐量"
+            prefix="$"
+            value="98,400"
+            suffix="/h"
+            trend={{ value: '+12%', direction: 'up', label: '环比' }}
+            sparkline={[10, 20, 15, 30]}
+          />
+
+          <CheckCardGroup value="a" onChange={onSingleChange} columns={2}>
+            <CheckCard value="a" title="单选卡A" description="说明A" />
+            <CheckCard value="b" title="单选卡B" description="说明B" />
+            <CheckCard value="c" title="禁用卡C" description="说明C" disabled />
+          </CheckCardGroup>
+
+          <CheckCardGroup multiple value={['m1']} onChange={onMultiChange} columns={2}>
+            <CheckCard value="m1" title="多选模块1" />
+            <CheckCard value="m2" title="多选模块2" />
+          </CheckCardGroup>
+
+          <ActionCard
+            title="策略动作卡"
+            description="主热区与独立操作隔离"
+            tags={['高可用']}
+            onClick={onCardClick}
+            extra={
+              <Button size="xs" onClick={onExtraClick}>
+                右上独立按钮
+              </Button>
+            }
+          />
+
+          <CollapsibleCard title="可折叠详情" defaultOpen={false}>
+            <span>折叠内部正文</span>
+          </CollapsibleCard>
+
+          <PricingCard
+            tier="旗舰版"
+            price="¥999"
+            period="/月"
+            badge="主推"
+            recommended
+            features={['全功能权限', { text: '私有部署', included: false }]}
+            ctaText="立即订阅"
+            onSelect={onPricingSelect}
+          />
+
+          <BentoGrid columns={3} gap="md">
+            <BentoCard colSpan={2} rowSpan={2} eyebrow="网格块" title="非对称卡片" description="跨行跨列" />
+            <BentoCard title="伴随卡片" description="标准单格" />
+          </BentoGrid>
+        </div>
+      </AbcProvider>
+    )
+
+    // MetricCard SVG 微趋势图与数值
+    expect(screen.getByText('核心吞吐量')).toBeTruthy()
+    expect(screen.getByText('98,400')).toBeTruthy()
+    expect(document.querySelector('svg polyline, svg path')).not.toBeNull()
+
+    // CheckCardGroup 单选与禁用校验
+    fireEvent.click(screen.getByText('单选卡B'))
+    expect(onSingleChange).toHaveBeenCalledWith('b')
+    fireEvent.click(screen.getByText('禁用卡C'))
+    expect(onSingleChange).toHaveBeenCalledTimes(1)
+
+    // CheckCardGroup 多选校验
+    fireEvent.click(screen.getByText('多选模块2'))
+    expect(onMultiChange).toHaveBeenCalledWith(['m1', 'm2'])
+
+    // ActionCard 点击热区 vs extra 按钮隔离
+    fireEvent.click(screen.getByText('右上独立按钮'))
+    expect(onExtraClick).toHaveBeenCalledTimes(1)
+    expect(onCardClick).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('策略动作卡'))
+    expect(onCardClick).toHaveBeenCalledTimes(1)
+
+    // CollapsibleCard 折叠切换
+    const collapseToggle = screen.getByRole('button', { name: /可折叠详情/ })
+    expect(collapseToggle.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(collapseToggle)
+    expect(collapseToggle.getAttribute('aria-expanded')).toBe('true')
+
+    // PricingCard & BentoGrid
+    expect(screen.getByText('主推')).toBeTruthy()
+    fireEvent.click(screen.getByText('立即订阅'))
+    expect(onPricingSelect).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('非对称卡片')).toBeTruthy()
+  })
+
+  it('22. ProLayout 侧边栏与双栏导航完整响应全局 componentSize (xs/sm/md/lg) 及局部 size 覆写', () => {
+    const menus: AbcMenuItem[] = [
+      {
+        key: 'ops',
+        label: '运维治理',
+        icon: 'settings',
+        children: [
+          { key: 'nodes', label: '网关节点', path: '/ops/nodes', icon: 'dashboard' },
+          { key: 'audit', label: '操作审计', path: '/ops/audit', icon: 'shield' },
+        ],
+      },
+    ]
+
+    function SidebarSizeHost() {
+      const { setComponentSize } = useAbcConfig()
+      const [mode, setMode] = useState<AbcLayoutMode>('sidebar')
+      return (
+        <div>
+          <button type="button" onClick={() => setComponentSize('xs')}>
+            size-xs
+          </button>
+          <button type="button" onClick={() => setComponentSize('sm')}>
+            size-sm
+          </button>
+          <button type="button" onClick={() => setComponentSize('lg')}>
+            size-lg
+          </button>
+          <button type="button" onClick={() => setMode('dual-column')}>
+            mode-dual
+          </button>
+          <ProLayout
+            brand={{ name: 'ABC Cloud', subtitle: 'Console' }}
+            menuItems={menus}
+            pathname="/ops/nodes"
+            onNavigate={() => {}}
+            settings={{ mode }}
+          >
+            <div>内容区</div>
+          </ProLayout>
+          <SidebarNav
+            items={menus}
+            pathname="/ops/nodes"
+            size="xs"
+            onNavigate={() => {}}
+            className="override-xs-sidebar"
+          />
+        </div>
+      )
+    }
+
+    render(
+      <AbcProvider persist={false} defaultTheme={{ componentSize: 'sm' }}>
+        <SidebarSizeHost />
+      </AbcProvider>
+    )
+
+    const sidebars = screen.getAllByLabelText('侧边主导航')
+    const primaryAside = sidebars.find((el) => !el.classList.contains('override-xs-sidebar'))!
+    const overrideAside = sidebars.find((el) => el.classList.contains('override-xs-sidebar'))!
+
+    // 1) 默认 sm 态断言：data-size="sm"、无写死内联 --abc-sidebar-w、一级/二级菜单尺寸类名与图标像素值正确
+    expect(document.documentElement.getAttribute('data-abc-size')).toBe('sm')
+    expect(primaryAside.getAttribute('data-size')).toBe('sm')
+    expect(overrideAside.getAttribute('data-size')).toBe('xs')
+    const layoutRoot = primaryAside.closest('[data-motion]') as HTMLElement
+    expect(layoutRoot.style.getPropertyValue('--abc-sidebar-w')).toBe('')
+
+    const groupBtnSm = primaryAside.querySelector('nav button[aria-expanded]') as HTMLButtonElement
+    expect(groupBtnSm.className).toContain('min-h-[var(--abc-control-h-sm)]')
+    expect(groupBtnSm.querySelector('svg')?.getAttribute('width')).toBe('16')
+    const subBtnSm = Array.from(primaryAside.querySelectorAll('nav button')).find((b) =>
+      b.textContent?.includes('网关节点')
+    )!
+    expect(subBtnSm.className).toContain('min-h-7.5')
+    expect(subBtnSm.querySelector('svg')?.getAttribute('width')).toBe('14')
+
+    // 2) 切换全域 xs：BrandLogoBlock / 侧栏 / 一级与二级菜单项与图标均缩至 xs
+    fireEvent.click(screen.getByRole('button', { name: 'size-xs' }))
+    expect(document.documentElement.getAttribute('data-abc-size')).toBe('xs')
+    expect(primaryAside.getAttribute('data-size')).toBe('xs')
+    expect(primaryAside.querySelector('[data-size]')?.getAttribute('data-size')).toBe('xs')
+    expect(groupBtnSm.className).toContain('min-h-[var(--abc-control-h-xs)]')
+    expect(groupBtnSm.querySelector('svg')?.getAttribute('width')).toBe('14')
+    expect(subBtnSm.className).toContain('min-h-6.5')
+    expect(subBtnSm.querySelector('svg')?.getAttribute('width')).toBe('12')
+
+    // 3) 切换全域 lg：主侧栏放至 lg（图标 20 / 二级图标 16），独立覆写 size="xs" 的侧栏保持 xs
+    fireEvent.click(screen.getByRole('button', { name: 'size-lg' }))
+    expect(document.documentElement.getAttribute('data-abc-size')).toBe('lg')
+    expect(primaryAside.getAttribute('data-size')).toBe('lg')
+    expect(primaryAside.querySelector('[data-size]')?.getAttribute('data-size')).toBe('lg')
+    expect(groupBtnSm.className).toContain('min-h-[var(--abc-control-h-lg)]')
+    expect(groupBtnSm.querySelector('svg')?.getAttribute('width')).toBe('20')
+    expect(subBtnSm.className).toContain('min-h-9.5')
+    expect(subBtnSm.querySelector('svg')?.getAttribute('width')).toBe('16')
+    expect(overrideAside.getAttribute('data-size')).toBe('xs')
+
+    // 4) 切换 dual-column 双栏模式：双栏根容器与二级面板同样响应 lg 尺寸
+    fireEvent.click(screen.getByRole('button', { name: 'mode-dual' }))
+    const dualNav = screen.getByLabelText('双栏侧边导航')
+    expect(dualNav.getAttribute('data-size')).toBe('lg')
+    const dualSubBtn = Array.from(dualNav.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('网关节点')
+    )!
+    expect(dualSubBtn.className).toContain('min-h-[var(--abc-control-h-lg)]')
+  })
+
+  it('23. Tooltip 与折叠侧边栏悬停首帧无退场类闪现、擦边重入防抖稳定且缩放期间坐标零跳动', () => {
+    vi.useFakeTimers()
+    try {
+      const collapsedMenus: AbcMenuItem[] = [
+        { key: 'dash', label: '态势大盘', path: '/dash', icon: 'dashboard' },
+        {
+          key: 'sys',
+          label: '系统设置',
+          icon: 'settings',
+          children: [{ key: 'menu', label: '菜单配置', path: '/sys/menu' }],
+        },
+      ]
+
+      function PositionStabilityProbe() {
+        const triggerRef = useRef<HTMLButtonElement>(null)
+        const floatRef = useRef<HTMLDivElement>(null)
+        const { style, update } = useFloatingPosition({
+          open: true,
+          triggerRef,
+          floatingRef: floatRef,
+          placement: 'right',
+          offset: 8,
+        })
+
+        return (
+          <div>
+            <button
+              ref={(el) => {
+                triggerRef.current = el
+                if (el) {
+                  el.getBoundingClientRect = () => ({
+                    left: 8,
+                    right: 56,
+                    top: 120,
+                    bottom: 160,
+                    width: 48,
+                    height: 40,
+                    x: 8,
+                    y: 120,
+                    toJSON: () => ({}),
+                  })
+                }
+              }}
+              type="button"
+              data-testid="pos-trigger"
+              onClick={update}
+            >
+              触发器
+            </button>
+            <div
+              ref={(el) => {
+                floatRef.current = el
+                if (el) {
+                  Object.defineProperty(el, 'offsetWidth', { configurable: true, value: 120 })
+                  Object.defineProperty(el, 'offsetHeight', { configurable: true, value: 36 })
+                  // 模拟入场缩放 scale(0.92) 期间的收缩 getBoundingClientRect 矩形
+                  el.getBoundingClientRect = () => ({
+                    left: 64,
+                    right: 174.4,
+                    top: 122,
+                    bottom: 155.12,
+                    width: 110.4,
+                    height: 33.12,
+                    x: 64,
+                    y: 122,
+                    toJSON: () => ({}),
+                  })
+                }
+              }}
+              data-testid="pos-float"
+              style={style}
+            >
+              浮动提示
+            </div>
+          </div>
+        )
+      }
+
+      render(
+        <AbcProvider persist={false} defaultTheme={{ motion: 'smooth' }}>
+          <div>
+            <Tooltip content="普通气泡提示" placement="top">
+              <button type="button">普通触发按钮</button>
+            </Tooltip>
+            <SidebarNav
+              items={collapsedMenus}
+              pathname="/dash"
+              collapsed
+              onNavigate={() => {}}
+            />
+            <PositionStabilityProbe />
+          </div>
+        </AbcProvider>
+      )
+
+      // 1) Tooltip 悬停移入首帧必须直接挂载 abc-animate-tooltip-in，绝不先挂载退场类
+      const plainBtn = screen.getByRole('button', { name: '普通触发按钮' })
+      fireEvent.mouseEnter(plainBtn)
+      const tipEl = screen.getByRole('tooltip')
+      expect(tipEl.className).toContain('abc-animate-tooltip-in')
+      expect(tipEl.className).not.toContain('abc-animate-tooltip-out')
+      expect(tipEl.className).not.toContain('abc-animate-popover-out')
+
+      // 光标短暂擦边移出后在 20ms 内重入，保持同一节点与入场状态不闪烁退场
+      fireEvent.mouseLeave(plainBtn)
+      act(() => {
+        vi.advanceTimersByTime(20)
+      })
+      fireEvent.mouseEnter(plainBtn)
+      expect(screen.getByRole('tooltip')).toBe(tipEl)
+      expect(tipEl.className).toContain('abc-animate-tooltip-in')
+      expect(tipEl.className).not.toContain('abc-animate-tooltip-out')
+
+      // 指针按下立即收起，不阻塞点击菜单
+      fireEvent.pointerDown(plainBtn)
+      expect(screen.queryByRole('tooltip')).toBeNull()
+
+      // 2) 折叠态侧边栏叶子项 Tooltip(placement="right") 与带子菜单的 CollapsedSidebarBranch 首帧均无 *-out 闪现
+      const dashBtn = screen.getByRole('button', { name: '态势大盘' })
+      fireEvent.mouseEnter(dashBtn)
+      const sidebarTip = screen.getByRole('tooltip')
+      expect(sidebarTip).toHaveTextContent('态势大盘')
+      expect(sidebarTip.className).toContain('abc-animate-tooltip-in')
+      expect(sidebarTip.className).not.toContain('abc-animate-tooltip-out')
+      fireEvent.pointerDown(dashBtn)
+
+      const sysBranchBtn = screen.getByRole('button', { name: '系统设置' })
+      fireEvent.mouseEnter(sysBranchBtn)
+      const flyoutMenu = screen.getByRole('menu', { name: '系统设置' })
+      expect(flyoutMenu.className).toContain('abc-animate-popover-in')
+      expect(flyoutMenu.className).not.toContain('abc-animate-popover-out')
+      expect(flyoutMenu.className).toContain('before:-left-3')
+
+      // 3) useFloatingPosition 优先读取不受 CSS scale 影响的 offsetWidth/offsetHeight，保持坐标恒定
+      const floatEl = screen.getByTestId('pos-float')
+      fireEvent.click(screen.getByTestId('pos-trigger'))
+      const topBeforeScaleDone = floatEl.style.top
+      const leftBeforeScaleDone = floatEl.style.left
+      // triggerRect.top(120) + triggerRect.height(40)/2 - offsetHeight(36)/2 = 122px; right(56) + offset(8) = 64px
+      expect(topBeforeScaleDone).toBe('122px')
+      expect(leftBeforeScaleDone).toBe('64px')
+
+      // 模拟动画结束时 getBoundingClientRect 与真实尺寸一致，再次触发 update 坐标零跳变
+      floatEl.getBoundingClientRect = () => ({
+        left: 64,
+        right: 184,
+        top: 122,
+        bottom: 158,
+        width: 120,
+        height: 36,
+        x: 64,
+        y: 122,
+        toJSON: () => ({}),
+      })
+      fireEvent.click(screen.getByTestId('pos-trigger'))
+      expect(floatEl.style.top).toBe(topBeforeScaleDone)
+      expect(floatEl.style.left).toBe(leftBeforeScaleDone)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

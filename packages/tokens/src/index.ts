@@ -1,14 +1,18 @@
 import {
   ABC_BRAND_PRESETS,
   ABC_DENSITY_PRESETS,
+  ABC_MOTION_PRESETS,
   ABC_RADIUS_PRESETS,
+  ABC_SIZE_PRESETS,
   type AbcBrandColor,
   type AbcDensity,
   type AbcFontScale,
+  type AbcMotionPreset,
   type AbcPageTransition,
   type AbcPaletteScale,
   type AbcRadius,
   type AbcResolvedTheme,
+  type AbcSize,
   type AbcThemeMode,
   type AbcVisualMode,
 } from './presets'
@@ -16,14 +20,18 @@ import {
 export {
   ABC_BRAND_PRESETS,
   ABC_DENSITY_PRESETS,
+  ABC_MOTION_PRESETS,
   ABC_RADIUS_PRESETS,
+  ABC_SIZE_PRESETS,
   type AbcBrandColor,
   type AbcDensity,
   type AbcFontScale,
+  type AbcMotionPreset,
   type AbcPageTransition,
   type AbcPaletteScale,
   type AbcRadius,
   type AbcResolvedTheme,
+  type AbcSize,
   type AbcThemeMode,
   type AbcVisualMode,
 }
@@ -40,6 +48,10 @@ export interface AbcThemeConfig {
   fontScale?: AbcFontScale
   /** 特殊视觉/无障碍模式（默认 'default'） */
   visualMode?: AbcVisualMode
+  /** 全局基础组件默认尺寸覆盖（不设置时各组件维持各自语义默认值，显式设置后统一接管未传局部 size 的基础组件） */
+  componentSize?: AbcSize
+  /** 全局组件交互动效规格（默认 'smooth'） */
+  motion?: AbcMotionPreset
 }
 
 /** 默认企业级主题配置 */
@@ -50,6 +62,7 @@ export const DEFAULT_ABC_THEME: AbcThemeConfig = {
   radius: 'md',
   fontScale: 'md',
   visualMode: 'default',
+  motion: 'smooth',
 }
 
 const BRAND_SCALE_STOPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as const
@@ -121,6 +134,8 @@ export function applyAbcThemeToDocument(config: AbcThemeConfig): AbcResolvedThem
   root.setAttribute('data-abc-radius', config.radius)
   root.setAttribute('data-abc-font-scale', config.fontScale ?? 'md')
   root.setAttribute('data-abc-visual', config.visualMode ?? 'default')
+  root.setAttribute('data-abc-size', config.componentSize ?? 'sm')
+  root.setAttribute('data-abc-motion', config.motion ?? 'smooth')
   root.classList.toggle('dark', resolved === 'dark')
   syncCustomBrandScale(root, config.customBrandColor)
 

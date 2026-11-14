@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import {
   Button,
+  Card,
   Checkbox,
   DatePicker,
   DateRangePicker,
@@ -11,13 +12,20 @@ import {
   Input,
   InputNumber,
   PageContainer,
+  Pagination,
+  Progress,
   RadioGroup,
   Select,
   SliderVerify,
+  StatusTag,
   Switch,
+  Tabs,
   TagInput,
   Textarea,
   Tree,
+  useAbcConfig,
+  type AbcMotionPreset,
+  type AbcSize,
   type AbcTreeNode,
   type ButtonSize,
   type ButtonVariant,
@@ -81,12 +89,161 @@ export const GeneralAndFormDocsPage: React.FC = () => {
   const [uploadedLogo, setUploadedLogo] = useState('')
   const [captchaToken, setCaptchaToken] = useState('')
 
+  const { theme, setComponentSize, setMotion } = useAbcConfig()
+  const [matrixSize, setMatrixSize] = useState<AbcSize>('sm')
+  const [matrixMotion, setMatrixMotion] = useState<AbcMotionPreset>('smooth')
+  const [matrixPage, setMatrixPage] = useState(1)
+  const [matrixRadio, setMatrixRadio] = useState('sh')
+
   return (
     <PageContainer
       title="通用与表单控件交互式文档"
       subtitle="每个组件均支持实时调节 Props (Knobs)、查看动态生成的 TSX 代码并查阅完整类型签名"
     >
       <div className="space-y-5">
+        {/* 0. 全域 xs/sm/md/lg 四档规格与动效统一对照矩阵 */}
+        <Card
+          title="通用四档规格 (xs / sm / md / lg) 与动效预设联动沙箱"
+          subtitle="所有基础输入、选择、开关、标签、页签、分页与进度组件均原生响应本地 size/motion 或 AbcProvider 全局主题配置。"
+          size="md"
+          motion={matrixMotion}
+          extra={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => {
+                  setComponentSize(matrixSize)
+                  setMotion(matrixMotion)
+                }}
+              >
+                同步为全局默认
+              </Button>
+              <Button
+                size="xs"
+                variant="ghost"
+                onClick={() => {
+                  setComponentSize(undefined)
+                  setMotion('smooth')
+                }}
+              >
+                重置全局
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-4 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-[var(--abc-fg-secondary)]">本地 Size:</span>
+                <div className="inline-flex rounded-lg border border-[var(--abc-border)] bg-[var(--abc-surface-subtle)] p-0.5">
+                  {(['xs', 'sm', 'md', 'lg'] as const).map((sz) => (
+                    <button
+                      key={sz}
+                      type="button"
+                      onClick={() => setMatrixSize(sz)}
+                      className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                        matrixSize === sz
+                          ? 'bg-[var(--abc-bg-elevated)] text-[var(--abc-primary)] shadow-sm'
+                          : 'text-[var(--abc-fg-secondary)] hover:text-[var(--abc-fg)]'
+                      }`}
+                    >
+                      {sz}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-[var(--abc-fg-secondary)]">动效 Motion:</span>
+                <div className="inline-flex rounded-lg border border-[var(--abc-border)] bg-[var(--abc-surface-subtle)] p-0.5">
+                  {(['none', 'subtle', 'smooth', 'spring'] as const).map((mt) => (
+                    <button
+                      key={mt}
+                      type="button"
+                      onClick={() => setMatrixMotion(mt)}
+                      className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                        matrixMotion === mt
+                          ? 'bg-[var(--abc-bg-elevated)] text-[var(--abc-primary)] shadow-sm'
+                          : 'text-[var(--abc-fg-secondary)] hover:text-[var(--abc-fg)]'
+                      }`}
+                    >
+                      {mt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <StatusTag tone="primary" size={matrixSize} motion={matrixMotion}>
+                当前全局：componentSize={theme.componentSize ?? 'default'} · motion={theme.motion ?? 'smooth'}
+              </StatusTag>
+            </div>
+
+            <div className="grid gap-3 rounded-xl border border-[var(--abc-border)] bg-[var(--abc-surface-subtle)]/50 p-3.5 md:grid-cols-2 lg:grid-cols-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size={matrixSize} motion={matrixMotion}>
+                  主要操作
+                </Button>
+                <Input size={matrixSize} motion={matrixMotion} placeholder={`Input (${matrixSize})`} className="w-36" />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Select
+                  size={matrixSize}
+                  motion={matrixMotion}
+                  defaultValue="prod"
+                  options={[
+                    { label: '生产环境', value: 'prod' },
+                    { label: '预发环境', value: 'staging' },
+                  ]}
+                />
+                <DatePicker size={matrixSize} motion={matrixMotion} />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <Switch size={matrixSize} motion={matrixMotion} defaultChecked />
+                <Checkbox size={matrixSize} motion={matrixMotion} label="启用灰度" defaultChecked />
+                <RadioGroup
+                  size={matrixSize}
+                  motion={matrixMotion}
+                  value={matrixRadio}
+                  onChange={(val) => setMatrixRadio(String(val))}
+                  options={[
+                    { label: '上海', value: 'sh' },
+                    { label: '北京', value: 'bj' },
+                  ]}
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Tabs
+                  size={matrixSize}
+                  motion={matrixMotion}
+                  items={[
+                    { key: 'a', label: '概览' },
+                    { key: 'b', label: '规格参数' },
+                  ]}
+                />
+              </div>
+
+              <div className="flex items-center">
+                <Pagination
+                  controlSize={matrixSize}
+                  motion={matrixMotion}
+                  page={matrixPage}
+                  total={80}
+                  pageSize={10}
+                  onChange={setMatrixPage}
+                />
+              </div>
+
+              <div className="flex items-center">
+                <Progress percent={76} size={matrixSize} motion={matrixMotion} className="w-full" />
+              </div>
+            </div>
+          </div>
+        </Card>
+
         {/* 1. Button */}
         <ComponentDocPreview
           title="Button 按钮"

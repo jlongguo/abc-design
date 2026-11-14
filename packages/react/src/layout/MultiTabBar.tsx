@@ -1,7 +1,9 @@
 import React from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { MoreHorizontal, Pin, RotateCw, X } from 'lucide-react'
 import { Dropdown, Tooltip } from '../components/display/Overlays'
 import Icon from '../components/icon/Icon'
+import { useAbcMotion, useAbcSize } from '../hooks/useAbcDefaults'
 import { useAbcConfig } from '../provider/AbcProvider'
 import { cn } from '../utils/cn'
 import type { AbcTabItem, AbcTabStyle } from './types'
@@ -10,6 +12,8 @@ export interface MultiTabBarProps {
   tabs: AbcTabItem[]
   activePath: string
   variant?: AbcTabStyle
+  size?: AbcSize
+  motion?: AbcMotionPreset
   onSelect: (path: string) => void
   onClose?: (path: string) => void
   onCloseOthers?: (path: string) => void
@@ -20,14 +24,65 @@ export interface MultiTabBarProps {
   className?: string
 }
 
+interface TabBarSizeMetric {
+  barPadding: string
+  tabItem: string
+  tabIcon: number
+  pinIcon: string
+  closeIcon: string
+  actionBtn: string
+  actionIcon: string
+}
+
+const TAB_BAR_SIZE_METRICS: Record<AbcSize, TabBarSizeMetric> = {
+  xs: {
+    barPadding: 'px-2.5',
+    tabItem: 'h-6 gap-1 px-2 text-[11px]',
+    tabIcon: 12,
+    pinIcon: 'h-2.5 w-2.5',
+    closeIcon: 'h-2 w-2',
+    actionBtn: 'h-6 w-6',
+    actionIcon: 'h-3 w-3',
+  },
+  sm: {
+    barPadding: 'px-3',
+    tabItem: 'h-7 gap-1.5 px-2.5 text-xs',
+    tabIcon: 13,
+    pinIcon: 'h-2.5 w-2.5',
+    closeIcon: 'h-2.5 w-2.5',
+    actionBtn: 'h-6.5 w-6.5',
+    actionIcon: 'h-3.5 w-3.5',
+  },
+  md: {
+    barPadding: 'px-3.5',
+    tabItem: 'h-8 gap-1.5 px-3 text-[13px]',
+    tabIcon: 14,
+    pinIcon: 'h-3 w-3',
+    closeIcon: 'h-3 w-3',
+    actionBtn: 'h-7.5 w-7.5',
+    actionIcon: 'h-3.5 w-3.5',
+  },
+  lg: {
+    barPadding: 'px-4',
+    tabItem: 'h-9 gap-2 px-3.5 text-sm',
+    tabIcon: 15,
+    pinIcon: 'h-3 w-3',
+    closeIcon: 'h-3 w-3',
+    actionBtn: 'h-8 w-8',
+    actionIcon: 'h-4 w-4',
+  },
+}
+
 /**
  * 企业级多页签导航栏
- * 支持卡片式 (card)、胶囊式 (pill)、极简下划线 (underline) 三种视觉风格，支持固定页签、当前页刷新与批量关闭
+ * 支持卡片式 (card)、胶囊式 (pill)、极简下划线 (underline) 三种视觉风格，同步响应四档尺寸与动效规格
  */
 export const MultiTabBar: React.FC<MultiTabBarProps> = ({
   tabs,
   activePath,
   variant = 'card',
+  size,
+  motion,
   onSelect,
   onClose,
   onCloseOthers,
@@ -38,13 +93,19 @@ export const MultiTabBar: React.FC<MultiTabBarProps> = ({
   className,
 }) => {
   const { iconRegistry } = useAbcConfig()
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
+  const m = TAB_BAR_SIZE_METRICS[resolvedSize]
 
   if (tabs.length === 0) return null
 
   return (
     <div
+      data-size={resolvedSize}
+      data-motion={resolvedMotion}
       className={cn(
-        'flex h-[var(--abc-tabbar-h)] shrink-0 items-center justify-between gap-2 border-b border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-3 select-none',
+        'flex h-[var(--abc-tabbar-h)] shrink-0 items-center justify-between gap-2 border-b border-[var(--abc-border)] bg-[var(--abc-bg-surface)] select-none',
+        m.barPadding,
         className
       )}
     >
@@ -79,14 +140,15 @@ export const MultiTabBar: React.FC<MultiTabBarProps> = ({
                 }
               }}
               className={cn(
-                'group inline-flex h-7 flex-none items-center gap-1.5 border px-2.5 text-xs font-medium transition-[background-color,color,border-color,box-shadow] duration-150 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)]',
+                'group inline-flex flex-none items-center border font-medium transition-[background-color,color,border-color,box-shadow] duration-[var(--abc-motion-fast)] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)]',
+                m.tabItem,
                 styleClass
               )}
             >
-              {tab.pinned && <Pin className="h-2.5 w-2.5 shrink-0 opacity-75" />}
+              {tab.pinned && <Pin className={cn('shrink-0 opacity-75', m.pinIcon)} />}
               {tab.icon &&
                 (typeof tab.icon === 'string' ? (
-                  <Icon name={tab.icon} size={13} registry={iconRegistry} />
+                  <Icon name={tab.icon} size={m.tabIcon} registry={iconRegistry} />
                 ) : (
                   <span className="shrink-0">{tab.icon}</span>
                 ))}
@@ -106,7 +168,7 @@ export const MultiTabBar: React.FC<MultiTabBarProps> = ({
                       : 'hover:bg-black/10 dark:hover:bg-white/15'
                   )}
                 >
-                  <X className="h-2.5 w-2.5" />
+                  <X className={m.closeIcon} />
                 </button>
               )}
             </div>
@@ -121,9 +183,12 @@ export const MultiTabBar: React.FC<MultiTabBarProps> = ({
               type="button"
               aria-label="刷新当前页签"
               onClick={() => onRefresh(activePath)}
-              className="inline-flex h-6.5 w-6.5 items-center justify-center rounded-[var(--abc-radius-sm)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+              className={cn(
+                'inline-flex items-center justify-center rounded-[var(--abc-radius-sm)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer',
+                m.actionBtn
+              )}
             >
-              <RotateCw className="h-3.5 w-3.5" />
+              <RotateCw className={m.actionIcon} />
             </button>
           </Tooltip>
         )}
@@ -176,9 +241,12 @@ export const MultiTabBar: React.FC<MultiTabBarProps> = ({
           <button
             type="button"
             aria-label="页签批量操作"
-            className="inline-flex h-6.5 w-6.5 items-center justify-center rounded-[var(--abc-radius-sm)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+            className={cn(
+              'inline-flex items-center justify-center rounded-[var(--abc-radius-sm)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer',
+              m.actionBtn
+            )}
           >
-            <MoreHorizontal className="h-3.5 w-3.5" />
+            <MoreHorizontal className={m.actionIcon} />
           </button>
         </Dropdown>
       </div>

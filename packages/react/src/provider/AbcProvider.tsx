@@ -7,9 +7,11 @@ import {
   type AbcBrandColor,
   type AbcDensity,
   type AbcFontScale,
+  type AbcMotionPreset,
   type AbcPageTransition,
   type AbcRadius,
   type AbcResolvedTheme,
+  type AbcSize,
   type AbcThemeConfig,
   type AbcThemeMode,
   type AbcVisualMode,
@@ -70,6 +72,17 @@ function readStoredTheme(fallback: AbcThemeConfig, persist: boolean): AbcThemeCo
           ? parsed.mode
           : fallback.mode
 
+    const validSizes: AbcSize[] = ['xs', 'sm', 'md', 'lg']
+    const validMotions: AbcMotionPreset[] = ['none', 'subtle', 'smooth', 'spring']
+    const resolvedSize =
+      parsed.componentSize && validSizes.includes(parsed.componentSize)
+        ? parsed.componentSize
+        : fallback.componentSize
+    const resolvedMotion =
+      parsed.motion && validMotions.includes(parsed.motion)
+        ? parsed.motion
+        : fallback.motion ?? 'smooth'
+
     return {
       mode,
       brand: parsed.brand ?? fallback.brand,
@@ -78,6 +91,8 @@ function readStoredTheme(fallback: AbcThemeConfig, persist: boolean): AbcThemeCo
       radius: parsed.radius ?? fallback.radius,
       fontScale: parsed.fontScale ?? fallback.fontScale ?? 'md',
       visualMode: parsed.visualMode ?? fallback.visualMode ?? 'default',
+      componentSize: resolvedSize,
+      motion: resolvedMotion,
     }
   } catch {
     return fallback
@@ -210,6 +225,14 @@ export const AbcProvider: React.FC<AbcProviderProps> = ({
     setTheme((prev) => ({ ...prev, visualMode }))
   }, [])
 
+  const setComponentSize = useCallback((componentSize?: AbcSize) => {
+    setTheme((prev) => ({ ...prev, componentSize }))
+  }, [])
+
+  const setMotion = useCallback((motion: AbcMotionPreset) => {
+    setTheme((prev) => ({ ...prev, motion }))
+  }, [])
+
   const updateTheme = useCallback((patch: Partial<AbcThemeConfig>) => {
     setTheme((prev) => ({ ...prev, ...patch }))
   }, [])
@@ -235,6 +258,8 @@ export const AbcProvider: React.FC<AbcProviderProps> = ({
       setRadius,
       setFontScale,
       setVisualMode,
+      setComponentSize,
+      setMotion,
       updateTheme,
       setPageTransition,
       setWatermarkEnabled,
@@ -260,6 +285,8 @@ export const AbcProvider: React.FC<AbcProviderProps> = ({
       setRadius,
       setFontScale,
       setVisualMode,
+      setComponentSize,
+      setMotion,
       updateTheme,
       resetTheme,
       toastAdapter,
@@ -314,6 +341,12 @@ export function useAbcConfig(): AbcContextValue {
     },
     setVisualMode: (visualMode) => {
       applyAbcThemeToDocument({ ...DEFAULT_ABC_THEME, visualMode })
+    },
+    setComponentSize: (componentSize) => {
+      applyAbcThemeToDocument({ ...DEFAULT_ABC_THEME, componentSize })
+    },
+    setMotion: (motion) => {
+      applyAbcThemeToDocument({ ...DEFAULT_ABC_THEME, motion })
     },
     updateTheme: (patch) => {
       applyAbcThemeToDocument({ ...DEFAULT_ABC_THEME, ...patch })

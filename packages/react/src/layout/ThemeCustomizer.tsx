@@ -2,12 +2,15 @@ import React, { useState } from 'react'
 import {
   ABC_BRAND_PRESETS,
   ABC_DENSITY_PRESETS,
+  ABC_MOTION_PRESETS,
   ABC_RADIUS_PRESETS,
   type AbcBrandColor,
   type AbcDensity,
   type AbcFontScale,
+  type AbcMotionPreset,
   type AbcPageTransition,
   type AbcRadius,
+  type AbcSize,
   type AbcThemeConfig,
   type AbcThemeMode,
   type AbcVisualMode,
@@ -34,7 +37,13 @@ import { Input, Textarea } from '../components/form/Input'
 import { Select } from '../components/form/Select'
 import { useAbcConfig } from '../provider/AbcProvider'
 import { cn } from '../utils/cn'
-import type { AbcLayoutMode, AbcLayoutSettings, AbcTabStyle } from './types'
+import {
+  ABC_HEADER_HEIGHT_BY_SIZE,
+  ABC_SIDEBAR_WIDTH_BY_SIZE,
+  type AbcLayoutMode,
+  type AbcLayoutSettings,
+  type AbcTabStyle,
+} from './types'
 
 export interface ThemeCustomizerProps {
   open: boolean
@@ -86,8 +95,8 @@ const QUICK_SCENE_PRESETS: QuickScenePreset[] = [
       sidebarTone: 'dark',
       tabStyle: 'card',
       contentWidth: 'fluid',
-      sidebarWidth: 232,
-      headerHeight: 54,
+      sidebarWidth: undefined,
+      headerHeight: undefined,
       headerBlur: true,
     },
     transition: 'fade-slide',
@@ -196,6 +205,8 @@ export const ThemeCustomizer: React.FC<ThemeCustomizerProps> = ({
     setRadius,
     setFontScale,
     setVisualMode,
+    setComponentSize,
+    setMotion,
     updateTheme,
     setPageTransition,
     setWatermarkEnabled,
@@ -210,6 +221,12 @@ export const ThemeCustomizer: React.FC<ThemeCustomizerProps> = ({
   const [showImportPanel, setShowImportPanel] = useState(false)
   const [importJsonText, setImportJsonText] = useState('')
   const [customHexDraft, setCustomHexDraft] = useState(theme.customBrandColor ?? '#0ea5e9')
+
+  const effectiveComponentSize: AbcSize = theme.componentSize ?? 'sm'
+  const effectiveSidebarWidth =
+    layoutSettings.sidebarWidth ?? ABC_SIDEBAR_WIDTH_BY_SIZE[effectiveComponentSize]
+  const effectiveHeaderHeight =
+    layoutSettings.headerHeight ?? ABC_HEADER_HEIGHT_BY_SIZE[effectiveComponentSize]
 
   const activeSwatch =
     theme.customBrandColor || ABC_BRAND_PRESETS[theme.brand]?.swatch || '#2563eb'
@@ -396,14 +413,10 @@ export const ThemeCustomizer: React.FC<ThemeCustomizerProps> = ({
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => setSandboxCount((c) => c + 1)}
-                >
+                <Button variant="primary" onClick={() => setSandboxCount((c) => c + 1)}>
                   按压回弹 #{sandboxCount}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setSandboxSwitch((v) => !v)}>
+                <Button variant="outline" onClick={() => setSandboxSwitch((v) => !v)}>
                   次级操作
                 </Button>
               </div>
@@ -412,7 +425,6 @@ export const ThemeCustomizer: React.FC<ThemeCustomizerProps> = ({
                   {sandboxSwitch ? '服务在线' : '维护挂起'}
                 </StatusTag>
                 <Switch
-                  size="sm"
                   checked={sandboxSwitch}
                   onChange={setSandboxSwitch}
                   ariaLabel="切换沙盒状态"
@@ -421,11 +433,10 @@ export const ThemeCustomizer: React.FC<ThemeCustomizerProps> = ({
             </div>
 
             <Input
-              size="sm"
               allowClear
               value={sandboxInput}
               onChange={(e) => setSandboxInput(e.target.value)}
-              placeholder="在此输入测试圆角、聚焦环与密度高度..."
+              placeholder="在此输入测试圆角、聚焦环与全局尺寸/动效..."
             />
 
             {/* 动态合成的 50-950 色阶条直观检视 */}
@@ -711,6 +722,56 @@ export const ThemeCustomizer: React.FC<ThemeCustomizerProps> = ({
               ]}
             />
           </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[var(--abc-fg-muted)]">全局组件与导航尺寸</span>
+              <span className="font-mono text-[10px] text-[var(--abc-fg-muted)]">
+                {theme.componentSize ?? '自动 (随组件)'}
+              </span>
+            </div>
+            <RadioGroup
+              variant="segmented"
+              value={theme.componentSize ?? 'auto'}
+              onChange={(val) =>
+                setComponentSize(val === 'auto' ? undefined : (val as AbcSize))
+              }
+              options={[
+                { value: 'auto', label: '自动' },
+                { value: 'xs', label: 'xs' },
+                { value: 'sm', label: 'sm' },
+                { value: 'md', label: 'md' },
+                { value: 'lg', label: 'lg' },
+              ]}
+              className="w-full justify-between"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[var(--abc-fg-muted)]">全局组件微交互动效</span>
+              <span className="font-mono text-[10px] text-[var(--abc-primary)]">
+                {ABC_MOTION_PRESETS[theme.motion ?? 'smooth'].durationBase}
+              </span>
+            </div>
+            <RadioGroup
+              variant="segmented"
+              value={theme.motion ?? 'smooth'}
+              onChange={(val) => {
+                setMotion(val as AbcMotionPreset)
+                setMotionReplaySeed((s) => s + 1)
+              }}
+              options={(Object.keys(ABC_MOTION_PRESETS) as AbcMotionPreset[]).map((m) => ({
+                value: m,
+                label: ABC_MOTION_PRESETS[m].label.slice(0, 2),
+              }))}
+              className="w-full justify-between"
+            />
+            <p className="text-[10px] text-[var(--abc-fg-muted)]">
+              {ABC_MOTION_PRESETS[theme.motion ?? 'smooth'].label}：
+              {ABC_MOTION_PRESETS[theme.motion ?? 'smooth'].description}
+            </p>
+          </div>
         </section>
 
         {/* 5. 壳层几何尺寸与页签交互 */}
@@ -720,16 +781,27 @@ export const ThemeCustomizer: React.FC<ThemeCustomizerProps> = ({
           <div className="space-y-1">
             <div className="flex items-center justify-between text-xs">
               <span className="text-[var(--abc-fg-secondary)]">侧边栏展开宽度</span>
-              <span className="font-mono text-[11px] font-semibold text-[var(--abc-primary)]">
-                {layoutSettings.sidebarWidth ?? 232}px
-              </span>
+              <div className="flex items-center gap-2">
+                {layoutSettings.sidebarWidth !== undefined && (
+                  <button
+                    type="button"
+                    onClick={() => onLayoutChange({ sidebarWidth: undefined })}
+                    className="rounded-[var(--abc-radius-xs)] px-1.5 py-0.2 text-[10px] font-medium text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-primary)] cursor-pointer"
+                  >
+                    跟随尺寸
+                  </button>
+                )}
+                <span className="font-mono text-[11px] font-semibold text-[var(--abc-primary)]">
+                  {effectiveSidebarWidth}px
+                </span>
+              </div>
             </div>
             <input
               type="range"
               min={196}
               max={288}
               step={4}
-              value={layoutSettings.sidebarWidth ?? 232}
+              value={effectiveSidebarWidth}
               onChange={(e) => onLayoutChange({ sidebarWidth: Number(e.target.value) })}
               className="w-full cursor-pointer accent-[var(--abc-primary)]"
             />
@@ -738,16 +810,27 @@ export const ThemeCustomizer: React.FC<ThemeCustomizerProps> = ({
           <div className="space-y-1">
             <div className="flex items-center justify-between text-xs">
               <span className="text-[var(--abc-fg-secondary)]">顶部导航栏高度</span>
-              <span className="font-mono text-[11px] font-semibold text-[var(--abc-primary)]">
-                {layoutSettings.headerHeight ?? 54}px
-              </span>
+              <div className="flex items-center gap-2">
+                {layoutSettings.headerHeight !== undefined && (
+                  <button
+                    type="button"
+                    onClick={() => onLayoutChange({ headerHeight: undefined })}
+                    className="rounded-[var(--abc-radius-xs)] px-1.5 py-0.2 text-[10px] font-medium text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-primary)] cursor-pointer"
+                  >
+                    跟随尺寸
+                  </button>
+                )}
+                <span className="font-mono text-[11px] font-semibold text-[var(--abc-primary)]">
+                  {effectiveHeaderHeight}px
+                </span>
+              </div>
             </div>
             <input
               type="range"
               min={46}
               max={66}
               step={2}
-              value={layoutSettings.headerHeight ?? 54}
+              value={effectiveHeaderHeight}
               onChange={(e) => onLayoutChange({ headerHeight: Number(e.target.value) })}
               className="w-full cursor-pointer accent-[var(--abc-primary)]"
             />

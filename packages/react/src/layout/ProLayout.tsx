@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import {
   ChevronRight,
   Menu,
@@ -14,6 +15,7 @@ import { Avatar } from '../components/display/StatusTag'
 import Drawer from '../components/feedback/Drawer'
 import Watermark from '../components/feedback/Watermark'
 import { Kbd } from '../components/typography/CopyableText'
+import { useAbcMotion, useAbcSize } from '../hooks/useAbcDefaults'
 import { useControllableState } from '../hooks/useControllableState'
 import { useAbcConfig } from '../provider/AbcProvider'
 import { cn } from '../utils/cn'
@@ -68,6 +70,10 @@ export interface ProLayoutProps {
   authProps?: Partial<AuthLayoutProps>
   /** 是否显示右上角主题与布局配置触发器（默认开启） */
   showCustomizerTrigger?: boolean
+  /** 覆写壳层、侧栏与导航控件尺寸规格（默认继承 AbcProvider.theme.componentSize） */
+  size?: AbcSize
+  /** 覆写壳层交互动效规格（默认继承 AbcProvider.theme.motion） */
+  motion?: AbcMotionPreset
   children: React.ReactNode
 }
 
@@ -77,6 +83,61 @@ const TRANSITION_CLASS_MAP: Record<string, string> = {
   zoom: 'abc-page-zoom',
   'slide-left': 'abc-page-slide-left',
   none: '',
+}
+
+const HEADER_SIZE_METRICS: Record<
+  AbcSize,
+  {
+    headerPad: string
+    iconBtn: string
+    iconCls: string
+    searchBtn: string
+    searchIcon: string
+    breadcrumb: string
+    mobileDrawerWidth: number
+    avatarSize: 'xs' | 'sm' | 'md'
+  }
+> = {
+  xs: {
+    headerPad: 'px-3',
+    iconBtn: 'h-7 w-7',
+    iconCls: 'h-3.5 w-3.5',
+    searchBtn: 'h-7 gap-1.5 px-2 text-[11px]',
+    searchIcon: 'h-3 w-3',
+    breadcrumb: 'text-[11px]',
+    mobileDrawerWidth: 236,
+    avatarSize: 'xs',
+  },
+  sm: {
+    headerPad: 'px-4',
+    iconBtn: 'h-8 w-8',
+    iconCls: 'h-4 w-4',
+    searchBtn: 'h-8 gap-2 px-2.5 text-xs',
+    searchIcon: 'h-3.5 w-3.5',
+    breadcrumb: 'text-xs',
+    mobileDrawerWidth: 260,
+    avatarSize: 'sm',
+  },
+  md: {
+    headerPad: 'px-4',
+    iconBtn: 'h-9 w-9',
+    iconCls: 'h-4 w-4',
+    searchBtn: 'h-9 gap-2 px-3 text-xs',
+    searchIcon: 'h-3.5 w-3.5',
+    breadcrumb: 'text-[13px]',
+    mobileDrawerWidth: 276,
+    avatarSize: 'sm',
+  },
+  lg: {
+    headerPad: 'px-5',
+    iconBtn: 'h-10 w-10',
+    iconCls: 'h-[18px] w-[18px]',
+    searchBtn: 'h-10 gap-2.5 px-3.5 text-sm',
+    searchIcon: 'h-4 w-4',
+    breadcrumb: 'text-sm',
+    mobileDrawerWidth: 296,
+    avatarSize: 'md',
+  },
 }
 
 /**
@@ -100,6 +161,8 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
   authRender,
   authProps,
   showCustomizerTrigger = true,
+  size,
+  motion,
   children,
 }) => {
   const {
@@ -109,6 +172,9 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
     watermarkEnabled,
     watermarkText,
   } = useAbcConfig()
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
+  const hm = HEADER_SIZE_METRICS[resolvedSize]
 
   const initialMergedSettings = useMemo<AbcLayoutSettings>(
     () => ({ ...DEFAULT_ABC_LAYOUT_SETTINGS, ...defaultSettings }),
@@ -261,7 +327,8 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
   const headerNode = (
     <header
       className={cn(
-        'flex h-[var(--abc-header-h)] shrink-0 items-center justify-between gap-3 border-b border-[var(--abc-border)] px-4 select-none transition-colors',
+        'flex h-[var(--abc-header-h)] shrink-0 items-center justify-between gap-3 border-b border-[var(--abc-border)] select-none transition-colors',
+        hm.headerPad,
         layoutSettings.headerBlur !== false
           ? 'bg-[var(--abc-bg-surface)]/85 backdrop-blur-md'
           : 'bg-[var(--abc-bg-surface)]'
@@ -273,14 +340,17 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
           type="button"
           aria-label="展开移动端菜单"
           onClick={() => setMobileMenuOpen(true)}
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] md:hidden cursor-pointer"
+          className={cn(
+            'inline-flex shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] md:hidden cursor-pointer',
+            hm.iconBtn
+          )}
         >
-          <Menu className="h-4 w-4" />
+          <Menu className={hm.iconCls} />
         </button>
 
         {(isTopMode || isMixMode) && (
           <div className="hidden shrink-0 md:block">
-            <BrandLogoBlock brand={brand} className="px-0 pr-3" />
+            <BrandLogoBlock brand={brand} size={resolvedSize} className="px-0 pr-3" />
           </div>
         )}
 
@@ -291,12 +361,15 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
             onClick={() =>
               patchSettings({ sidebarCollapsed: !layoutSettings.sidebarCollapsed })
             }
-            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] md:inline-flex cursor-pointer"
+            className={cn(
+              'hidden shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] md:inline-flex cursor-pointer',
+              hm.iconBtn
+            )}
           >
             {layoutSettings.sidebarCollapsed ? (
-              <PanelLeftOpen className="h-4 w-4" />
+              <PanelLeftOpen className={hm.iconCls} />
             ) : (
-              <PanelLeftClose className="h-4 w-4" />
+              <PanelLeftClose className={hm.iconCls} />
             )}
           </button>
         )}
@@ -306,6 +379,8 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
             <TopHorizontalNav
               items={menuItems}
               pathname={pathname}
+              size={resolvedSize}
+              motion={resolvedMotion}
               onNavigate={(p, it) => onNavigate(p, it)}
             />
           </div>
@@ -318,6 +393,8 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
               pathname={pathname}
               topLevelOnly
               activeRootKey={mixRootKey}
+              size={resolvedSize}
+              motion={resolvedMotion}
               onSelectRoot={(root) => {
                 setMixRootKey(root.key)
                 if (root.path && (!root.children || root.children.length === 0)) {
@@ -334,7 +411,10 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
         {(isSidebarMode || isDualMode) && layoutSettings.showBreadcrumb !== false && trail.length > 0 && (
           <nav
             aria-label="当前位置"
-            className="hidden min-w-0 items-center gap-1.5 text-xs text-[var(--abc-fg-muted)] sm:flex"
+            className={cn(
+              'hidden min-w-0 items-center gap-1.5 text-[var(--abc-fg-muted)] sm:flex',
+              hm.breadcrumb
+            )}
           >
             {trail.map((node, idx) => {
               const last = idx === trail.length - 1
@@ -361,9 +441,12 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
         <button
           type="button"
           onClick={() => setCommandOpen(true)}
-          className="inline-flex h-8 items-center gap-2 rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-muted)] px-2.5 text-xs text-[var(--abc-fg-muted)] transition-colors hover:border-[var(--abc-border-strong)] hover:text-[var(--abc-fg)] cursor-pointer"
+          className={cn(
+            'inline-flex items-center rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-muted)] text-[var(--abc-fg-muted)] transition-colors hover:border-[var(--abc-border-strong)] hover:text-[var(--abc-fg)] cursor-pointer',
+            hm.searchBtn
+          )}
         >
-          <Search className="h-3.5 w-3.5" />
+          <Search className={hm.searchIcon} />
           <span className="hidden lg:inline">搜索菜单...</span>
           <Kbd className="hidden sm:inline-flex">⌘K</Kbd>
         </button>
@@ -375,9 +458,12 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
             type="button"
             aria-label="切换亮暗模式"
             onClick={(e) => toggleTheme({ clientX: e.clientX, clientY: e.clientY })}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--abc-radius-md)] text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+            className={cn(
+              'inline-flex items-center justify-center rounded-[var(--abc-radius-md)] text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer',
+              hm.iconBtn
+            )}
           >
-            {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {resolvedTheme === 'dark' ? <Sun className={hm.iconCls} /> : <Moon className={hm.iconCls} />}
           </button>
         </Tooltip>
 
@@ -387,9 +473,12 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
               type="button"
               aria-label="打开主题与布局配置抽屉"
               onClick={() => setCustomizerOpen(true)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--abc-radius-md)] text-[var(--abc-primary)] bg-[var(--abc-primary-soft)] hover:brightness-95 cursor-pointer"
+              className={cn(
+                'inline-flex items-center justify-center rounded-[var(--abc-radius-md)] text-[var(--abc-primary)] bg-[var(--abc-primary-soft)] hover:brightness-95 cursor-pointer',
+                hm.iconBtn
+              )}
             >
-              <SlidersHorizontal className="h-4 w-4" />
+              <SlidersHorizontal className={hm.iconCls} />
             </button>
           </Tooltip>
         )}
@@ -403,7 +492,7 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
             }
           >
             <div className="flex items-center gap-2 rounded-[var(--abc-radius-md)] px-2 py-1 hover:bg-[var(--abc-bg-subtle)]">
-              <Avatar src={user.avatar} name={user.name} size="sm" />
+              <Avatar src={user.avatar} name={user.name} size={hm.avatarSize} />
               <div className="hidden text-left md:block">
                 <div className="max-w-24 truncate text-xs font-semibold text-[var(--abc-fg)] leading-tight">
                   {user.name}
@@ -430,6 +519,8 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
           tabs={autoTabs}
           activePath={pathname}
           variant={layoutSettings.tabStyle ?? 'card'}
+          size={resolvedSize}
+          motion={resolvedMotion}
           onSelect={(p) => onNavigate(p)}
           onClose={handleCloseTab}
           onTogglePin={(targetPath) =>
@@ -498,6 +589,8 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
 
   return (
     <div
+      data-size={resolvedSize}
+      data-motion={resolvedMotion}
       style={layoutInlineVars}
       className="flex h-dvh w-dvw flex-col overflow-hidden bg-[var(--abc-bg-canvas)] text-[var(--abc-fg)]"
     >
@@ -511,6 +604,8 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
               collapsed={layoutSettings.sidebarCollapsed}
               accordion={layoutSettings.sidebarAccordion}
               tone={layoutSettings.sidebarTone}
+              size={resolvedSize}
+              motion={resolvedMotion}
               onNavigate={(p, it) => onNavigate(p, it)}
             />
           </div>
@@ -525,6 +620,8 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
               collapsed={layoutSettings.sidebarCollapsed}
               accordion={layoutSettings.sidebarAccordion}
               tone={layoutSettings.sidebarTone}
+              size={resolvedSize}
+              motion={resolvedMotion}
               onNavigate={(p, it) => onNavigate(p, it)}
             />
           </div>
@@ -537,6 +634,8 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
               items={menuItems}
               pathname={pathname}
               tone={layoutSettings.sidebarTone}
+              size={resolvedSize}
+              motion={resolvedMotion}
               onNavigate={(p, it) => onNavigate(p, it)}
             />
           </div>
@@ -550,7 +649,7 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
         open={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
         placement="left"
-        width={260}
+        width={hm.mobileDrawerWidth}
         resizable={false}
         title={brand.name}
         bodyClassName="p-0"
@@ -559,6 +658,8 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
           items={menuItems}
           pathname={pathname}
           tone="light"
+          size={resolvedSize}
+          motion={resolvedMotion}
           onNavigate={(p, it) => {
             onNavigate(p, it)
             setMobileMenuOpen(false)

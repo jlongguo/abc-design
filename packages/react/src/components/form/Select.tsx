@@ -1,6 +1,8 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react'
+import type { AbcMotionPreset } from '@abc-design/tokens'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown, Search, X } from 'lucide-react'
+import { useAbcMotion, useAbcSize } from '../../hooks/useAbcDefaults'
 import { useControllableState } from '../../hooks/useControllableState'
 import { useFloatingPosition } from '../../hooks/useFloatingPosition'
 import { usePresence } from '../../hooks/usePresence'
@@ -35,6 +37,7 @@ export interface SelectProps {
   disabled?: boolean
   invalid?: boolean
   size?: ControlSize
+  motion?: AbcMotionPreset
   className?: string
 }
 
@@ -76,9 +79,12 @@ export const Select: React.FC<SelectProps> = ({
   clearable,
   disabled = false,
   invalid = false,
-  size = 'sm',
+  size,
+  motion,
   className,
 }) => {
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
   const generatedId = useId()
   const selectId = id || generatedId
   const [selected, setSelected] = useControllableState<any>({
@@ -90,7 +96,7 @@ export const Select: React.FC<SelectProps> = ({
   const [open, setOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
-  const { isMounted, isVisible } = usePresence(open, 140)
+  const { isMounted, isVisible } = usePresence(open, resolvedMotion === 'none' ? 0 : 140)
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLDivElement>(null)
   const listboxRef = useRef<HTMLDivElement>(null)
@@ -275,10 +281,11 @@ export const Select: React.FC<SelectProps> = ({
           else openMenuWithInitialActive()
         }}
         onKeyDown={handleKeyDown}
+        data-motion={resolvedMotion}
         className={cn(
-          'flex w-full items-center justify-between gap-1.5 px-2.5 py-1 cursor-pointer select-none',
+          'flex w-full items-center justify-between gap-1.5 px-2.5 py-1 cursor-pointer select-none abc-motion-control',
           baseFieldControlClass,
-          multiple ? MULTI_SIZE_H[size] : SINGLE_SIZE_H[size],
+          multiple ? MULTI_SIZE_H[resolvedSize] : SINGLE_SIZE_H[resolvedSize],
           open && 'border-[var(--abc-primary)] ring-2 ring-[var(--abc-ring)]',
           isInvalid && 'border-[var(--abc-danger)]',
           disabled && 'opacity-65 cursor-not-allowed bg-[var(--abc-bg-muted)]',
@@ -345,6 +352,7 @@ export const Select: React.FC<SelectProps> = ({
             id={`${selectId}-listbox`}
             role="listbox"
             data-abc-floating=""
+            data-motion={resolvedMotion}
             data-placement={actualSide}
             aria-multiselectable={multiple || undefined}
             style={style}

@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { AlertCircle, Eye, Image as ImageIcon, RotateCw, ZoomIn, ZoomOut } from 'lucide-react'
+import { useAbcMotion, useAbcSize } from '../../hooks'
 import { cn } from '../../utils/cn'
 import Dialog from '../feedback/Dialog'
 
@@ -7,6 +9,8 @@ export interface ImagePreviewProps {
   /** 支持远程图片直链、DataURL 或原始内联 <svg>...</svg> 代码 */
   src?: string | null
   alt?: string
+  size?: AbcSize
+  motion?: AbcMotionPreset
   width?: number | string
   height?: number | string
   rounded?: boolean
@@ -15,6 +19,13 @@ export interface ImagePreviewProps {
   className?: string
   /** 是否允许点击打开灯箱放大旋转查看（默认开启） */
   zoomable?: boolean
+}
+
+const IMAGE_PREVIEW_SIZE_PX: Record<AbcSize, number> = {
+  xs: 28,
+  sm: 40,
+  md: 52,
+  lg: 64,
 }
 
 export function isSvgSource(src?: string | null): boolean {
@@ -29,14 +40,20 @@ export function isSvgSource(src?: string | null): boolean {
 export const ImagePreview: React.FC<ImagePreviewProps> = ({
   src,
   alt = '图片预览',
-  width = 40,
-  height = 40,
+  size,
+  motion,
+  width,
+  height,
   rounded = false,
   fit = 'contain',
   placeholder,
   className,
   zoomable = true,
 }) => {
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
+  const resolvedWidth = width ?? IMAGE_PREVIEW_SIZE_PX[resolvedSize]
+  const resolvedHeight = height ?? IMAGE_PREVIEW_SIZE_PX[resolvedSize]
   const [hasError, setHasError] = useState(false)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [scale, setScale] = useState(1)
@@ -62,8 +79,13 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
     if (placeholder) return <>{placeholder}</>
     return (
       <div
+        data-motion={resolvedMotion}
         title={hasError ? '图片加载失败，请检查 URL 是否有效' : '暂无图片'}
-        style={{ width, height, minWidth: typeof width === 'number' ? width : undefined }}
+        style={{
+          width: resolvedWidth,
+          height: resolvedHeight,
+          minWidth: typeof resolvedWidth === 'number' ? resolvedWidth : undefined,
+        }}
         className={cn(
           'inline-flex shrink-0 items-center justify-center border border-[var(--abc-border)] bg-[var(--abc-bg-muted)] text-[var(--abc-fg-placeholder)] select-none',
           rounded ? 'rounded-full' : 'rounded-[var(--abc-radius-md)]',
@@ -89,6 +111,7 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
       <div
         role={zoomable ? 'button' : undefined}
         tabIndex={zoomable ? 0 : undefined}
+        data-motion={resolvedMotion}
         title="点击预览大图 / 矢量图"
         aria-label={zoomable ? `预览 ${alt}` : undefined}
         onClick={openPreview}
@@ -98,9 +121,13 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
             openPreview(e as unknown as React.MouseEvent)
           }
         }}
-        style={{ width, height, minWidth: typeof width === 'number' ? width : undefined }}
+        style={{
+          width: resolvedWidth,
+          height: resolvedHeight,
+          minWidth: typeof resolvedWidth === 'number' ? resolvedWidth : undefined,
+        }}
         className={cn(
-          'group relative inline-flex shrink-0 items-center justify-center overflow-hidden border border-[var(--abc-border)] bg-[var(--abc-bg-surface)]',
+          'abc-motion-control group relative inline-flex shrink-0 items-center justify-center overflow-hidden border border-[var(--abc-border)] bg-[var(--abc-bg-surface)]',
           rounded ? 'rounded-full' : 'rounded-[var(--abc-radius-md)]',
           zoomable && 'cursor-zoom-in hover:border-[var(--abc-primary)]',
           className
@@ -128,6 +155,7 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
         onClose={() => setLightboxOpen(false)}
         title={alt}
         size="lg"
+        motion={resolvedMotion}
         footer={
           <div className="flex w-full items-center justify-center gap-2">
             <button

@@ -3,9 +3,11 @@ import type {
   AbcBrandColor,
   AbcDensity,
   AbcFontScale,
+  AbcMotionPreset,
   AbcPageTransition,
   AbcRadius,
   AbcResolvedTheme,
+  AbcSize,
   AbcThemeConfig,
   AbcThemeMode,
   AbcVisualMode,
@@ -74,6 +76,8 @@ export interface AbcContextValue {
   setRadius: (radius: AbcRadius) => void
   setFontScale: (scale: AbcFontScale) => void
   setVisualMode: (mode: AbcVisualMode) => void
+  setComponentSize: (size?: AbcSize) => void
+  setMotion: (motion: AbcMotionPreset) => void
   updateTheme: (patch: Partial<AbcThemeConfig>) => void
   setPageTransition: (transition: AbcPageTransition) => void
   setWatermarkEnabled: (enabled: boolean) => void

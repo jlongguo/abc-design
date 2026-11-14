@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from 'lucide-react'
+import { useAbcMotion, useAbcSize } from '../../hooks'
 import type { AbcToastAdapter } from '../../provider/types'
 import { cn } from '../../utils/cn'
 
@@ -57,9 +59,23 @@ const TONE_ICONS: Record<ToastTone, React.ReactNode> = {
   info: <Info className="h-4 w-4 shrink-0 text-[var(--abc-info)]" />,
 }
 
+export interface AbcToastViewportProps {
+  size?: AbcSize
+  motion?: AbcMotionPreset
+}
+
+const TOAST_SIZE_CLASS: Record<AbcSize, string> = {
+  xs: 'px-2.5 py-1.5 text-[11px]',
+  sm: 'px-3.5 py-2.5 text-xs',
+  md: 'px-4 py-3 text-sm',
+  lg: 'px-5 py-3.5 text-sm',
+}
+
 /** 全局消息队列挂载宿主（由 AbcProvider 默认渲染） */
-export const AbcToastViewport: React.FC = () => {
+export const AbcToastViewport: React.FC<AbcToastViewportProps> = ({ size, motion }) => {
   const [items, setItems] = useState<ToastItem[]>(() => [...toastQueue])
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
 
   useEffect(() => {
     const listener: ToastListener = (next) => setItems(next)
@@ -80,10 +96,12 @@ export const AbcToastViewport: React.FC = () => {
       {items.map((item) => (
         <div
           key={item.id}
+          data-motion={resolvedMotion}
           className={cn(
             'pointer-events-auto flex items-center gap-2.5 rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)]',
-            'bg-[var(--abc-bg-elevated)] px-3.5 py-2.5 text-xs font-medium text-[var(--abc-fg)] shadow-[var(--abc-shadow-popover)]',
-            'abc-animate-popover-in'
+            'bg-[var(--abc-bg-elevated)] font-medium text-[var(--abc-fg)] shadow-[var(--abc-shadow-popover)]',
+            TOAST_SIZE_CLASS[resolvedSize],
+            resolvedMotion !== 'none' && 'abc-animate-popover-in'
           )}
         >
           {TONE_ICONS[item.tone]}

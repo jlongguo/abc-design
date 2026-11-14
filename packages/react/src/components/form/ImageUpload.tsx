@@ -1,5 +1,7 @@
 import React, { useId, useRef, useState } from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { Eye, Loader2, RefreshCw, Trash2, UploadCloud } from 'lucide-react'
+import { useAbcMotion, useAbcSize } from '../../hooks/useAbcDefaults'
 import { useAbcConfig } from '../../provider/AbcProvider'
 import { cn } from '../../utils/cn'
 import Dialog from '../feedback/Dialog'
@@ -23,8 +25,24 @@ export interface ImageUploadProps {
   disabled?: boolean
   /** 局部自定义上传函数（优先级高于 AbcProvider.uploadAdapter；若均未注入则自动转 DataURL 预览用于原型演练） */
   customUpload?: (file: File) => Promise<string>
+  size?: AbcSize
+  motion?: AbcMotionPreset
   placeholder?: string
   className?: string
+}
+
+const UPLOAD_BOX_SIZE: Record<AbcSize, string> = {
+  xs: 'min-h-[82px] w-full p-2.5',
+  sm: 'min-h-[108px] w-full p-3.5',
+  md: 'min-h-[124px] w-full p-4',
+  lg: 'min-h-[144px] w-full p-5',
+}
+
+const PREVIEW_THUMB_SIZE: Record<AbcSize, string> = {
+  xs: 'h-14 w-14',
+  sm: 'h-20 w-20',
+  md: 'h-24 w-24',
+  lg: 'h-28 w-28',
 }
 
 function isInlineSvgMarkup(raw?: string): boolean {
@@ -54,9 +72,13 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   maxSizeMB = 5,
   disabled = false,
   customUpload,
+  size,
+  motion,
   placeholder = '点击或拖拽图片至此处上传',
   className,
 }) => {
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
   const inputId = useId()
   const fileRef = useRef<HTMLInputElement>(null)
   const { uploadAdapter, toast } = useAbcConfig()
@@ -99,7 +121,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   const isSvg = isInlineSvgMarkup(trimmed)
 
   return (
-    <div className="w-full">
+    <div data-motion={resolvedMotion} className="w-full">
       {label && (
         <label
           htmlFor={inputId}
@@ -150,12 +172,18 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
           !trimmed && !disabled && 'cursor-pointer',
           disabled && 'opacity-60 cursor-not-allowed',
           error && 'border-[var(--abc-danger)]',
-          className || 'min-h-[108px] w-full p-3.5'
+          UPLOAD_BOX_SIZE[resolvedSize],
+          className
         )}
       >
         {trimmed ? (
           <div className="flex flex-col items-center gap-3.5 sm:flex-row">
-            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)]">
+            <div
+              className={cn(
+                'relative flex shrink-0 items-center justify-center overflow-hidden rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)]',
+                PREVIEW_THUMB_SIZE[resolvedSize]
+              )}
+            >
               {isSvg ? (
                 <div
                   className="flex h-full w-full items-center justify-center p-2 [&>svg]:max-h-full [&>svg]:max-w-full"

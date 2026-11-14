@@ -1,6 +1,8 @@
 import React, { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import type { AbcMotionPreset } from '@abc-design/tokens'
 import { GripVertical, Layers, Maximize2, Minimize2, X } from 'lucide-react'
+import { useAbcMotion } from '../../hooks'
 import { usePresence } from '../../hooks/usePresence'
 import { cn } from '../../utils/cn'
 
@@ -26,7 +28,7 @@ function removeDrawerId(id: string) {
   }
 }
 
-export type DrawerSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl'
+export type DrawerSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'
 
 export interface DrawerProps {
   open?: boolean
@@ -37,6 +39,7 @@ export interface DrawerProps {
   children: React.ReactNode
   footer?: React.ReactNode
   size?: DrawerSize
+  motion?: AbcMotionPreset
   width?: number | string
   placement?: 'right' | 'left'
   closeOnClickModal?: boolean
@@ -54,6 +57,7 @@ export interface DrawerProps {
 }
 
 const DEFAULT_WIDTH_PX: Record<DrawerSize, number> = {
+  xs: 320,
   sm: 380,
   md: 480,
   lg: 620,
@@ -74,6 +78,7 @@ export const Drawer: React.FC<DrawerProps> = ({
   children,
   footer,
   size = 'md',
+  motion,
   width,
   placement = 'right',
   closeOnClickModal = true,
@@ -87,7 +92,8 @@ export const Drawer: React.FC<DrawerProps> = ({
   const drawerId = useId()
   const titleId = useId()
   const isOpen = open ?? visible ?? false
-  const { isMounted, isVisible } = usePresence(isOpen, 220)
+  const resolvedMotion = useAbcMotion(motion)
+  const { isMounted, isVisible } = usePresence(isOpen, resolvedMotion === 'none' ? 0 : 220)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
@@ -199,14 +205,16 @@ export const Drawer: React.FC<DrawerProps> = ({
         onClick={() => {
           if (closeOnClickModal) onClose()
         }}
+        data-motion={resolvedMotion}
         className={cn(
           'fixed inset-0 bg-slate-950/45 backdrop-blur-[1.5px] overscroll-contain',
-          isVisible ? 'abc-animate-fade-in' : 'abc-animate-fade-out'
+          resolvedMotion !== 'none' && (isVisible ? 'abc-animate-fade-in' : 'abc-animate-fade-out')
         )}
       />
 
       {/* 抽屉主面板 */}
       <div
+        data-motion={resolvedMotion}
         style={{
           width: baseWidthStyle,
           transform:
@@ -216,15 +224,16 @@ export const Drawer: React.FC<DrawerProps> = ({
         }}
         className={cn(
           'relative z-10 flex h-dvh max-w-full flex-col border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] shadow-[var(--abc-shadow-dialog)]',
-          !isDragging && 'transition-transform duration-200 ease-out',
+          !isDragging && resolvedMotion !== 'none' && 'transition-transform duration-[var(--abc-motion-base)] ease-out',
           placement === 'right' ? 'ml-auto border-l' : 'mr-auto border-r',
-          placement === 'right'
-            ? isVisible
-              ? 'abc-animate-drawer-right-in'
-              : 'abc-animate-drawer-right-out'
-            : isVisible
-              ? 'abc-animate-drawer-left-in'
-              : 'abc-animate-drawer-left-out'
+          resolvedMotion !== 'none' &&
+            (placement === 'right'
+              ? isVisible
+                ? 'abc-animate-drawer-right-in'
+                : 'abc-animate-drawer-right-out'
+              : isVisible
+                ? 'abc-animate-drawer-left-in'
+                : 'abc-animate-drawer-left-out')
         )}
       >
         {/* 边缘拖拽调宽手柄 */}

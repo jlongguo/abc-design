@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import type { AbcMotionPreset } from '@abc-design/tokens'
+import { useAbcMotion } from '../../hooks'
 import { useControllableState } from '../../hooks/useControllableState'
 import { useFloatingPosition, type FloatingPlacement } from '../../hooks/useFloatingPosition'
 import { usePresence } from '../../hooks/usePresence'
@@ -11,6 +13,7 @@ export interface TooltipProps {
   disabled?: boolean
   /** 悬停延迟毫秒数（默认 80ms，避免光标快速划过密集工具栏时频繁闪烁） */
   delay?: number
+  motion?: AbcMotionPreset
   children: React.ReactNode
   className?: string
 }
@@ -24,56 +27,72 @@ export const Tooltip: React.FC<TooltipProps> = ({
   placement = 'top',
   disabled = false,
   delay = 0,
+  motion,
   children,
   className,
 }) => {
+  const resolvedMotion = useAbcMotion(motion)
   const [open, setOpen] = useState(false)
   const [instantHide, setInstantHide] = useState(false)
   const tooltipId = useId()
   const triggerRef = useRef<HTMLSpanElement>(null)
   const floatingRef = useRef<HTMLDivElement>(null)
-  const timerRef = useRef<number | null>(null)
+  const openTimerRef = useRef<number | null>(null)
+  const closeTimerRef = useRef<number | null>(null)
 
-  const clearTimer = useCallback(() => {
-    if (timerRef.current !== null && typeof window !== 'undefined') {
-      window.clearTimeout(timerRef.current)
-      timerRef.current = null
+  const clearTimers = useCallback(() => {
+    if (typeof window === 'undefined') return
+    if (openTimerRef.current !== null) {
+      window.clearTimeout(openTimerRef.current)
+      openTimerRef.current = null
+    }
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
     }
   }, [])
 
-  useEffect(() => () => clearTimer(), [clearTimer])
+  useEffect(() => () => clearTimers(), [clearTimers])
 
   const showTooltip = useCallback(
     (immediate = false) => {
       if (disabled || !content) return
-      clearTimer()
+      clearTimers()
       setInstantHide(false)
       if (immediate || delay <= 0 || typeof window === 'undefined') {
         setOpen(true)
       } else {
-        timerRef.current = window.setTimeout(() => {
+        openTimerRef.current = window.setTimeout(() => {
           setOpen(true)
-          timerRef.current = null
+          openTimerRef.current = null
         }, delay)
       }
     },
-    [disabled, content, delay, clearTimer]
+    [disabled, content, delay, clearTimers]
   )
 
   const hideTooltip = useCallback(() => {
-    clearTimer()
-    setOpen(false)
-  }, [clearTimer])
+    clearTimers()
+    // 短暂移出防抖，防止光标擦边轻微震颤触发“关-开”重播闪烁
+    if (typeof window === 'undefined') {
+      setOpen(false)
+      return
+    }
+    closeTimerRef.current = window.setTimeout(() => {
+      setOpen(false)
+      closeTimerRef.current = null
+    }, 60)
+  }, [clearTimers])
 
   const hideTooltipImmediately = useCallback(() => {
-    clearTimer()
+    clearTimers()
     setInstantHide(true)
     setOpen(false)
-  }, [clearTimer])
+  }, [clearTimers])
 
   const { isMounted, isVisible } = usePresence(
     open && !disabled && Boolean(content),
-    instantHide ? 0 : 130
+    resolvedMotion === 'none' || instantHide ? 0 : 100
   )
 
   const { style, actualSide, arrowOffset, portalContainer } = useFloatingPosition({
@@ -87,11 +106,11 @@ export const Tooltip: React.FC<TooltipProps> = ({
   useEffect(() => {
     if (!open) return
     const onEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') hideTooltip()
+      if (e.key === 'Escape') hideTooltipImmediately()
     }
     document.addEventListener('keydown', onEsc)
     return () => document.removeEventListener('keydown', onEsc)
-  }, [open, hideTooltip])
+  }, [open, hideTooltipImmediately])
 
   if (!content || disabled) return <>{children}</>
 
@@ -105,17 +124,20 @@ export const Tooltip: React.FC<TooltipProps> = ({
           : { top: `${arrowOffset}px`, left: '-4px', transform: 'translateY(-50%) rotate(45deg)' }
 
   return (
-    <span
-      ref={triggerRef}
-      aria-describedby={open ? tooltipId : undefined}
-      onMouseEnter={() => showTooltip(false)}
-      onMouseLeave={hideTooltip}
-      onFocus={() => showTooltip(true)}
-      onBlur={hideTooltip}
-      onPointerDown={hideTooltipImmediately}
-      className={cn('inline-flex items-center', className)}
-    >
-      {children}
+    <>
+      <span
+        ref={triggerRef}
+        data-motion={resolvedMotion}
+        aria-describedby={open ? tooltipId : undefined}
+        onMouseEnter={() => showTooltip(false)}
+        onMouseLeave={hideTooltip}
+        onFocus={() => showTooltip(true)}
+        onBlur={hideTooltipImmediately}
+        onPointerDown={hideTooltipImmediately}
+        className={cn('inline-flex items-center', className)}
+      >
+        {children}
+      </span>
       {isMounted &&
         portalContainer &&
         createPortal(
@@ -124,11 +146,13 @@ export const Tooltip: React.FC<TooltipProps> = ({
             id={tooltipId}
             role="tooltip"
             data-abc-floating=""
+            data-motion={resolvedMotion}
             data-placement={actualSide}
             style={style}
             className={cn(
-              'pointer-events-none z-[1400] max-w-xs rounded-[var(--abc-radius-sm)] bg-slate-900 px-2.5 py-1.5 text-[11px] leading-snug font-medium text-white shadow-lg dark:border dark:border-slate-700 dark:bg-slate-800',
-              isVisible ? 'abc-animate-popover-in' : 'abc-animate-popover-out'
+              'pointer-events-none select-none z-[1400] max-w-xs rounded-[var(--abc-radius-sm)] bg-slate-900 px-2.5 py-1.5 text-[11px] leading-snug font-medium text-white shadow-lg dark:border dark:border-slate-700 dark:bg-slate-800',
+              resolvedMotion !== 'none' &&
+                (isVisible ? 'abc-animate-tooltip-in' : 'abc-animate-tooltip-out')
             )}
           >
             <span className="relative z-10 block">{content}</span>
@@ -140,7 +164,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
           </div>,
           portalContainer
         )}
-    </span>
+    </>
   )
 }
 
@@ -168,6 +192,7 @@ export interface DropdownProps {
   open?: boolean
   defaultOpen?: boolean
   onOpenChange?: (open: boolean) => void
+  motion?: AbcMotionPreset
   children: React.ReactNode
   className?: string
   panelClassName?: string
@@ -188,16 +213,18 @@ export const Dropdown: React.FC<DropdownProps> = ({
   open: controlledOpen,
   defaultOpen = false,
   onOpenChange,
+  motion,
   children,
   className,
   panelClassName,
 }) => {
+  const resolvedMotion = useAbcMotion(motion)
   const [open, setOpen] = useControllableState<boolean>({
     value: controlledOpen,
     defaultValue: defaultOpen,
     onChange: onOpenChange,
   })
-  const { isMounted, isVisible } = usePresence(open, 140)
+  const { isMounted, isVisible } = usePresence(open, resolvedMotion === 'none' ? 0 : 140)
   const rootRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const hoverTimerRef = useRef<number | null>(null)
@@ -318,22 +345,36 @@ export const Dropdown: React.FC<DropdownProps> = ({
     }
   }
 
+  const hoverBridgeClass =
+    trigger === 'hover'
+      ? actualSide === 'top'
+        ? "before:content-[''] before:absolute before:inset-x-0 before:-bottom-2.5 before:h-2.5"
+        : actualSide === 'left'
+          ? "before:content-[''] before:absolute before:inset-y-0 before:-right-3 before:w-3"
+          : actualSide === 'right'
+            ? "before:content-[''] before:absolute before:inset-y-0 before:-left-3 before:w-3"
+            : "before:content-[''] before:absolute before:inset-x-0 before:-top-2.5 before:h-2.5"
+      : undefined
+
   return (
-    <div
-      ref={rootRef}
-      onMouseEnter={scheduleHoverOpen}
-      onMouseLeave={scheduleHoverClose}
-      className={cn('inline-flex', className)}
-    >
+    <>
       <div
-        aria-expanded={open}
-        aria-controls={open ? menuId : undefined}
-        aria-haspopup={isMenuMode ? 'menu' : undefined}
-        onClick={() => setOpen(!open)}
-        onKeyDown={handleTriggerKeyDown}
-        className="inline-flex cursor-pointer items-center"
+        ref={rootRef}
+        data-motion={resolvedMotion}
+        onMouseEnter={scheduleHoverOpen}
+        onMouseLeave={scheduleHoverClose}
+        className={cn('inline-flex', className)}
       >
-        {children}
+        <div
+          aria-expanded={open}
+          aria-controls={open ? menuId : undefined}
+          aria-haspopup={isMenuMode ? 'menu' : undefined}
+          onClick={() => setOpen(!open)}
+          onKeyDown={handleTriggerKeyDown}
+          className="inline-flex cursor-pointer items-center"
+        >
+          {children}
+        </div>
       </div>
 
       {isMounted &&
@@ -344,6 +385,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
             id={menuId}
             role={isMenuMode ? 'menu' : 'dialog'}
             data-abc-floating=""
+            data-motion={resolvedMotion}
             data-placement={actualSide}
             style={style}
             onMouseEnter={scheduleHoverOpen}
@@ -351,7 +393,9 @@ export const Dropdown: React.FC<DropdownProps> = ({
             onKeyDown={handleMenuKeyDown}
             className={cn(
               'z-[1300] min-w-[168px] rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] p-1 shadow-[var(--abc-shadow-popover)]',
-              isVisible ? 'abc-animate-popover-in' : 'abc-animate-popover-out',
+              hoverBridgeClass,
+              resolvedMotion !== 'none' &&
+                (isVisible ? 'abc-animate-popover-in' : 'abc-animate-popover-out'),
               panelClassName
             )}
           >
@@ -376,7 +420,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
                         setOpen(false)
                       }}
                       className={cn(
-                        'flex w-full items-center gap-2 rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer focus:outline-none focus-visible:bg-[var(--abc-bg-subtle)] focus-visible:text-[var(--abc-fg)]',
+                        'abc-motion-control flex w-full items-center gap-2 rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer focus:outline-none focus-visible:bg-[var(--abc-bg-subtle)] focus-visible:text-[var(--abc-fg)]',
                         item.danger
                           ? 'text-[var(--abc-danger)] enabled:hover:bg-[var(--abc-danger-soft)]'
                           : 'text-[var(--abc-fg-secondary)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)]',
@@ -393,7 +437,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
           </div>,
           portalContainer
         )}
-    </div>
+    </>
   )
 }
 

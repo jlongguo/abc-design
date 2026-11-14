@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import type { AbcMotionPreset } from '@abc-design/tokens'
 import dayjs from 'dayjs'
 import {
   ArrowDown,
@@ -14,6 +15,7 @@ import {
   PinOff,
   RotateCcw,
 } from 'lucide-react'
+import { useAbcMotion } from '../../hooks'
 import { useControllableState } from '../../hooks/useControllableState'
 import { getOverlayPortalContainer } from '../../hooks/useFloatingPosition'
 import type { AbcTableDensity } from '../../hooks/useTableSettings'
@@ -113,6 +115,10 @@ export interface TableCoreProps<T = Record<string, any>> {
   /** 个性化列宽覆盖 */
   columnWidths?: Record<string, number>
   onColumnResize?: (key: string, width: number) => void
+  /** 是否允许表头边缘拖拽调节列宽（默认传入 onColumnResize 时开启，也可显式 true 启用内部自适应列宽） */
+  resizable?: boolean
+  /** 交互动效规格 */
+  motion?: AbcMotionPreset
   /** 个性化列左右固定覆盖（null 表示显式取消固定） */
   columnFixed?: Record<string, 'left' | 'right' | null>
   onColumnPin?: (key: string, fixed: 'left' | 'right' | null) => void
@@ -298,6 +304,8 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
   headerFilterRender,
   columnWidths = {},
   onColumnResize,
+  resizable,
+  motion,
   columnFixed = {},
   onColumnPin,
   onColumnHide,
@@ -311,14 +319,54 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
   emptyText = '暂无符合条件的数据',
   className,
 }: TableCoreProps<T>) {
+  const resolvedMotion = useAbcMotion(motion)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const [draggingKey, setDraggingKey] = useState<string | null>(null)
+  const [liveDragOrder, setLiveDragOrder] = useState<string[] | null>(null)
+  const preDragOrderRef = useRef<string[] | null>(null)
+  const hasLiveSwappedRef = useRef(false)
+  const prevColRectsRef = useRef<Map<string, number> | null>(null)
+  const [localWidths, setLocalWidths] = useState<Record<string, number>>({})
+  const [wrapperWidth, setWrapperWidth] = useState(0)
   const [contextMenu, setContextMenu] = useState<{
     col: AbcColumn<T>
     x: number
     y: number
   } | null>(null)
+
+  const effectiveColumnWidths = useMemo(
+    () => ({ ...localWidths, ...columnWidths }),
+    [localWidths, columnWidths]
+  )
+  const isResizable = resizable ?? Boolean(onColumnResize)
+
+  const emitColumnResize = (key: string, nextWidth: number) => {
+    setLocalWidths((prev) => ({ ...prev, [key]: nextWidth }))
+    onColumnResize?.(key, nextWidth)
+  }
+
+  useLayoutEffect(() => {
+    const el = wrapperRef.current
+    if (!el) return
+    const syncWidth = () => {
+      if (el.clientWidth > 0) {
+        setWrapperWidth(el.clientWidth)
+      }
+    }
+    syncWidth()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver((entries) => {
+      const entryWidth = entries[0]?.contentRect?.width
+      if (typeof entryWidth === 'number' && entryWidth > 0) {
+        setWrapperWidth(Math.floor(entryWidth))
+      } else {
+        syncWidth()
+      }
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   const resolveKey = (record: T, idx: number): string | number => {
     if (typeof rowKey === 'function') return rowKey(record)
@@ -332,19 +380,31 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
     return col.fixed
   }
 
-  // 按 [左侧固定列, 常规滚动列, 右侧固定列] 规整排列，并计算多列粘性累加偏移
+  // 按 [左侧固定列, 常规滚动列, 右侧固定列] 规整排列，并支持拖拽过程实时重排映射
   const orderedColumns = useMemo(() => {
+    const baseCols =
+      liveDragOrder && liveDragOrder.length > 0
+        ? [...columns].sort((a, b) => {
+            const ia = liveDragOrder.indexOf(a.key)
+            const ib = liveDragOrder.indexOf(b.key)
+            if (ia === -1 && ib === -1) return 0
+            if (ia === -1) return 1
+            if (ib === -1) return -1
+            return ia - ib
+          })
+        : columns
+
     const leftCols: AbcColumn<T>[] = []
     const centerCols: AbcColumn<T>[] = []
     const rightCols: AbcColumn<T>[] = []
-    for (const col of columns) {
+    for (const col of baseCols) {
       const fx = getEffectiveFixed(col)
       if (fx === 'left') leftCols.push(col)
       else if (fx === 'right') rightCols.push(col)
       else centerCols.push(col)
     }
     return [...leftCols, ...centerCols, ...rightCols]
-  }, [columns, columnFixed])
+  }, [columns, columnFixed, liveDragOrder])
 
   const selectable = Array.isArray(selectedKeys) && typeof onSelectionChange === 'function'
   const hasExpandColumn = Boolean(expandable?.expandedRowRender)
@@ -400,6 +460,50 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
     return list
   }, [data, expandedKeys, rowKey])
 
+  const colWidthMeta = useMemo(() => {
+    const prefixW = (selectable ? 40 : 0) + (hasExpandColumn ? 36 : 0)
+    const baseWidths: Record<string, number> = {}
+    let sumBase = 0
+    for (const col of orderedColumns) {
+      const w = effectiveColumnWidths[col.key] ?? col.width ?? 150
+      baseWidths[col.key] = w
+      sumBase += w
+    }
+
+    const resolvedWidths: Record<string, number> = { ...baseWidths }
+    const availW = wrapperWidth
+    const slack = availW > prefixW + sumBase ? availW - (prefixW + sumBase) : 0
+
+    if (slack > 0) {
+      const isLocked = (col: AbcColumn<T>) =>
+        col.key === '__abc_actions__' ||
+        col.key in effectiveColumnWidths ||
+        Boolean(getEffectiveFixed(col))
+
+      const flexCols = orderedColumns.filter((c) => !isLocked(c))
+      const fallbackTargets = orderedColumns.filter((c) => c.key !== '__abc_actions__')
+      const targets = flexCols.length > 0 ? flexCols : fallbackTargets
+
+      if (targets.length > 0) {
+        const each = Math.floor(slack / targets.length)
+        let rem = slack - each * targets.length
+        for (const col of targets) {
+          const extra = each + (rem > 0 ? 1 : 0)
+          if (rem > 0) rem -= 1
+          resolvedWidths[col.key] = baseWidths[col.key] + extra
+        }
+      }
+    }
+
+    const totalResolved =
+      prefixW + orderedColumns.reduce((acc, col) => acc + (resolvedWidths[col.key] ?? 150), 0)
+
+    return {
+      resolvedWidths,
+      resolvedTableWidth: availW > 0 ? Math.max(availW, totalResolved) : undefined,
+    }
+  }, [orderedColumns, effectiveColumnWidths, columnFixed, wrapperWidth, selectable, hasExpandColumn])
+
   const stickyMeta = useMemo(() => {
     const leftOffsets: Record<string, number> = {}
     const rightOffsets: Record<string, number> = {}
@@ -410,7 +514,7 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
     for (const col of orderedColumns) {
       if (getEffectiveFixed(col) === 'left') {
         leftOffsets[col.key] = accLeft
-        accLeft += columnWidths[col.key] ?? col.width ?? 140
+        accLeft += colWidthMeta.resolvedWidths[col.key] ?? 150
         lastLeftKey = col.key
       }
     }
@@ -420,7 +524,7 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
       const col = orderedColumns[i]
       if (getEffectiveFixed(col) === 'right') {
         rightOffsets[col.key] = accRight
-        accRight += columnWidths[col.key] ?? col.width ?? 140
+        accRight += colWidthMeta.resolvedWidths[col.key] ?? 150
         firstRightKey = col.key
       }
     }
@@ -432,7 +536,7 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
       firstRightKey,
       hasAnyLeftFixed: Boolean(lastLeftKey),
     }
-  }, [orderedColumns, columnWidths, columnFixed, selectable, hasExpandColumn])
+  }, [orderedColumns, colWidthMeta, columnFixed, selectable, hasExpandColumn])
 
   const allPageKeys = useMemo(
     () => flattenedRows.map((item) => item.key),
@@ -470,24 +574,120 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
     )
   }
 
-  const startResizeColumn = (e: React.MouseEvent, col: AbcColumn<T>) => {
-    if (!onColumnResize) return
+  const startResizeColumn = (
+    e: React.MouseEvent,
+    col: AbcColumn<T>,
+    edge: 'left' | 'right' = 'right'
+  ) => {
+    if (!isResizable) return
     e.preventDefault()
     e.stopPropagation()
     const startX = e.clientX
     const thEl = (e.currentTarget as HTMLElement).parentElement
-    const startW = columnWidths[col.key] ?? col.width ?? thEl?.offsetWidth ?? 140
+    const startW =
+      effectiveColumnWidths[col.key] ??
+      col.width ??
+      colWidthMeta.resolvedWidths[col.key] ??
+      thEl?.offsetWidth ??
+      140
+    const minW = col.key === '__abc_actions__' ? 80 : 72
+
+    const prevCursor = typeof document !== 'undefined' ? document.body.style.cursor : ''
+    const prevUserSelect = typeof document !== 'undefined' ? document.body.style.userSelect : ''
+    if (typeof document !== 'undefined') {
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+    }
 
     const onMove = (ev: MouseEvent) => {
-      onColumnResize(col.key, Math.max(72, startW + (ev.clientX - startX)))
+      const delta = ev.clientX - startX
+      const nextW =
+        edge === 'left'
+          ? Math.max(minW, Math.round(startW - delta))
+          : Math.max(minW, Math.round(startW + delta))
+      emitColumnResize(col.key, nextW)
     }
     const onUp = () => {
+      if (typeof document !== 'undefined') {
+        document.body.style.cursor = prevCursor
+        document.body.style.userSelect = prevUserSelect
+      }
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
   }
+
+  // 拖拽表头列序时按 Escape 立即中止并回滚至拖拽前排列
+  useEffect(() => {
+    if (!draggingKey) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        const origOrder = preDragOrderRef.current
+        setDraggingKey(null)
+        setLiveDragOrder(null)
+        preDragOrderRef.current = null
+        prevColRectsRef.current = null
+        hasLiveSwappedRef.current = false
+        if (origOrder && onColumnReorder) {
+          onColumnReorder(origOrder)
+        }
+      }
+    }
+    document.addEventListener('keydown', onKeyDown, true)
+    return () => document.removeEventListener('keydown', onKeyDown, true)
+  }, [draggingKey, onColumnReorder])
+
+  // WAAPI FLIP 列重排位移动画：采样旧坐标并在重排提交后平滑滑向新槽位
+  const orderedKeySig = orderedColumns.map((c) => c.key).join('|')
+  useLayoutEffect(() => {
+    const prevMap = prevColRectsRef.current
+    if (!prevMap) return
+    prevColRectsRef.current = null
+
+    const wrapper = wrapperRef.current
+    if (!wrapper || resolvedMotion === 'none') return
+    const reducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reducedMotion) return
+
+    const duration = resolvedMotion === 'subtle' ? 140 : 220
+    const easing = 'cubic-bezier(0.22, 1, 0.36, 1)'
+
+    wrapper.querySelectorAll<HTMLElement>('[data-col-key]').forEach((thEl) => {
+      const k = thEl.dataset.colKey
+      if (!k) return
+      const prevLeft = prevMap.get(k)
+      if (prevLeft === undefined) return
+      const nextLeft = thEl.getBoundingClientRect().left
+      const deltaX = prevLeft - nextLeft
+      if (Math.abs(deltaX) <= 1) return
+
+      if (typeof thEl.animate === 'function') {
+        thEl.animate([{ translate: `${deltaX}px 0` }, { translate: '0 0' }], {
+          duration,
+          easing,
+        })
+      }
+
+      const escapedKey =
+        typeof CSS !== 'undefined' && typeof CSS.escape === 'function' ? CSS.escape(k) : k
+      const cellEls = wrapper.querySelectorAll<HTMLElement>(`[data-col-cell="${escapedKey}"]`)
+      const limit = Math.min(cellEls.length, 20)
+      for (let i = 0; i < limit; i++) {
+        const cell = cellEls[i]
+        if (typeof cell.animate === 'function') {
+          cell.animate([{ translate: `${deltaX}px 0` }, { translate: '0 0' }], {
+            duration,
+            easing,
+          })
+        }
+      }
+    })
+  }, [orderedKeySig, resolvedMotion])
 
   const handleSortClick = (col: AbcColumn<T>) => {
     if (!col.sortable || !onSortChange) return
@@ -552,6 +752,7 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
       tabIndex={0}
       role="region"
       aria-label={ariaLabel}
+      data-motion={resolvedMotion}
       style={
         maxHeight !== undefined
           ? { maxHeight: typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight }
@@ -562,7 +763,24 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
         className
       )}
     >
-      <table className="w-full border-separate border-spacing-0 text-left text-xs">
+      <table
+        style={{
+          width: colWidthMeta.resolvedTableWidth ? `${colWidthMeta.resolvedTableWidth}px` : '100%',
+          tableLayout: 'fixed',
+        }}
+        className="w-full border-separate border-spacing-0 text-left text-xs"
+      >
+        <colgroup>
+          {selectable && <col style={{ width: '40px' }} />}
+          {hasExpandColumn && <col style={{ width: '36px' }} />}
+          {orderedColumns.map((col) => (
+            <col
+              key={col.key}
+              data-col-width-key={col.key}
+              style={{ width: `${colWidthMeta.resolvedWidths[col.key]}px` }}
+            />
+          ))}
+        </colgroup>
         <thead className="sticky top-0 z-20 bg-[var(--abc-bg-muted)]">
           <tr>
             {selectable && (
@@ -595,49 +813,121 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
               />
             )}
             {orderedColumns.map((col) => {
-              const colW = columnWidths[col.key] ?? col.width
+              const colW = colWidthMeta.resolvedWidths[col.key]
               const fx = getEffectiveFixed(col)
               const currentDir = sortState?.key === col.key ? sortState.direction : null
+              const isDraggingThis = draggingKey === col.key
               const stickyStyle: React.CSSProperties = {
                 width: colW ? `${colW}px` : undefined,
                 ...(fx === 'left' ? { left: `${stickyMeta.leftOffsets[col.key] ?? 0}px` } : {}),
                 ...(fx === 'right' ? { right: `${stickyMeta.rightOffsets[col.key] ?? 0}px` } : {}),
               }
 
+              const commitReorderAt = (targetColKey: string) => {
+                if (!draggingKey || !onColumnReorder) return
+                const currentKeys =
+                  liveDragOrder && liveDragOrder.length > 0
+                    ? liveDragOrder
+                    : orderedColumns
+                        .filter((c) => c.key !== '__abc_actions__')
+                        .map((c) => c.key)
+                const fromIdx = currentKeys.indexOf(draggingKey)
+                const toIdx = currentKeys.indexOf(targetColKey)
+                if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return
+
+                if (wrapperRef.current) {
+                  const map = new Map<string, number>()
+                  wrapperRef.current
+                    .querySelectorAll<HTMLElement>('[data-col-key]')
+                    .forEach((el) => {
+                      const k = el.dataset.colKey
+                      if (k) map.set(k, el.getBoundingClientRect().left)
+                    })
+                  prevColRectsRef.current = map
+                }
+
+                const reordered = [...currentKeys]
+                const [moved] = reordered.splice(fromIdx, 1)
+                reordered.splice(toIdx, 0, moved)
+                hasLiveSwappedRef.current = true
+                setLiveDragOrder(reordered)
+                onColumnReorder(reordered)
+              }
+
               return (
                 <th
                   key={col.key}
+                  data-col-key={col.key}
+                  data-dragging={isDraggingThis ? 'true' : undefined}
                   draggable={Boolean(onColumnReorder && !fx && col.key !== '__abc_actions__')}
                   onContextMenu={(e) => handleHeaderContextMenu(e, col)}
-                  onDragStart={() => setDraggingKey(col.key)}
-                  onDragOver={(e) => {
-                    if (draggingKey && draggingKey !== col.key && !fx) {
-                      e.preventDefault()
-                    }
-                  }}
-                  onDrop={() => {
-                    if (!draggingKey || draggingKey === col.key || !onColumnReorder) return
-                    const keys = orderedColumns
+                  onDragStart={(e) => {
+                    const initialKeys = orderedColumns
                       .filter((c) => c.key !== '__abc_actions__')
                       .map((c) => c.key)
-                    const fromIdx = keys.indexOf(draggingKey)
-                    const toIdx = keys.indexOf(col.key)
-                    if (fromIdx >= 0 && toIdx >= 0) {
-                      const reordered = [...keys]
-                      const [moved] = reordered.splice(fromIdx, 1)
-                      reordered.splice(toIdx, 0, moved)
-                      onColumnReorder(reordered)
+                    preDragOrderRef.current = initialKeys
+                    hasLiveSwappedRef.current = false
+                    setDraggingKey(col.key)
+                    setLiveDragOrder(initialKeys)
+                    if (e.dataTransfer) {
+                      e.dataTransfer.effectAllowed = 'move'
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    if (
+                      !draggingKey ||
+                      draggingKey === col.key ||
+                      fx ||
+                      col.key === '__abc_actions__' ||
+                      !onColumnReorder
+                    ) {
+                      return
+                    }
+                    e.preventDefault()
+
+                    const currentKeys =
+                      liveDragOrder && liveDragOrder.length > 0
+                        ? liveDragOrder
+                        : orderedColumns
+                            .filter((c) => c.key !== '__abc_actions__')
+                            .map((c) => c.key)
+                    const fromIdx = currentKeys.indexOf(draggingKey)
+                    const toIdx = currentKeys.indexOf(col.key)
+                    if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return
+
+                    // 宽度不等列之间加入 35%/65% 越界防抖阈值，避免边界高频往返抖动；jsdom (width=0) 直接放行
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    if (rect.width > 0) {
+                      if (fromIdx < toIdx && e.clientX < rect.left + rect.width * 0.35) return
+                      if (fromIdx > toIdx && e.clientX > rect.left + rect.width * 0.65) return
+                    }
+                    commitReorderAt(col.key)
+                  }}
+                  onDrop={() => {
+                    if (draggingKey && draggingKey !== col.key && !hasLiveSwappedRef.current && !fx && col.key !== '__abc_actions__') {
+                      commitReorderAt(col.key)
                     }
                     setDraggingKey(null)
+                    setLiveDragOrder(null)
+                    preDragOrderRef.current = null
+                    hasLiveSwappedRef.current = false
+                  }}
+                  onDragEnd={() => {
+                    setDraggingKey(null)
+                    setLiveDragOrder(null)
+                    preDragOrderRef.current = null
+                    hasLiveSwappedRef.current = false
                   }}
                   style={stickyStyle}
                   className={cn(
-                    'group relative border-b border-[var(--abc-border)] bg-[var(--abc-bg-muted)] font-semibold whitespace-nowrap text-[var(--abc-fg-secondary)] select-none',
+                    'group relative border-b border-[var(--abc-border)] bg-[var(--abc-bg-muted)] font-semibold whitespace-nowrap text-[var(--abc-fg-secondary)] select-none transition-colors duration-[var(--abc-motion-fast)]',
                     DENSITY_CELL_PY[density],
                     col.align === 'center' && 'text-center',
                     col.align === 'right' && 'text-right',
                     fx === 'left' && 'sticky z-20',
                     fx === 'right' && 'sticky z-20',
+                    isDraggingThis &&
+                      'bg-[var(--abc-primary-soft)] text-[var(--abc-primary)] shadow-[inset_0_2px_0_0_var(--abc-primary)]',
                     col.key === stickyMeta.lastLeftKey &&
                       'shadow-[3px_0_6px_-3px_rgba(15,23,42,0.12)]',
                     col.key === stickyMeta.firstRightKey &&
@@ -695,14 +985,24 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
                     )}
                   </div>
 
-                  {onColumnResize && col.key !== '__abc_actions__' && (
-                    <span
-                      role="separator"
-                      aria-label={`拖拽调节 ${col.title} 列宽`}
-                      onMouseDown={(e) => startResizeColumn(e, col)}
-                      className="absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize hover:bg-[var(--abc-primary)]/50"
-                    />
-                  )}
+                  {isResizable &&
+                    (fx === 'right' ? (
+                      <span
+                        role="separator"
+                        aria-orientation="vertical"
+                        aria-label={`拖拽调节 ${col.title} 列宽`}
+                        onMouseDown={(e) => startResizeColumn(e, col, 'left')}
+                        className="absolute top-0 bottom-0 left-0 z-10 w-2 cursor-col-resize select-none hover:bg-[var(--abc-primary)]/60 active:bg-[var(--abc-primary)]"
+                      />
+                    ) : (
+                      <span
+                        role="separator"
+                        aria-orientation="vertical"
+                        aria-label={`拖拽调节 ${col.title} 列宽`}
+                        onMouseDown={(e) => startResizeColumn(e, col, 'right')}
+                        className="absolute top-0 right-0 bottom-0 z-10 w-2 cursor-col-resize select-none hover:bg-[var(--abc-primary)]/60 active:bg-[var(--abc-primary)]"
+                      />
+                    ))}
                 </th>
               )
             })}
@@ -865,6 +1165,7 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
                       return (
                         <td
                           key={col.key}
+                          data-col-cell={col.key}
                           style={{
                             ...(fx === 'left'
                               ? { left: `${stickyMeta.leftOffsets[col.key] ?? 0}px` }
@@ -874,10 +1175,11 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
                               : {}),
                           }}
                           className={cn(
-                            'border-b border-[var(--abc-border)] text-[var(--abc-fg-secondary)]',
+                            'border-b border-[var(--abc-border)] text-[var(--abc-fg-secondary)] transition-colors duration-[var(--abc-motion-fast)]',
                             DENSITY_CELL_PY[density],
                             col.align === 'center' && 'text-center',
                             col.align === 'right' && 'text-right',
+                            draggingKey === col.key && 'bg-[var(--abc-primary-soft)]/30',
                             fx === 'left' &&
                               'sticky z-10 bg-[var(--abc-bg-surface)] group-hover:bg-[var(--abc-bg-muted)]',
                             fx === 'right' &&
@@ -947,8 +1249,12 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
             role="menu"
             aria-label={`${contextMenu.col.title} 列操作菜单`}
             data-abc-floating=""
+            data-motion={resolvedMotion}
             style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
-            className="fixed z-[1350] w-44 rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] p-1 text-xs shadow-[var(--abc-shadow-popover)] abc-animate-popover-in select-none"
+            className={cn(
+              'fixed z-[1350] w-44 rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] p-1 text-xs shadow-[var(--abc-shadow-popover)] select-none',
+              resolvedMotion !== 'none' && 'abc-animate-popover-in'
+            )}
           >
             <div className="truncate border-b border-[var(--abc-border)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--abc-fg-muted)]">
               列：{contextMenu.col.title}

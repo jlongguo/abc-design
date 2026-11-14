@@ -1,5 +1,7 @@
 import React from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { Loader2 } from 'lucide-react'
+import { useAbcMotion, useAbcSize } from '../../hooks/useAbcDefaults'
 import { cn } from '../../utils/cn'
 
 export type ButtonVariant =
@@ -12,13 +14,15 @@ export type ButtonVariant =
   | 'ghost'
   | 'text'
 
-export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg'
+export type ButtonSize = AbcSize
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** 视觉语义变体 */
   variant?: ButtonVariant
-  /** 控件高度规格（默认对齐企业紧凑基线 sm = var(--abc-control-h-sm)） */
+  /** 控件高度规格（默认对齐企业紧凑基线 sm = var(--abc-control-h-sm)，支持全局 componentSize 继承） */
   size?: ButtonSize
+  /** 组件交互动效规格（默认继承 AbcProvider.theme.motion） */
+  motion?: AbcMotionPreset
   /** 加载中状态 */
   loading?: boolean
   /** 左侧前置图标 */
@@ -64,7 +68,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     {
       className,
       variant = 'primary',
-      size = 'sm',
+      size,
+      motion,
       loading = false,
       disabled,
       icon,
@@ -76,6 +81,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
+    const resolvedSize = useAbcSize(size, 'sm')
+    const resolvedMotion = useAbcMotion(motion)
     const isDisabled = Boolean(disabled || loading)
 
     return (
@@ -83,12 +90,13 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         type={type}
         disabled={isDisabled}
+        data-motion={resolvedMotion}
         className={cn(
-          'inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md)] font-medium transition-[background-color,border-color,color,box-shadow,transform,scale,opacity] duration-150 ease-out select-none shrink-0 cursor-pointer',
+          'inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md)] font-medium select-none shrink-0 cursor-pointer abc-motion-control',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-primary)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--abc-bg-surface)]',
-          'disabled:opacity-45 disabled:cursor-not-allowed motion-safe:enabled:active:scale-[0.97]',
+          'disabled:opacity-45 disabled:cursor-not-allowed',
           VARIANT_CLASSES[variant],
-          SIZE_CLASSES[size],
+          SIZE_CLASSES[resolvedSize],
           block && 'w-full',
           className
         )}

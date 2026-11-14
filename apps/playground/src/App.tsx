@@ -15,6 +15,7 @@ import {
   type AbcMenuItem,
 } from '@abc-design/react'
 import { Building2, LogOut, Sparkles } from 'lucide-react'
+import { CardsAndMotionDocsPage } from './pages/CardsAndMotionDocsPage'
 import { ChartsDocsPage } from './pages/ChartsDocsPage'
 import { DataAndFeedbackDocsPage } from './pages/DataAndFeedbackDocsPage'
 import { GeneralAndFormDocsPage } from './pages/GeneralAndFormDocsPage'
@@ -35,6 +36,7 @@ const MENU_TREE: AbcMenuItem[] = [
       { key: 'overview', label: 'Design Tokens 总览', path: '/overview', icon: 'dashboard' },
       { key: 'docs-form', label: '通用与表单控件文档', path: '/docs/form', icon: 'components' },
       { key: 'docs-display', label: '数据展示与反馈文档', path: '/docs/display', icon: 'layers' },
+      { key: 'docs-cards', label: '卡片矩阵与动效规格', path: '/docs/cards', icon: 'sparkles' },
       { key: 'docs-charts', label: '自适应图表与指标卡', path: '/docs/charts', icon: 'chart' },
     ],
   },
@@ -157,6 +159,7 @@ export const App: React.FC = () => {
         {pathname === '/overview' && <OverviewPage onJump={setPathname} />}
         {pathname === '/docs/form' && <GeneralAndFormDocsPage />}
         {pathname === '/docs/display' && <DataAndFeedbackDocsPage />}
+        {pathname === '/docs/cards' && <CardsAndMotionDocsPage />}
         {pathname === '/docs/charts' && <ChartsDocsPage />}
         {pathname === '/layouts' && (
           <LayoutsPage

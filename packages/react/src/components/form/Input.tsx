@@ -1,8 +1,10 @@
 import React, { useCallback, useId, useImperativeHandle, useRef, useState } from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { Eye, EyeOff, Minus, Plus, X } from 'lucide-react'
+import { useAbcMotion, useAbcSize } from '../../hooks/useAbcDefaults'
 import { cn } from '../../utils/cn'
 
-export type ControlSize = 'xs' | 'sm' | 'md' | 'lg'
+export type ControlSize = AbcSize
 
 const HEIGHT_BY_SIZE: Record<ControlSize, string> = {
   xs: 'h-[var(--abc-control-h-xs)] text-xs',
@@ -11,12 +13,21 @@ const HEIGHT_BY_SIZE: Record<ControlSize, string> = {
   lg: 'h-[var(--abc-control-h-lg)] text-sm',
 }
 
+const TEXTAREA_SIZE_CLASSES: Record<ControlSize, string> = {
+  xs: 'px-2 py-1 text-xs min-h-[60px]',
+  sm: 'px-2.5 py-1.5 text-xs min-h-[72px]',
+  md: 'px-3 py-2 text-sm min-h-[84px]',
+  lg: 'px-3.5 py-2.5 text-sm min-h-[98px]',
+}
+
 export const baseFieldControlClass =
-  'w-full rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] transition-all duration-150 enabled:hover:border-[var(--abc-border-strong)] focus-within:border-[var(--abc-primary)] focus-within:ring-2 focus-within:ring-[var(--abc-ring)] focus:border-[var(--abc-primary)] focus:ring-2 focus:ring-[var(--abc-ring)] focus:outline-none disabled:bg-[var(--abc-bg-muted)] disabled:text-[var(--abc-fg-muted)] disabled:cursor-not-allowed'
+  'w-full rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] transition-[color,background-color,border-color,box-shadow] duration-[var(--abc-motion-fast,140ms)] ease-out enabled:hover:border-[var(--abc-border-strong)] focus-within:border-[var(--abc-primary)] focus-within:ring-2 focus-within:ring-[var(--abc-ring)] focus:border-[var(--abc-primary)] focus:ring-2 focus:ring-[var(--abc-ring)] focus:outline-none disabled:bg-[var(--abc-bg-muted)] disabled:text-[var(--abc-fg-muted)] disabled:cursor-not-allowed'
 
 export interface InputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size' | 'prefix'> {
   size?: ControlSize
+  /** 组件交互动效规格 */
+  motion?: AbcMotionPreset
   /** 内联字段标签（亦可配合外层 FormField 使用） */
   label?: React.ReactNode
   /** 校验错误提示文案，存在时自动开启危险态高亮 */
@@ -51,7 +62,8 @@ export interface InputProps
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
     {
-      size = 'sm',
+      size,
+      motion,
       label,
       error,
       helperText,
@@ -79,6 +91,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     },
     ref
   ) => {
+    const resolvedSize = useAbcSize(size, 'sm')
+    const resolvedMotion = useAbcMotion(motion)
     const generatedId = useId()
     const inputId = id || generatedId
     const innerRef = useRef<HTMLInputElement | null>(null)
@@ -175,10 +189,11 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           onChange={handleInputChange}
           disabled={disabled}
           readOnly={readOnly}
+          data-motion={resolvedMotion}
           aria-invalid={isInvalid || undefined}
           className={cn(
             baseFieldControlClass,
-            HEIGHT_BY_SIZE[size],
+            HEIGHT_BY_SIZE[resolvedSize],
             leadingNode ? 'pl-9' : 'pl-3',
             rightPaddingClass,
             '[&::-ms-reveal]:hidden [&::-ms-clear]:hidden',
@@ -284,6 +299,7 @@ export interface InputNumberProps {
   max?: number
   step?: number
   size?: ControlSize
+  motion?: AbcMotionPreset
   disabled?: boolean
   placeholder?: string
   invalid?: boolean
@@ -298,12 +314,15 @@ export const InputNumber: React.FC<InputNumberProps> = ({
   min,
   max,
   step = 1,
-  size = 'sm',
+  size,
+  motion,
   disabled = false,
   placeholder,
   invalid = false,
   className,
 }) => {
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
   const inputId = useId()
   const [internal, setInternal] = useState<number | null>(defaultValue ?? null)
   const current = value !== undefined ? value : internal
@@ -322,10 +341,11 @@ export const InputNumber: React.FC<InputNumberProps> = ({
 
   return (
     <div
+      data-motion={resolvedMotion}
       className={cn(
         'inline-flex w-full items-center overflow-hidden',
         baseFieldControlClass,
-        HEIGHT_BY_SIZE[size],
+        HEIGHT_BY_SIZE[resolvedSize],
         invalid && 'border-[var(--abc-danger)]',
         disabled && 'opacity-65 cursor-not-allowed bg-[var(--abc-bg-muted)]',
         className
@@ -336,7 +356,7 @@ export const InputNumber: React.FC<InputNumberProps> = ({
         aria-label="减少数值"
         disabled={disabled || (min !== undefined && (current ?? 0) <= min)}
         onClick={() => commit((current ?? 0) - step)}
-        className="flex h-full w-7 shrink-0 items-center justify-center border-r border-[var(--abc-border)] text-[var(--abc-fg-muted)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)] disabled:opacity-40 cursor-pointer"
+        className="flex h-full w-7 shrink-0 items-center justify-center border-r border-[var(--abc-border)] text-[var(--abc-fg-muted)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)] disabled:opacity-40 cursor-pointer abc-motion-control"
       >
         <Minus className="h-3 w-3" />
       </button>
@@ -360,7 +380,7 @@ export const InputNumber: React.FC<InputNumberProps> = ({
         aria-label="增加数值"
         disabled={disabled || (max !== undefined && (current ?? 0) >= max)}
         onClick={() => commit((current ?? 0) + step)}
-        className="flex h-full w-7 shrink-0 items-center justify-center border-l border-[var(--abc-border)] text-[var(--abc-fg-muted)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)] disabled:opacity-40 cursor-pointer"
+        className="flex h-full w-7 shrink-0 items-center justify-center border-l border-[var(--abc-border)] text-[var(--abc-fg-muted)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)] disabled:opacity-40 cursor-pointer abc-motion-control"
       >
         <Plus className="h-3 w-3" />
       </button>
@@ -369,6 +389,8 @@ export const InputNumber: React.FC<InputNumberProps> = ({
 }
 
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  size?: ControlSize
+  motion?: AbcMotionPreset
   label?: React.ReactNode
   error?: string
   helperText?: React.ReactNode
@@ -376,10 +398,12 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
   invalid?: boolean
 }
 
-/** 多行文本域组件（支持内联标签、错误文案与实时字数统计） */
+/** 多行文本域组件（支持四档尺寸、动效规格、内联标签、错误文案与实时字数统计） */
 export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   (
     {
+      size,
+      motion,
       label,
       error,
       helperText,
@@ -396,6 +420,8 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     },
     ref
   ) => {
+    const resolvedSize = useAbcSize(size, 'sm')
+    const resolvedMotion = useAbcMotion(motion)
     const generatedId = useId()
     const textareaId = id || generatedId
     const [uncontrolledLength, setUncontrolledLength] = useState(
@@ -421,10 +447,12 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         defaultValue={defaultValue}
         maxLength={maxLength}
         onChange={handleChange}
+        data-motion={resolvedMotion}
         aria-invalid={isInvalid || undefined}
         className={cn(
           baseFieldControlClass,
-          'p-2.5 text-xs leading-relaxed resize-y',
+          TEXTAREA_SIZE_CLASSES[resolvedSize],
+          'leading-relaxed resize-y',
           isInvalid && 'border-[var(--abc-danger)] focus:border-[var(--abc-danger)]',
           className
         )}

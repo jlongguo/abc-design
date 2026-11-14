@@ -54,7 +54,9 @@
   }
   @media (prefers-reduced-motion: no-preference) {
     .abc-collapse-item::details-content {
-      transition: block-size 0.24s ease-in-out, content-visibility 0.24s ease-in-out allow-discrete;
+      transition:
+        block-size var(--abc-motion-base, 220ms) var(--abc-ease-standard, ease-in-out),
+        content-visibility var(--abc-motion-base, 220ms) ease-in-out allow-discrete;
     }
   }
 
@@ -65,8 +67,8 @@
     opacity: 0;
     @media (prefers-reduced-motion: no-preference) {
       transition:
-        grid-template-rows 220ms cubic-bezier(0.16, 1, 0.3, 1),
-        opacity 160ms ease-out;
+        grid-template-rows var(--abc-motion-base, 220ms) var(--abc-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+        opacity var(--abc-motion-fast, 140ms) ease-out;
     }
   }
 
@@ -78,6 +80,46 @@
 
   .abc-collapse-grid > div {
     overflow: hidden;
+  }
+
+  /* ==================== 统一组件微交互规格类（关联 --abc-motion-* 与 --abc-ease-active） ==================== */
+  .abc-motion-control {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform, scale;
+    transition-duration: var(--abc-motion-fast, 140ms);
+    transition-timing-function: var(--abc-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+    @media (prefers-reduced-motion: no-preference) {
+      transition-timing-function:
+        ease-out, ease-out, ease-out, ease-out, ease-out,
+        var(--abc-ease-active, cubic-bezier(0.16, 1, 0.3, 1)),
+        var(--abc-ease-active, cubic-bezier(0.16, 1, 0.3, 1));
+      &:active:not(:disabled):not([aria-disabled="true"]) {
+        scale: var(--abc-press-scale, 0.97);
+      }
+    }
+  }
+
+  .abc-motion-surface {
+    transition-property: border-color, background-color, box-shadow, translate, transform, scale;
+    transition-duration: var(--abc-motion-base, 220ms);
+    transition-timing-function: var(--abc-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
+    @media (prefers-reduced-motion: no-preference) {
+      transition-timing-function:
+        ease-out, ease-out, ease-out,
+        var(--abc-ease-active, cubic-bezier(0.16, 1, 0.3, 1)),
+        var(--abc-ease-active, cubic-bezier(0.16, 1, 0.3, 1)),
+        var(--abc-ease-active, cubic-bezier(0.16, 1, 0.3, 1));
+      &[data-interactive="true"]:hover {
+        translate: 0 var(--abc-hover-lift, -2px);
+      }
+    }
+  }
+
+  .abc-motion-pop {
+    @media (prefers-reduced-motion: no-preference) {
+      animation:
+        abc-pop-scale var(--abc-motion-fast, 140ms) var(--abc-ease-active, cubic-bezier(0.16, 1, 0.3, 1)) both,
+        abc-fade-in var(--abc-motion-fast, 140ms) ease-out both;
+    }
   }
 }
 
@@ -104,9 +146,24 @@
   to { scale: 1; }
 }
 
+@keyframes abc-pop-scale {
+  from { scale: 0.88; }
+  to { scale: 1; }
+}
+
 @keyframes abc-popover-shrink {
   from { scale: 1; }
   to { scale: 0.95; }
+}
+
+@keyframes abc-tooltip-in {
+  from { scale: 0.96; }
+  to { scale: 1; }
+}
+
+@keyframes abc-tooltip-out {
+  from { scale: 1; }
+  to { scale: 0.97; }
 }
 
 @keyframes abc-modal-rise {
@@ -153,12 +210,10 @@
 
 @keyframes abc-floating-bar-rise {
   from {
-    opacity: 0;
     translate: 0 18px;
     scale: 0.94;
   }
   to {
-    opacity: 1;
     translate: 0 0;
     scale: 1;
   }
@@ -211,91 +266,127 @@
   50% { transform: translate3d(3%, -4%, 0) scale(1.06); }
 }
 
-/* ==================== 按需渐进式动效类（逐规则内嵌 prefers-reduced-motion 处理，保留静态终态与色彩过渡） ==================== */
+/* ==================== 按需渐进式动效类（逐规则内嵌 prefers-reduced-motion 与 --abc-motion 档位控制） ==================== */
 .abc-animate-fade-in {
-  animation: abc-fade-in 150ms ease-out both;
+  animation: abc-fade-in var(--abc-motion-fast, 150ms) ease-out both;
 }
 
 .abc-animate-fade-out {
-  animation: abc-fade-out 130ms ease-in both;
+  animation: abc-fade-out var(--abc-motion-fast, 130ms) ease-in both;
 }
 
 .abc-animate-popover-in {
-  animation: abc-fade-in 140ms ease-out both;
+  animation: abc-fade-in var(--abc-motion-fast, 140ms) ease-out both;
   @media (prefers-reduced-motion: no-preference) {
     animation:
-      abc-popover-grow 200ms cubic-bezier(0.16, 1, 0.3, 1) both,
-      abc-fade-in 140ms ease-out both;
-    animation:
-      abc-popover-grow 240ms linear(0, 0.52 16%, 1.04 42%, 0.99 68%, 1) both,
-      abc-fade-in 140ms ease-out both;
+      abc-popover-grow var(--abc-motion-base, 220ms) var(--abc-ease-active, cubic-bezier(0.16, 1, 0.3, 1)) both,
+      abc-fade-in var(--abc-motion-fast, 140ms) ease-out both;
   }
 }
 
 .abc-animate-popover-out {
-  animation: abc-fade-out 120ms ease-in both;
+  animation: abc-fade-out var(--abc-motion-fast, 120ms) ease-in both;
   @media (prefers-reduced-motion: no-preference) {
     animation:
-      abc-popover-shrink 120ms ease-in both,
-      abc-fade-out 120ms ease-in both;
+      abc-popover-shrink var(--abc-motion-fast, 120ms) ease-in both,
+      abc-fade-out var(--abc-motion-fast, 120ms) ease-in both;
+  }
+}
+
+/* Tooltip 使用收敛平滑的无回弹入退场曲线，避免小气泡与旋转箭头产生过冲颤动 */
+.abc-animate-tooltip-in {
+  animation: abc-fade-in var(--abc-motion-fast, 120ms) ease-out both;
+  @media (prefers-reduced-motion: no-preference) {
+    animation:
+      abc-tooltip-in var(--abc-motion-fast, 120ms) var(--abc-ease-out, cubic-bezier(0.22, 1, 0.36, 1)) both,
+      abc-fade-in var(--abc-motion-fast, 120ms) ease-out both;
+  }
+}
+
+.abc-animate-tooltip-out {
+  animation: abc-fade-out 100ms ease-in both;
+  @media (prefers-reduced-motion: no-preference) {
+    animation:
+      abc-tooltip-out 100ms ease-in both,
+      abc-fade-out 100ms ease-in both;
   }
 }
 
 .abc-animate-modal-in {
-  animation: abc-fade-in 160ms ease-out both;
+  animation: abc-fade-in var(--abc-motion-fast, 160ms) ease-out both;
   @media (prefers-reduced-motion: no-preference) {
     animation:
-      abc-modal-rise 220ms cubic-bezier(0.16, 1, 0.3, 1) both,
-      abc-fade-in 160ms ease-out both;
-    animation:
-      abc-modal-rise 270ms linear(0, 0.48 15%, 1.035 40%, 0.992 66%, 1) both,
-      abc-fade-in 160ms ease-out both;
+      abc-modal-rise var(--abc-motion-base, 240ms) var(--abc-ease-active, cubic-bezier(0.16, 1, 0.3, 1)) both,
+      abc-fade-in var(--abc-motion-fast, 160ms) ease-out both;
   }
 }
 
 .abc-animate-modal-out {
-  animation: abc-fade-out 140ms ease-in both;
+  animation: abc-fade-out var(--abc-motion-fast, 140ms) ease-in both;
   @media (prefers-reduced-motion: no-preference) {
     animation:
-      abc-modal-sink 150ms ease-in both,
-      abc-fade-out 140ms ease-in both;
+      abc-modal-sink var(--abc-motion-fast, 150ms) ease-in both,
+      abc-fade-out var(--abc-motion-fast, 140ms) ease-in both;
   }
 }
 
 .abc-animate-drawer-right-in {
-  animation: abc-fade-in 160ms ease-out both;
+  animation: abc-fade-in var(--abc-motion-fast, 160ms) ease-out both;
   @media (prefers-reduced-motion: no-preference) {
-    animation: abc-drawer-right-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: abc-drawer-right-in var(--abc-motion-base, 240ms) var(--abc-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)) both;
   }
 }
 
 .abc-animate-drawer-right-out {
-  animation: abc-fade-out 150ms ease-in both;
+  animation: abc-fade-out var(--abc-motion-fast, 150ms) ease-in both;
   @media (prefers-reduced-motion: no-preference) {
-    animation: abc-drawer-right-out 180ms ease-in both;
+    animation: abc-drawer-right-out var(--abc-motion-fast, 180ms) ease-in both;
   }
 }
 
 .abc-animate-drawer-left-in {
-  animation: abc-fade-in 160ms ease-out both;
+  animation: abc-fade-in var(--abc-motion-fast, 160ms) ease-out both;
   @media (prefers-reduced-motion: no-preference) {
-    animation: abc-drawer-left-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: abc-drawer-left-in var(--abc-motion-base, 240ms) var(--abc-ease-standard, cubic-bezier(0.16, 1, 0.3, 1)) both;
   }
 }
 
 .abc-animate-drawer-left-out {
-  animation: abc-fade-out 150ms ease-in both;
+  animation: abc-fade-out var(--abc-motion-fast, 150ms) ease-in both;
   @media (prefers-reduced-motion: no-preference) {
-    animation: abc-drawer-left-out 180ms ease-in both;
+    animation: abc-drawer-left-out var(--abc-motion-fast, 180ms) ease-in both;
   }
 }
 
 .abc-floating-bar-in {
-  animation: abc-fade-in 150ms ease-out both;
+  animation: abc-fade-in var(--abc-motion-fast, 150ms) ease-out both;
   @media (prefers-reduced-motion: no-preference) {
-    animation: abc-floating-bar-rise 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
-    animation: abc-floating-bar-rise 280ms linear(0, 0.5 16%, 1.05 42%, 0.99 68%, 1) both;
+    animation:
+      abc-floating-bar-rise var(--abc-motion-base, 240ms) var(--abc-ease-active, cubic-bezier(0.16, 1, 0.3, 1)) both,
+      abc-fade-in var(--abc-motion-fast, 150ms) ease-out both;
   }
+}
+
+/* 当全局或局部开启 motion="none" 时，关闭位移/缩放动画，保证无延迟响应 */
+:is([data-abc-motion="none"], [data-motion="none"]) .abc-animate-popover-in,
+:is([data-abc-motion="none"], [data-motion="none"]) .abc-animate-popover-out,
+:is([data-abc-motion="none"], [data-motion="none"]) .abc-animate-tooltip-in,
+:is([data-abc-motion="none"], [data-motion="none"]) .abc-animate-tooltip-out,
+:is([data-abc-motion="none"], [data-motion="none"]) .abc-animate-modal-in,
+:is([data-abc-motion="none"], [data-motion="none"]) .abc-animate-modal-out,
+:is([data-abc-motion="none"], [data-motion="none"]) .abc-animate-drawer-right-in,
+:is([data-abc-motion="none"], [data-motion="none"]) .abc-animate-drawer-right-out,
+:is([data-abc-motion="none"], [data-motion="none"]) .abc-animate-drawer-left-in,
+:is([data-abc-motion="none"], [data-motion="none"]) .abc-animate-drawer-left-out,
+:is([data-abc-motion="none"], [data-motion="none"]) .abc-floating-bar-in,
+:is([data-abc-motion="none"], [data-motion="none"]) .abc-motion-pop,
+.abc-animate-popover-in[data-motion="none"],
+.abc-animate-popover-out[data-motion="none"],
+.abc-animate-tooltip-in[data-motion="none"],
+.abc-animate-tooltip-out[data-motion="none"],
+.abc-animate-modal-in[data-motion="none"],
+.abc-motion-pop[data-motion="none"] {
+  animation: none !important;
 }
 
 .abc-page-fade-slide {

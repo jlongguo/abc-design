@@ -1,4 +1,5 @@
 import type React from 'react'
+import type { AbcSize } from '@abc-design/tokens'
 import type { DropdownMenuItem } from '../components/display/Overlays'
 
 /** 5 大标准企业级布局拓扑模式 */
@@ -62,9 +63,9 @@ export interface AbcLayoutSettings {
   tabStyle?: AbcTabStyle
   keepAlive: boolean
   contentWidth: AbcContentWidth
-  /** 侧边栏展开像素宽度（默认 232，可调范围 196-288） */
+  /** 侧边栏展开像素宽度（不指定时随 componentSize 自动联动，自定义时可设为 196-288） */
   sidebarWidth?: number
-  /** 顶栏像素高度（默认 54，可调范围 46-66） */
+  /** 顶栏像素高度（不指定时随 componentSize 自动联动，自定义时可设为 46-66） */
   headerHeight?: number
   /** 是否启用顶栏毛玻璃半透明模糊质感 */
   headerBlur?: boolean
@@ -72,6 +73,21 @@ export interface AbcLayoutSettings {
   showBreadcrumb?: boolean
   /** 是否在主内容区底部展示应用页脚 */
   showFooter?: boolean
+}
+
+/** 随全局四档尺寸联动的默认侧边栏宽度与顶栏高度对照表 */
+export const ABC_SIDEBAR_WIDTH_BY_SIZE: Record<AbcSize, number> = {
+  xs: 208,
+  sm: 232,
+  md: 248,
+  lg: 268,
+}
+
+export const ABC_HEADER_HEIGHT_BY_SIZE: Record<AbcSize, number> = {
+  xs: 48,
+  sm: 54,
+  md: 58,
+  lg: 62,
 }
 
 export const DEFAULT_ABC_LAYOUT_SETTINGS: AbcLayoutSettings = {
@@ -83,8 +99,6 @@ export const DEFAULT_ABC_LAYOUT_SETTINGS: AbcLayoutSettings = {
   tabStyle: 'card',
   keepAlive: true,
   contentWidth: 'fluid',
-  sidebarWidth: 232,
-  headerHeight: 54,
   headerBlur: true,
   showBreadcrumb: true,
   showFooter: false,

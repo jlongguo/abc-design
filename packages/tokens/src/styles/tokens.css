@@ -95,6 +95,18 @@
     --abc-shadow-popover: 0 12px 32px -6px rgba(15, 23, 42, 0.14), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
     --abc-shadow-dialog: 0 24px 56px -12px rgba(15, 23, 42, 0.28);
 
+    /* 统一四档组件微交互动效 Token（默认 smooth 丝滑阻尼） */
+    --abc-motion-fast: 140ms;
+    --abc-motion-base: 220ms;
+    --abc-motion-slow: 320ms;
+    --abc-ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+    --abc-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --abc-ease-spring: linear(0, 0.48 15%, 1.04 40%, 0.99 66%, 1);
+    --abc-ease-active: var(--abc-ease-standard);
+    --abc-press-scale: 0.97;
+    --abc-hover-lift: -2px;
+    --abc-hover-scale: 1.01;
+
     /* 滚动条、自动填充与原生表单强调色 */
     --abc-autofill-bg: #f0f7ff;
     --abc-autofill-ring: color-mix(in srgb, var(--abc-brand-500) 42%, transparent);
@@ -302,6 +314,88 @@
 
   :root[data-abc-visual="color-weak"] {
     filter: hue-rotate(18deg) saturate(118%) contrast(104%);
+  }
+
+  /* ==================== 4 档壳层与导航骨架几何尺寸 (xs / sm / md / lg) ==================== */
+  :root[data-abc-size="xs"] {
+    --abc-sidebar-w: 208px;
+    --abc-sidebar-collapsed-w: 56px;
+    --abc-dual-rail-w: 56px;
+    --abc-dual-panel-w: 176px;
+    --abc-header-h: 48px;
+    --abc-tabbar-h: 32px;
+  }
+
+  :root[data-abc-size="sm"] {
+    --abc-sidebar-w: 232px;
+    --abc-sidebar-collapsed-w: 64px;
+    --abc-dual-rail-w: 64px;
+    --abc-dual-panel-w: 196px;
+    --abc-header-h: 54px;
+    --abc-tabbar-h: 38px;
+  }
+
+  :root[data-abc-size="md"] {
+    --abc-sidebar-w: 248px;
+    --abc-sidebar-collapsed-w: 68px;
+    --abc-dual-rail-w: 68px;
+    --abc-dual-panel-w: 212px;
+    --abc-header-h: 58px;
+    --abc-tabbar-h: 42px;
+  }
+
+  :root[data-abc-size="lg"] {
+    --abc-sidebar-w: 268px;
+    --abc-sidebar-collapsed-w: 74px;
+    --abc-dual-rail-w: 74px;
+    --abc-dual-panel-w: 228px;
+    --abc-header-h: 62px;
+    --abc-tabbar-h: 46px;
+  }
+
+  /* ==================== 4 档组件交互动效规格（支持全局 data-abc-motion 与组件级 data-motion 局部覆盖） ==================== */
+  [data-abc-motion="none"],
+  [data-motion="none"] {
+    --abc-motion-fast: 0ms;
+    --abc-motion-base: 0ms;
+    --abc-motion-slow: 0ms;
+    --abc-ease-active: linear;
+    --abc-press-scale: 1;
+    --abc-hover-lift: 0px;
+    --abc-hover-scale: 1;
+  }
+
+  [data-abc-motion="subtle"],
+  [data-motion="subtle"] {
+    --abc-motion-fast: 90ms;
+    --abc-motion-base: 140ms;
+    --abc-motion-slow: 200ms;
+    --abc-ease-active: var(--abc-ease-out);
+    --abc-press-scale: 0.988;
+    --abc-hover-lift: -1px;
+    --abc-hover-scale: 1.004;
+  }
+
+  [data-abc-motion="smooth"],
+  [data-motion="smooth"] {
+    --abc-motion-fast: 140ms;
+    --abc-motion-base: 220ms;
+    --abc-motion-slow: 320ms;
+    --abc-ease-active: var(--abc-ease-standard);
+    --abc-press-scale: 0.97;
+    --abc-hover-lift: -2px;
+    --abc-hover-scale: 1.01;
+  }
+
+  [data-abc-motion="spring"],
+  [data-motion="spring"] {
+    --abc-motion-fast: 180ms;
+    --abc-motion-base: 280ms;
+    --abc-motion-slow: 380ms;
+    --abc-ease-active: var(--abc-ease-spring);
+    --abc-press-scale: 0.95;
+    --abc-hover-lift: -3px;
+    --abc-hover-scale: 1.015;
   }
 }
 

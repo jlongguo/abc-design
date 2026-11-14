@@ -15,6 +15,12 @@ export type AbcResolvedTheme = 'light' | 'dark'
 /** 界面信息密度档位 */
 export type AbcDensity = 'compact' | 'default' | 'comfortable'
 
+/** 通用基础组件四档尺寸规格 */
+export type AbcSize = 'xs' | 'sm' | 'md' | 'lg'
+
+/** 统一组件四档交互动效规格 */
+export type AbcMotionPreset = 'none' | 'subtle' | 'smooth' | 'spring'
+
 /** 圆角视觉风格档位 */
 export type AbcRadius = 'none' | 'sm' | 'md' | 'lg'
 
@@ -183,4 +189,26 @@ export const ABC_RADIUS_PRESETS: Record<AbcRadius, { label: string; controlRadiu
   sm: { label: '微圆角 (6px)', controlRadius: '6px', panelRadius: '8px' },
   md: { label: '标准圆角 (8px)', controlRadius: '8px', panelRadius: '12px' },
   lg: { label: '柔和圆角 (12px)', controlRadius: '12px', panelRadius: '16px' },
+}
+
+/** 通用四档基础组件规格说明 */
+export const ABC_SIZE_PRESETS: Record<
+  AbcSize,
+  { label: string; heightVar: string; fontSize: string }
+> = {
+  xs: { label: '超小 xs', heightVar: 'var(--abc-control-h-xs)', fontSize: '12px' },
+  sm: { label: '紧凑 sm', heightVar: 'var(--abc-control-h-sm)', fontSize: '12px' },
+  md: { label: '标准 md', heightVar: 'var(--abc-control-h-md)', fontSize: '14px' },
+  lg: { label: '宽松 lg', heightVar: 'var(--abc-control-h-lg)', fontSize: '14px' },
+}
+
+/** 统一四档组件微交互动效规格说明 */
+export const ABC_MOTION_PRESETS: Record<
+  AbcMotionPreset,
+  { label: string; description: string; durationBase: string }
+> = {
+  none: { label: '静默无动效', description: '零动画即时反馈，无障碍极速模式', durationBase: '0ms' },
+  subtle: { label: '克制微动', description: '轻量化高速阻尼，无回弹高效率', durationBase: '140ms' },
+  smooth: { label: '丝滑阻尼', description: '标准企业级物理缓动曲线', durationBase: '220ms' },
+  spring: { label: '灵动弹簧', description: '带物理过冲感的高阶弹性微交互', durationBase: '280ms' },
 }

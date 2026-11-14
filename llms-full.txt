@@ -38,7 +38,7 @@ SECTION 2: ROOT PROVIDER & 5 ADAPTERS (`@abc-design/react`)
 import { AbcProvider } from '@abc-design/react'
 
 <AbcProvider
-  defaultTheme={{ mode: 'system', brand: 'blue', density: 'default', radius: 'md' }}
+  defaultTheme={{ mode: 'system', brand: 'blue', density: 'default', radius: 'md', componentSize: undefined, motion: 'smooth' }}
   defaultPageTransition="fade-slide"
   watermarkText={['Internal Console', 'Confidential']}
   defaultWatermarkEnabled={false}
@@ -159,7 +159,13 @@ SECTION 4: EXACT COMPONENT SIGNATURES & ANTI-HALLUCINATION RULES
     - `Dialog`: Native Top Layer `<dialog>`, draggable header, double-click fullscreen, `open` (or `isOpen`), `onClose`, `title`, `size` (`'sm'|'md'|'lg'|'xl'|'full'`), `footer`. Never lock `document.body` scroll manually.
     - `Drawer`: Multi-level push stack (`L1`/`L2`), edge drag resize (`resizable`), `open`, `onClose`, `placement`, `size`, `footer`.
 19. `abcConfirm` (aliases `confirm`, `useConfirm`): `const ok = await abcConfirm({ title, message, tone: 'danger' })`.
-20. `Descriptions`, `Collapse` (`items: [{ key, label, children, extra }]`), `Timeline` (`tone?: 'neutral'|'primary'|'success'|'warning'|'danger'`), `Popover`, `Tooltip`, `Dropdown`, `Tabs`, `Breadcrumb`, `Steps`, `StatusTag` (`DictTag`), `Badge`, `Avatar`, `ImagePreview` (supports raster URL & inline `<svg>`), `CopyableText`, `EmptyState`, `Pagination`, `Skeleton` (`SkeletonCard`, `SkeletonTable`, `SkeletonChart`), `Alert`, `Progress`, `Result` (`status`, `title`, `subTitle`, `extra`), `Loading`, `Watermark`, `ErrorBoundary`, `TabErrorBoundary`, `PermissionGuard` (`Permission`).
-21. `@abc-design/charts`:
+20. `Descriptions`, `Collapse` (`items: [{ key, label, children, extra }]`), `Timeline` (`tone?: 'neutral'|'primary'|'success'|'warning'|'danger'`), `Popover`, `Tooltip`, `Dropdown`, `Tabs`, `Breadcrumb`, `Steps`, `StatusTag` (`DictTag`), `Badge`, `Avatar`, `ImagePreview` (supports raster URL & inline `<svg>`), `CopyableText`, `EmptyState`, `Pagination` (`size?: number | AbcSize`, `controlSize?: AbcSize`), `Skeleton` (`SkeletonCard`, `SkeletonTable`, `SkeletonChart`), `Alert`, `Progress` (`size?: number | AbcSize`), `Result` (`status`, `title`, `subTitle`, `extra`), `Loading`, `Watermark`, `ErrorBoundary`, `TabErrorBoundary`, `PermissionGuard` (`Permission`). All core components support `size?: AbcSize` (`xs | sm | md | lg`) via `useAbcSize` and `motion?: AbcMotionPreset` (`none | subtle | smooth | spring`) via `useAbcMotion` (`AbcProvider.setComponentSize` / `setMotion`).
+21. Enhanced Cards (`@abc-design/react`):
+    - `Card` (`as?: 'div'|'article'|'section'`, `size`, `padding?: 'none'|AbcSize`, `variant?: 'default'|'bordered'|'ghost'|'elevated'|'glass'`, `cover`, `statusRibbon`, `loading`, `motion`, `@container`), `SpotlightCard`, `BorderBeam`, `AuroraBackground`.
+    - `MetricCard` (`title`, `value`, `prefix`, `suffix`, `trend`, `sparkline`, `icon`, `footer`, `loading`, `hoverable`, `size`, `motion`).
+    - `CheckCardGroup` (`multiple`, `value`, `defaultValue`, `onChange`, `columns`, `disabled`, `size`, `motion`) & `CheckCard`.
+    - `ActionCard` (stretched click area + isolated `extra`), `CollapsibleCard`, `PricingCard`, `BentoGrid` & `BentoCard`.
+22. `TableCore` & `ProTable` upgrades: supports `resizable?: boolean`, left-edge resizing on `fixed: 'right'` & `__abc_actions__` columns with `<colgroup>` / `tableLayout: 'fixed'` width locking + `ProColumnSettingsPopover` numeric action width input, and real-time `onDragOver` header column reorder with FLIP slide animation (`motion?: AbcMotionPreset`) and `Escape` rollback.
+23. `@abc-design/charts`:
     - `<StatCard title="..." prefix="¥" value="128,400" trend={12.5} trendLabel="MoM" footer="..." loading={false} />`
     - `<AbcChart option={echartsOption} height={300} loading={false} empty={false} onEvents={{ click: fn }} />` (alias `<Chart />`).

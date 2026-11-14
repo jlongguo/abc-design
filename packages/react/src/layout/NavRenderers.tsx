@@ -1,14 +1,214 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { ChevronDown, ChevronRight, Pencil } from 'lucide-react'
 import { isSvgSource } from '../components/display/ImagePreview'
 import { Tooltip } from '../components/display/Overlays'
 import Icon from '../components/icon/Icon'
+import { useAbcMotion, useAbcSize } from '../hooks/useAbcDefaults'
 import { useFloatingPosition } from '../hooks/useFloatingPosition'
 import { usePresence } from '../hooks/usePresence'
 import { useAbcConfig } from '../provider/AbcProvider'
 import { cn } from '../utils/cn'
 import type { AbcBrandInfo, AbcMenuItem, AbcSidebarTone } from './types'
+
+interface NavSizeMetric {
+  brandWrapExpanded: string
+  brandWrapCollapsed: string
+  brandGap: string
+  brandLogoBox: string
+  brandTitle: string
+  brandSubtitle: string
+  brandEditIcon: string
+  navPadding: string
+  itemButton: string
+  itemIcon: number
+  chevron: string
+  badge: string
+  collapsedBtn: string
+  collapsedIcon: number
+  subWrap: string
+  subButton: string
+  subIcon: number
+  flyoutPanel: string
+  flyoutHeader: string
+  flyoutHeadingIcon: number
+  flyoutHeadingText: string
+  flyoutItem: string
+  flyoutIcon: number
+  flyoutSubIndent: string
+  topItem: string
+  topIcon: number
+  topChevron: string
+  dualRailWrap: string
+  dualRailItem: string
+  dualRailIcon: number
+  dualRailLabelMaxW: string
+  dualPanelHeader: string
+  dualPanelTitle: string
+  dualPanelWrap: string
+  dualPanelItem: string
+  dualPanelIcon: number
+}
+
+/** 四档全局/局部组件尺寸 (xs | sm | md | lg) 对应的侧栏与导航度量字典 */
+const NAV_SIZE_METRICS: Record<AbcSize, NavSizeMetric> = {
+  xs: {
+    brandWrapExpanded: 'px-3',
+    brandWrapCollapsed: 'px-1.5',
+    brandGap: 'gap-2',
+    brandLogoBox: 'h-7 w-7 text-xs',
+    brandTitle: 'text-xs',
+    brandSubtitle: 'text-[10px]',
+    brandEditIcon: 'h-2.5 w-2.5',
+    navPadding: 'space-y-0.5 p-1.5',
+    itemButton: 'min-h-[var(--abc-control-h-xs)] gap-2 px-2.5 py-1 text-[11px]',
+    itemIcon: 14,
+    chevron: 'h-3 w-3',
+    badge: 'px-1 py-0 text-[9px]',
+    collapsedBtn: 'min-h-0 h-8 py-0',
+    collapsedIcon: 15,
+    subWrap: 'mt-0.5 ml-3 space-y-0.5 pl-2 pb-0.5',
+    subButton: 'min-h-6.5 gap-1.5 px-2 py-1 text-[11px]',
+    subIcon: 12,
+    flyoutPanel: 'min-w-[168px] p-1',
+    flyoutHeader: 'px-2 py-1 text-[10px]',
+    flyoutHeadingIcon: 12,
+    flyoutHeadingText: 'px-2 py-1 text-[10px]',
+    flyoutItem: 'gap-1.5 px-2 py-1 text-[11px]',
+    flyoutIcon: 12,
+    flyoutSubIndent: 'mt-0.5 ml-2.5 pl-1.5',
+    topItem: 'h-[var(--abc-control-h-xs)] gap-1 px-2.5 text-[11px]',
+    topIcon: 13,
+    topChevron: 'h-2.5 w-2.5',
+    dualRailWrap: 'gap-1 px-1',
+    dualRailItem: 'gap-0.5 py-1.5 text-[9px]',
+    dualRailIcon: 15,
+    dualRailLabelMaxW: 'max-w-10',
+    dualPanelHeader: 'px-3',
+    dualPanelTitle: 'text-[11px]',
+    dualPanelWrap: 'space-y-0.5 p-1.5',
+    dualPanelItem: 'min-h-[var(--abc-control-h-xs)] gap-1.5 px-2.5 py-1 text-[11px]',
+    dualPanelIcon: 13,
+  },
+  sm: {
+    brandWrapExpanded: 'px-4',
+    brandWrapCollapsed: 'px-2',
+    brandGap: 'gap-2.5',
+    brandLogoBox: 'h-8 w-8 text-sm',
+    brandTitle: 'text-sm',
+    brandSubtitle: 'text-[10px]',
+    brandEditIcon: 'h-3 w-3',
+    navPadding: 'space-y-1 p-2.5',
+    itemButton: 'min-h-[var(--abc-control-h-sm)] gap-2.5 px-3 py-1.5 text-xs',
+    itemIcon: 16,
+    chevron: 'h-3.5 w-3.5',
+    badge: 'px-1.5 py-0.2 text-[10px]',
+    collapsedBtn: 'min-h-0 h-9 py-0',
+    collapsedIcon: 16,
+    subWrap: 'mt-1 ml-4 space-y-0.5 pl-2.5 pb-0.5',
+    subButton: 'min-h-7.5 gap-2 px-2.5 py-1.5 text-xs',
+    subIcon: 14,
+    flyoutPanel: 'min-w-[184px] p-1.5',
+    flyoutHeader: 'px-2.5 py-1.5 text-[11px]',
+    flyoutHeadingIcon: 13,
+    flyoutHeadingText: 'px-2.5 py-1 text-[11px]',
+    flyoutItem: 'gap-2 px-2.5 py-1.5 text-xs',
+    flyoutIcon: 14,
+    flyoutSubIndent: 'mt-0.5 ml-3 pl-2',
+    topItem: 'h-[var(--abc-control-h-sm)] gap-1.5 px-3 text-xs',
+    topIcon: 15,
+    topChevron: 'h-3 w-3',
+    dualRailWrap: 'gap-1.5 px-1.5',
+    dualRailItem: 'gap-1 py-2 text-[10px]',
+    dualRailIcon: 17,
+    dualRailLabelMaxW: 'max-w-12',
+    dualPanelHeader: 'px-3.5',
+    dualPanelTitle: 'text-xs',
+    dualPanelWrap: 'space-y-1 p-2',
+    dualPanelItem: 'min-h-[var(--abc-control-h-sm)] gap-2 px-3 py-1.5 text-xs',
+    dualPanelIcon: 15,
+  },
+  md: {
+    brandWrapExpanded: 'px-4',
+    brandWrapCollapsed: 'px-2',
+    brandGap: 'gap-3',
+    brandLogoBox: 'h-9 w-9 text-sm',
+    brandTitle: 'text-[15px]',
+    brandSubtitle: 'text-[11px]',
+    brandEditIcon: 'h-3.5 w-3.5',
+    navPadding: 'space-y-1 p-3',
+    itemButton: 'min-h-[var(--abc-control-h-md)] gap-2.5 px-3.5 py-2 text-[13px]',
+    itemIcon: 18,
+    chevron: 'h-4 w-4',
+    badge: 'px-1.5 py-0.5 text-[11px]',
+    collapsedBtn: 'min-h-0 h-10 py-0',
+    collapsedIcon: 18,
+    subWrap: 'mt-1 ml-4.5 space-y-1 pl-3 pb-1',
+    subButton: 'min-h-8.5 gap-2.5 px-3 py-1.5 text-[13px]',
+    subIcon: 15,
+    flyoutPanel: 'min-w-[204px] p-1.5',
+    flyoutHeader: 'px-3 py-1.5 text-xs',
+    flyoutHeadingIcon: 14,
+    flyoutHeadingText: 'px-3 py-1 text-xs',
+    flyoutItem: 'gap-2.5 px-3 py-2 text-[13px]',
+    flyoutIcon: 15,
+    flyoutSubIndent: 'mt-1 ml-3.5 pl-2.5',
+    topItem: 'h-[var(--abc-control-h-md)] gap-2 px-3.5 text-[13px]',
+    topIcon: 16,
+    topChevron: 'h-3.5 w-3.5',
+    dualRailWrap: 'gap-2 px-1.5',
+    dualRailItem: 'gap-1 py-2.5 text-[11px]',
+    dualRailIcon: 19,
+    dualRailLabelMaxW: 'max-w-13',
+    dualPanelHeader: 'px-4',
+    dualPanelTitle: 'text-[13px]',
+    dualPanelWrap: 'space-y-1 p-2.5',
+    dualPanelItem: 'min-h-[var(--abc-control-h-md)] gap-2.5 px-3.5 py-2 text-[13px]',
+    dualPanelIcon: 16,
+  },
+  lg: {
+    brandWrapExpanded: 'px-4.5',
+    brandWrapCollapsed: 'px-2.5',
+    brandGap: 'gap-3',
+    brandLogoBox: 'h-10 w-10 text-base',
+    brandTitle: 'text-base',
+    brandSubtitle: 'text-xs',
+    brandEditIcon: 'h-3.5 w-3.5',
+    navPadding: 'space-y-1.5 p-3.5',
+    itemButton: 'min-h-[var(--abc-control-h-lg)] gap-3 px-4 py-2.5 text-sm',
+    itemIcon: 20,
+    chevron: 'h-4 w-4',
+    badge: 'px-2 py-0.5 text-xs',
+    collapsedBtn: 'min-h-0 h-11 py-0',
+    collapsedIcon: 20,
+    subWrap: 'mt-1.5 ml-5 space-y-1 pl-3.5 pb-1',
+    subButton: 'min-h-9.5 gap-3 px-3.5 py-2 text-sm',
+    subIcon: 16,
+    flyoutPanel: 'min-w-[224px] p-2',
+    flyoutHeader: 'px-3.5 py-2 text-[13px]',
+    flyoutHeadingIcon: 15,
+    flyoutHeadingText: 'px-3.5 py-1.5 text-xs',
+    flyoutItem: 'gap-2.5 px-3.5 py-2.5 text-sm',
+    flyoutIcon: 16,
+    flyoutSubIndent: 'mt-1 ml-4 pl-2.5',
+    topItem: 'h-[var(--abc-control-h-lg)] gap-2 px-4 text-sm',
+    topIcon: 17,
+    topChevron: 'h-3.5 w-3.5',
+    dualRailWrap: 'gap-2 px-2',
+    dualRailItem: 'gap-1.5 py-3 text-xs',
+    dualRailIcon: 21,
+    dualRailLabelMaxW: 'max-w-14',
+    dualPanelHeader: 'px-4',
+    dualPanelTitle: 'text-sm',
+    dualPanelWrap: 'space-y-1.5 p-3',
+    dualPanelItem: 'min-h-[var(--abc-control-h-lg)] gap-3 px-4 py-2.5 text-sm',
+    dualPanelIcon: 18,
+  },
+}
+
+const NAV_BTN_MOTION_CLASS =
+  'transition-[background-color,color,box-shadow,transform] duration-[var(--abc-motion-fast)] ease-[var(--abc-ease-active)] motion-safe:enabled:active:scale-[var(--abc-press-scale)]'
 
 export function menuContainsPath(item: AbcMenuItem, pathname: string): boolean {
   if (item.path && (pathname === item.path || pathname.startsWith(`${item.path}/`))) {
@@ -50,11 +250,19 @@ const SubmenuFlyoutItems: React.FC<{
   items: AbcMenuItem[]
   pathname: string
   registry: Record<string, any>
+  size: AbcSize
   onSelect: (path: string, item: AbcMenuItem) => void
   depth?: number
-}> = ({ items, pathname, registry, onSelect, depth = 0 }) => {
+}> = ({ items, pathname, registry, size, onSelect, depth = 0 }) => {
+  const m = NAV_SIZE_METRICS[size]
+
   return (
-    <div className={cn('space-y-0.5', depth > 0 && 'mt-0.5 ml-3 border-l border-[var(--abc-border)] pl-2')}>
+    <div
+      className={cn(
+        'space-y-0.5',
+        depth > 0 && cn('border-l border-[var(--abc-border)]', m.flyoutSubIndent)
+      )}
+    >
       {items.map((sub) => {
         const hasSubChildren = Boolean(sub.children && sub.children.length > 0)
         const subActive = sub.path === pathname
@@ -65,17 +273,19 @@ const SubmenuFlyoutItems: React.FC<{
             <div key={sub.key} className="py-0.5">
               <div
                 className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold select-none',
+                  'flex items-center gap-1.5 font-semibold select-none',
+                  m.flyoutHeadingText,
                   subBranchActive ? 'text-[var(--abc-primary)]' : 'text-[var(--abc-fg-muted)]'
                 )}
               >
-                {renderMenuIcon(sub.icon, registry, 13)}
+                {renderMenuIcon(sub.icon, registry, m.flyoutHeadingIcon)}
                 <span className="truncate">{sub.label}</span>
               </div>
               <SubmenuFlyoutItems
                 items={sub.children!}
                 pathname={pathname}
                 registry={registry}
+                size={size}
                 onSelect={onSelect}
                 depth={depth + 1}
               />
@@ -95,17 +305,24 @@ const SubmenuFlyoutItems: React.FC<{
               }
             }}
             className={cn(
-              'flex w-full items-center gap-2 rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer focus:outline-none focus-visible:bg-[var(--abc-bg-subtle)] focus-visible:text-[var(--abc-fg)]',
+              'flex w-full items-center rounded-[var(--abc-radius-sm)] text-left cursor-pointer focus:outline-none focus-visible:bg-[var(--abc-bg-subtle)] focus-visible:text-[var(--abc-fg)]',
+              NAV_BTN_MOTION_CLASS,
+              m.flyoutItem,
               subActive
                 ? 'bg-[var(--abc-primary-soft)] font-semibold text-[var(--abc-primary)]'
                 : 'text-[var(--abc-fg-secondary)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)]',
               sub.disabled && 'opacity-45 cursor-not-allowed'
             )}
           >
-            {renderMenuIcon(sub.icon, registry, 14)}
+            {renderMenuIcon(sub.icon, registry, m.flyoutIcon)}
             <span className="flex-1 truncate">{sub.label}</span>
             {sub.badge !== undefined && (
-              <span className="rounded-full bg-[var(--abc-primary-soft)] px-1.5 py-0.2 font-mono text-[10px] text-[var(--abc-primary)]">
+              <span
+                className={cn(
+                  'rounded-full bg-[var(--abc-primary-soft)] font-mono text-[var(--abc-primary)]',
+                  m.badge
+                )}
+              >
                 {sub.badge}
               </span>
             )}
@@ -116,18 +333,27 @@ const SubmenuFlyoutItems: React.FC<{
   )
 }
 
-/** 品牌 Logo 与项目名展示块（支持直链图片、内联 SVG 及多租户品牌快捷编辑按钮） */
+/** 品牌 Logo 与项目名展示块（支持直链图片、内联 SVG、四档尺寸联动及多租户品牌快捷编辑按钮） */
 export const BrandLogoBlock: React.FC<{
   brand: AbcBrandInfo
   collapsed?: boolean
   tone?: 'dark' | 'light'
+  size?: AbcSize
   className?: string
-}> = ({ brand, collapsed = false, tone = 'light', className }) => {
+}> = ({ brand, collapsed = false, tone = 'light', size, className }) => {
+  const resolvedSize = useAbcSize(size, 'sm')
+  const m = NAV_SIZE_METRICS[resolvedSize]
   const isDark = tone === 'dark'
+
   const logoNode = useMemo(() => {
     if (!brand.logo) {
       return (
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] bg-[var(--abc-primary)] font-bold text-sm text-[var(--abc-primary-fg)] shadow-xs transition-transform duration-150 group-hover:scale-[1.03]">
+        <div
+          className={cn(
+            'flex shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] bg-[var(--abc-primary)] font-bold text-[var(--abc-primary-fg)] shadow-xs transition-transform duration-[var(--abc-motion-fast)] group-hover:scale-[1.03]',
+            m.brandLogoBox
+          )}
+        >
           {brand.name.slice(0, 1).toUpperCase()}
         </div>
       )
@@ -136,7 +362,10 @@ export const BrandLogoBlock: React.FC<{
       if (isSvgSource(brand.logo)) {
         return (
           <div
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] bg-[var(--abc-primary)]/15 p-1 text-[var(--abc-primary)] [&>svg]:max-h-full [&>svg]:max-w-full"
+            className={cn(
+              'flex shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] bg-[var(--abc-primary)]/15 p-1 text-[var(--abc-primary)] [&>svg]:max-h-full [&>svg]:max-w-full',
+              m.brandLogoBox
+            )}
             dangerouslySetInnerHTML={{ __html: brand.logo }}
           />
         )
@@ -145,25 +374,28 @@ export const BrandLogoBlock: React.FC<{
         <img
           src={brand.logo}
           alt={brand.name}
-          className="h-8 w-8 shrink-0 rounded-[var(--abc-radius-md)] object-contain"
+          className={cn('shrink-0 rounded-[var(--abc-radius-md)] object-contain', m.brandLogoBox)}
         />
       )
     }
     return <div className="shrink-0">{brand.logo}</div>
-  }, [brand.logo, brand.name])
+  }, [brand.logo, brand.name, m.brandLogoBox])
 
   return (
     <div
+      data-size={resolvedSize}
       className={cn(
-        'group flex items-center gap-2.5 select-none',
-        collapsed ? 'justify-center px-2' : 'px-4',
+        'group flex items-center select-none',
+        m.brandGap,
+        collapsed ? cn('justify-center', m.brandWrapCollapsed) : m.brandWrapExpanded,
         className
       )}
     >
       <div
         onClick={brand.onClick}
         className={cn(
-          'flex min-w-0 flex-1 items-center gap-2.5',
+          'flex min-w-0 flex-1 items-center',
+          m.brandGap,
           brand.onClick && 'cursor-pointer'
         )}
       >
@@ -172,7 +404,8 @@ export const BrandLogoBlock: React.FC<{
           <div className="min-w-0 flex-1">
             <div
               className={cn(
-                'truncate text-sm font-bold tracking-tight',
+                'truncate font-bold tracking-tight',
+                m.brandTitle,
                 isDark ? 'text-white' : 'text-[var(--abc-fg)]'
               )}
             >
@@ -181,7 +414,8 @@ export const BrandLogoBlock: React.FC<{
             {brand.subtitle && (
               <div
                 className={cn(
-                  'truncate text-[10px]',
+                  'truncate',
+                  m.brandSubtitle,
                   isDark ? 'text-slate-400' : 'text-[var(--abc-fg-muted)]'
                 )}
               >
@@ -208,7 +442,7 @@ export const BrandLogoBlock: React.FC<{
               : 'text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
           )}
         >
-          <Pencil className="h-3 w-3" />
+          <Pencil className={m.brandEditIcon} />
         </button>
       )}
     </div>
@@ -221,10 +455,13 @@ const CollapsedSidebarBranch: React.FC<{
   pathname: string
   isDark: boolean
   registry: Record<string, any>
+  size: AbcSize
+  motion: AbcMotionPreset
   onNavigate: (path: string, item: AbcMenuItem) => void
-}> = ({ item, pathname, isDark, registry, onNavigate }) => {
+}> = ({ item, pathname, isDark, registry, size, motion, onNavigate }) => {
+  const m = NAV_SIZE_METRICS[size]
   const [open, setOpen] = useState(false)
-  const { isMounted, isVisible } = usePresence(open, 140)
+  const { isMounted, isVisible } = usePresence(open, motion === 'none' ? 0 : 140)
   const btnRef = useRef<HTMLButtonElement>(null)
   const flyoutRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<number | null>(null)
@@ -288,39 +525,43 @@ const CollapsedSidebarBranch: React.FC<{
   }, [open])
 
   return (
-    <div onMouseEnter={openFlyout} onMouseLeave={scheduleClose}>
-      <button
-        ref={btnRef}
-        type="button"
-        aria-label={item.label}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        aria-controls={open ? menuId : undefined}
-        onClick={() => setOpen((v) => !v)}
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-            e.preventDefault()
-            setOpen(true)
-            window.requestAnimationFrame(() => {
-              flyoutRef.current
-                ?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')
-                ?.focus()
-            })
-          }
-        }}
-        className={cn(
-          'flex w-full items-center justify-center rounded-[var(--abc-radius-md)] py-2 text-xs font-medium transition-colors cursor-pointer',
-          activeBranch
-            ? isDark
-              ? 'bg-white/12 text-white'
-              : 'bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]'
-            : isDark
-              ? 'text-slate-300 hover:bg-white/8 hover:text-white'
-              : 'text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
-        )}
-      >
-        {renderMenuIcon(item.icon ?? 'folder', registry, 16)}
-      </button>
+    <>
+      <div onMouseEnter={openFlyout} onMouseLeave={scheduleClose}>
+        <button
+          ref={btnRef}
+          type="button"
+          aria-label={item.label}
+          aria-expanded={open}
+          aria-haspopup="menu"
+          aria-controls={open ? menuId : undefined}
+          onClick={() => setOpen((v) => !v)}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+              e.preventDefault()
+              setOpen(true)
+              window.requestAnimationFrame(() => {
+                flyoutRef.current
+                  ?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')
+                  ?.focus()
+              })
+            }
+          }}
+          className={cn(
+            'flex w-full items-center justify-center rounded-[var(--abc-radius-md)] text-xs font-medium cursor-pointer',
+            NAV_BTN_MOTION_CLASS,
+            m.collapsedBtn,
+            activeBranch
+              ? isDark
+                ? 'bg-white/12 text-white'
+                : 'bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]'
+              : isDark
+                ? 'text-slate-300 hover:bg-white/8 hover:text-white'
+                : 'text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
+          )}
+        >
+          {renderMenuIcon(item.icon ?? 'folder', registry, m.collapsedIcon)}
+        </button>
+      </div>
 
       {isMounted &&
         portalContainer &&
@@ -331,6 +572,8 @@ const CollapsedSidebarBranch: React.FC<{
             role="menu"
             aria-label={item.label}
             data-abc-floating=""
+            data-size={size}
+            data-motion={motion}
             data-placement={actualSide}
             style={style}
             onMouseEnter={openFlyout}
@@ -352,17 +595,28 @@ const CollapsedSidebarBranch: React.FC<{
               }
             }}
             className={cn(
-              'z-[1250] min-w-[184px] max-w-[260px] rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] p-1.5 text-[var(--abc-fg)] shadow-[var(--abc-shadow-popover)]',
-              isVisible ? 'abc-animate-popover-in' : 'abc-animate-popover-out'
+              'z-[1250] max-w-[280px] rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] text-[var(--abc-fg)] shadow-[var(--abc-shadow-popover)]',
+              // 在触发器与 Portal 浮层 8px 间隙之间铺设透明悬停桥接，防止移入子菜单瞬间断触
+              actualSide === 'right'
+                ? "before:content-[''] before:absolute before:inset-y-0 before:-left-3 before:w-3"
+                : "before:content-[''] before:absolute before:inset-y-0 before:-right-3 before:w-3",
+              m.flyoutPanel,
+              motion !== 'none' && (isVisible ? 'abc-animate-popover-in' : 'abc-animate-popover-out')
             )}
           >
-            <div className="mb-1 border-b border-[var(--abc-border)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--abc-fg)]">
+            <div
+              className={cn(
+                'mb-1 border-b border-[var(--abc-border)] font-semibold text-[var(--abc-fg)]',
+                m.flyoutHeader
+              )}
+            >
               {item.label}
             </div>
             <SubmenuFlyoutItems
               items={item.children ?? []}
               pathname={pathname}
               registry={registry}
+              size={size}
               onSelect={(path, subItem) => {
                 onNavigate(path, subItem)
                 setOpen(false)
@@ -371,11 +625,11 @@ const CollapsedSidebarBranch: React.FC<{
           </div>,
           portalContainer
         )}
-    </div>
+    </>
   )
 }
 
-/** 经典侧边栏树形菜单渲染器（支持深浅双色、折叠 Portal 悬浮子菜单与平滑网格手风琴展开） */
+/** 经典侧边栏树形菜单渲染器（支持深浅双色、四档尺寸与动效、折叠 Portal 悬浮子菜单与平滑网格手风琴展开） */
 export const SidebarNav: React.FC<{
   brand?: AbcBrandInfo
   items: AbcMenuItem[]
@@ -383,6 +637,8 @@ export const SidebarNav: React.FC<{
   collapsed?: boolean
   accordion?: boolean
   tone?: AbcSidebarTone
+  size?: AbcSize
+  motion?: AbcMotionPreset
   onNavigate: (path: string, item: AbcMenuItem) => void
   className?: string
 }> = ({
@@ -392,10 +648,15 @@ export const SidebarNav: React.FC<{
   collapsed = false,
   accordion = true,
   tone = 'dark',
+  size,
+  motion,
   onNavigate,
   className,
 }) => {
   const { iconRegistry } = useAbcConfig()
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
+  const m = NAV_SIZE_METRICS[resolvedSize]
   const isDark = tone === 'dark'
 
   const [openKeys, setOpenKeys] = useState<string[]>(() =>
@@ -423,11 +684,13 @@ export const SidebarNav: React.FC<{
   return (
     <aside
       aria-label="侧边主导航"
+      data-size={resolvedSize}
+      data-motion={resolvedMotion}
       style={{
         width: collapsed ? 'var(--abc-sidebar-collapsed-w)' : 'var(--abc-sidebar-w)',
       }}
       className={cn(
-        'flex h-full shrink-0 flex-col border-r transition-[width] duration-200 ease-out select-none',
+        'flex h-full shrink-0 flex-col border-r transition-[width] duration-[var(--abc-motion-base)] ease-[var(--abc-ease-out)] select-none',
         isDark
           ? 'border-[var(--abc-sidebar-dark-border)] bg-[var(--abc-sidebar-dark-bg)] text-[var(--abc-sidebar-dark-fg)]'
           : 'border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg-secondary)]',
@@ -441,11 +704,17 @@ export const SidebarNav: React.FC<{
             isDark ? 'border-[var(--abc-sidebar-dark-border)]' : 'border-[var(--abc-border)]'
           )}
         >
-          <BrandLogoBlock brand={brand} collapsed={collapsed} tone={tone} className="w-full" />
+          <BrandLogoBlock
+            brand={brand}
+            collapsed={collapsed}
+            tone={tone}
+            size={resolvedSize}
+            className="w-full"
+          />
         </div>
       )}
 
-      <nav className="flex-1 space-y-1 overflow-y-auto p-2.5">
+      <nav className={cn('flex-1 overflow-y-auto', m.navPadding)}>
         {items.map((item) => {
           const hasChildren = Boolean(item.children && item.children.length > 0)
           const activeSelf = item.path === pathname
@@ -461,8 +730,10 @@ export const SidebarNav: React.FC<{
                 aria-label={collapsed ? item.label : undefined}
                 onClick={() => item.path && onNavigate(item.path, item)}
                 className={cn(
-                  'flex w-full items-center gap-2.5 rounded-[var(--abc-radius-md)] px-3 py-2 text-xs font-medium transition-colors cursor-pointer',
-                  collapsed && 'justify-center px-0',
+                  'flex w-full items-center rounded-[var(--abc-radius-md)] font-medium cursor-pointer',
+                  NAV_BTN_MOTION_CLASS,
+                  m.itemButton,
+                  collapsed && cn('justify-center px-0', m.collapsedBtn),
                   activeSelf
                     ? 'bg-[var(--abc-primary)] text-[var(--abc-primary-fg)] shadow-2xs'
                     : isDark
@@ -471,10 +742,10 @@ export const SidebarNav: React.FC<{
                   item.disabled && 'opacity-40 cursor-not-allowed'
                 )}
               >
-                {renderMenuIcon(item.icon, iconRegistry, 16)}
+                {renderMenuIcon(item.icon, iconRegistry, collapsed ? m.collapsedIcon : m.itemIcon)}
                 {!collapsed && <span className="flex-1 truncate text-left">{item.label}</span>}
                 {!collapsed && item.badge !== undefined && (
-                  <span className="rounded-full bg-white/15 px-1.5 py-0.2 font-mono text-[10px]">
+                  <span className={cn('rounded-full bg-white/15 font-mono', m.badge)}>
                     {item.badge}
                   </span>
                 )}
@@ -482,7 +753,13 @@ export const SidebarNav: React.FC<{
             )
 
             return collapsed ? (
-              <Tooltip key={item.key} content={item.label} placement="right" className="w-full">
+              <Tooltip
+                key={item.key}
+                content={item.label}
+                placement="right"
+                motion={resolvedMotion}
+                className="flex w-full"
+              >
                 {btnNode}
               </Tooltip>
             ) : (
@@ -498,6 +775,8 @@ export const SidebarNav: React.FC<{
                 pathname={pathname}
                 isDark={isDark}
                 registry={iconRegistry}
+                size={resolvedSize}
+                motion={resolvedMotion}
                 onNavigate={onNavigate}
               />
             )
@@ -510,7 +789,9 @@ export const SidebarNav: React.FC<{
                 aria-expanded={expanded}
                 onClick={() => toggleGroup(item.key)}
                 className={cn(
-                  'flex w-full items-center gap-2.5 rounded-[var(--abc-radius-md)] px-3 py-2 text-xs font-medium transition-colors cursor-pointer',
+                  'flex w-full items-center rounded-[var(--abc-radius-md)] font-medium cursor-pointer',
+                  NAV_BTN_MOTION_CLASS,
+                  m.itemButton,
                   activeBranch
                     ? isDark
                       ? 'bg-white/10 text-white'
@@ -520,11 +801,12 @@ export const SidebarNav: React.FC<{
                       : 'text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
                 )}
               >
-                {renderMenuIcon(item.icon, iconRegistry, 16)}
+                {renderMenuIcon(item.icon, iconRegistry, m.itemIcon)}
                 <span className="flex-1 truncate text-left">{item.label}</span>
                 <ChevronDown
                   className={cn(
-                    'h-3.5 w-3.5 shrink-0 opacity-70 transition-transform duration-200',
+                    'shrink-0 opacity-70 transition-transform duration-[var(--abc-motion-fast)] ease-[var(--abc-ease-out)]',
+                    m.chevron,
                     !expanded && '-rotate-90'
                   )}
                 />
@@ -534,14 +816,15 @@ export const SidebarNav: React.FC<{
               <div
                 inert={!expanded}
                 className={cn(
-                  'grid transition-[grid-template-rows,opacity] duration-200 ease-out',
+                  'grid transition-[grid-template-rows,opacity] duration-[var(--abc-motion-base)] ease-[var(--abc-ease-out)]',
                   expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                 )}
               >
                 <div className="overflow-hidden">
                   <div
                     className={cn(
-                      'mt-1 ml-4 space-y-0.5 border-l pl-2.5 pb-0.5',
+                      'border-l',
+                      m.subWrap,
                       isDark ? 'border-slate-700/80' : 'border-[var(--abc-border)]'
                     )}
                   >
@@ -554,16 +837,30 @@ export const SidebarNav: React.FC<{
                           disabled={sub.disabled}
                           onClick={() => sub.path && onNavigate(sub.path, sub)}
                           className={cn(
-                            'flex w-full items-center gap-2 rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer',
+                            'flex w-full items-center rounded-[var(--abc-radius-sm)] text-left cursor-pointer',
+                            NAV_BTN_MOTION_CLASS,
+                            m.subButton,
                             subActive
                               ? 'bg-[var(--abc-primary)] font-medium text-[var(--abc-primary-fg)]'
                               : isDark
                                 ? 'text-slate-400 hover:bg-white/8 hover:text-white'
-                                : 'text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
+                                : 'text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]',
+                            sub.disabled && 'opacity-40 cursor-not-allowed'
                           )}
                         >
-                          {renderMenuIcon(sub.icon, iconRegistry, 14)}
+                          {renderMenuIcon(sub.icon, iconRegistry, m.subIcon)}
                           <span className="flex-1 truncate">{sub.label}</span>
+                          {sub.badge !== undefined && (
+                            <span
+                              className={cn(
+                                'rounded-full font-mono',
+                                m.badge,
+                                subActive ? 'bg-white/20' : 'bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]'
+                              )}
+                            >
+                              {sub.badge}
+                            </span>
+                          )}
                         </button>
                       )
                     })}
@@ -584,10 +881,13 @@ const TopNavSubmenuItem: React.FC<{
   pathname: string
   isActive: boolean
   registry: Record<string, any>
+  size: AbcSize
+  motion: AbcMotionPreset
   onNavigate: (path: string, item: AbcMenuItem) => void
-}> = ({ item, pathname, isActive, registry, onNavigate }) => {
+}> = ({ item, pathname, isActive, registry, size, motion, onNavigate }) => {
+  const m = NAV_SIZE_METRICS[size]
   const [open, setOpen] = useState(false)
-  const { isMounted, isVisible } = usePresence(open, 140)
+  const { isMounted, isVisible } = usePresence(open, motion === 'none' ? 0 : 140)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<number | null>(null)
@@ -659,43 +959,48 @@ const TopNavSubmenuItem: React.FC<{
   }
 
   return (
-    <div
-      onMouseEnter={openSubmenu}
-      onMouseLeave={scheduleClose}
-      className="relative flex-none"
-    >
-      <button
-        ref={triggerRef}
-        type="button"
-        aria-expanded={open}
-        aria-haspopup="menu"
-        aria-controls={open ? menuId : undefined}
-        onClick={() => setOpen((v) => !v)}
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowDown') {
-            e.preventDefault()
-            setOpen(true)
-            focusFirstMenuItem()
-          }
-        }}
-        className={cn(
-          'inline-flex h-8.5 items-center gap-1.5 rounded-[var(--abc-radius-md)] px-3 text-xs font-medium whitespace-nowrap transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)]',
-          isActive
-            ? 'bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]'
-            : open
-              ? 'bg-[var(--abc-bg-subtle)] text-[var(--abc-fg)]'
-              : 'text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
-        )}
+    <>
+      <div
+        onMouseEnter={openSubmenu}
+        onMouseLeave={scheduleClose}
+        className="relative flex-none"
       >
-        {renderMenuIcon(item.icon, registry, 15)}
-        <span>{item.label}</span>
-        <ChevronDown
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-expanded={open}
+          aria-haspopup="menu"
+          aria-controls={open ? menuId : undefined}
+          onClick={() => setOpen((v) => !v)}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowDown') {
+              e.preventDefault()
+              setOpen(true)
+              focusFirstMenuItem()
+            }
+          }}
           className={cn(
-            'h-3 w-3 opacity-70 transition-transform duration-150',
-            open && 'rotate-180 text-[var(--abc-primary)] opacity-100'
+            'inline-flex items-center rounded-[var(--abc-radius-md)] font-medium whitespace-nowrap cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)]',
+            NAV_BTN_MOTION_CLASS,
+            m.topItem,
+            isActive
+              ? 'bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]'
+              : open
+                ? 'bg-[var(--abc-bg-subtle)] text-[var(--abc-fg)]'
+                : 'text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
           )}
-        />
-      </button>
+        >
+          {renderMenuIcon(item.icon, registry, m.topIcon)}
+          <span>{item.label}</span>
+          <ChevronDown
+            className={cn(
+              'opacity-70 transition-transform duration-[var(--abc-motion-fast)]',
+              m.topChevron,
+              open && 'rotate-180 text-[var(--abc-primary)] opacity-100'
+            )}
+          />
+        </button>
+      </div>
 
       {isMounted &&
         portalContainer &&
@@ -706,6 +1011,8 @@ const TopNavSubmenuItem: React.FC<{
             role="menu"
             aria-label={`${item.label} 子菜单`}
             data-abc-floating=""
+            data-size={size}
+            data-motion={motion}
             data-placement={actualSide}
             style={style}
             onMouseEnter={openSubmenu}
@@ -733,14 +1040,19 @@ const TopNavSubmenuItem: React.FC<{
               }
             }}
             className={cn(
-              'z-[1250] min-w-[188px] max-w-[280px] max-h-[min(70dvh,480px)] overflow-y-auto rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] p-1.5 shadow-[var(--abc-shadow-popover)]',
-              isVisible ? 'abc-animate-popover-in' : 'abc-animate-popover-out'
+              'z-[1250] max-w-[300px] max-h-[min(70dvh,480px)] overflow-y-auto rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] shadow-[var(--abc-shadow-popover)]',
+              actualSide === 'top'
+                ? "before:content-[''] before:absolute before:inset-x-0 before:-bottom-2.5 before:h-2.5"
+                : "before:content-[''] before:absolute before:inset-x-0 before:-top-2.5 before:h-2.5",
+              m.flyoutPanel,
+              motion !== 'none' && (isVisible ? 'abc-animate-popover-in' : 'abc-animate-popover-out')
             )}
           >
             <SubmenuFlyoutItems
               items={item.children ?? []}
               pathname={pathname}
               registry={registry}
+              size={size}
               onSelect={(path, subItem) => {
                 onNavigate(path, subItem)
                 setOpen(false)
@@ -749,17 +1061,19 @@ const TopNavSubmenuItem: React.FC<{
           </div>,
           portalContainer
         )}
-    </div>
+    </>
   )
 }
 
-/** 顶部水平菜单导航条（用于 top 与 mix 布局模式） */
+/** 顶部水平菜单导航条（用于 top 与 mix 布局模式，同步响应四档尺寸与动效规格） */
 export const TopHorizontalNav: React.FC<{
   items: AbcMenuItem[]
   pathname: string
   /** mix 模式下仅切换一级大类，不直接展开下拉浮层 */
   topLevelOnly?: boolean
   activeRootKey?: string
+  size?: AbcSize
+  motion?: AbcMotionPreset
   onSelectRoot?: (item: AbcMenuItem) => void
   onNavigate: (path: string, item: AbcMenuItem) => void
 }> = ({
@@ -767,14 +1081,21 @@ export const TopHorizontalNav: React.FC<{
   pathname,
   topLevelOnly = false,
   activeRootKey,
+  size,
+  motion,
   onSelectRoot,
   onNavigate,
 }) => {
   const { iconRegistry } = useAbcConfig()
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
+  const m = NAV_SIZE_METRICS[resolvedSize]
 
   return (
     <nav
       aria-label="顶部主导航"
+      data-size={resolvedSize}
+      data-motion={resolvedMotion}
       className="flex min-w-0 items-center gap-1 overflow-x-auto py-0.5 [scrollbar-width:none]"
     >
       {items.map((item) => {
@@ -795,13 +1116,15 @@ export const TopHorizontalNav: React.FC<{
                 }
               }}
               className={cn(
-                'inline-flex h-8.5 flex-none items-center gap-1.5 rounded-[var(--abc-radius-md)] px-3 text-xs font-medium whitespace-nowrap transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)]',
+                'inline-flex flex-none items-center rounded-[var(--abc-radius-md)] font-medium whitespace-nowrap cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)]',
+                NAV_BTN_MOTION_CLASS,
+                m.topItem,
                 isActive
                   ? 'bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]'
                   : 'text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
               )}
             >
-              {renderMenuIcon(item.icon, iconRegistry, 15)}
+              {renderMenuIcon(item.icon, iconRegistry, m.topIcon)}
               <span>{item.label}</span>
             </button>
           )
@@ -814,6 +1137,8 @@ export const TopHorizontalNav: React.FC<{
             pathname={pathname}
             isActive={isActive}
             registry={iconRegistry}
+            size={resolvedSize}
+            motion={resolvedMotion}
             onNavigate={onNavigate}
           />
         )
@@ -822,15 +1147,21 @@ export const TopHorizontalNav: React.FC<{
   )
 }
 
-/** 双栏紧凑导航（左侧极窄主轨 Rail + 右侧二级子菜单面板） */
+/** 双栏紧凑导航（左侧极窄主轨 Rail + 右侧二级子菜单面板，同步响应四档尺寸与动效规格） */
 export const DualColumnNav: React.FC<{
   brand?: AbcBrandInfo
   items: AbcMenuItem[]
   pathname: string
   tone?: AbcSidebarTone
+  size?: AbcSize
+  motion?: AbcMotionPreset
+  className?: string
   onNavigate: (path: string, item: AbcMenuItem) => void
-}> = ({ brand, items, pathname, tone = 'dark', onNavigate }) => {
+}> = ({ brand, items, pathname, tone = 'dark', size, motion, className, onNavigate }) => {
   const { iconRegistry } = useAbcConfig()
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
+  const m = NAV_SIZE_METRICS[resolvedSize]
   const isDark = tone === 'dark'
 
   const matchedRoot = useMemo(
@@ -847,12 +1178,17 @@ export const DualColumnNav: React.FC<{
   const subItems = activeRoot?.children ?? []
 
   return (
-    <div className="flex h-full shrink-0 select-none">
+    <div
+      aria-label="双栏侧边导航"
+      data-size={resolvedSize}
+      data-motion={resolvedMotion}
+      className={cn('flex h-full shrink-0 select-none', className)}
+    >
       {/* 第一栏：紧凑主图标轨 */}
       <div
         style={{ width: 'var(--abc-dual-rail-w)' }}
         className={cn(
-          'flex h-full flex-col items-center border-r py-2.5',
+          'flex h-full flex-col items-center border-r py-2.5 transition-[width] duration-[var(--abc-motion-base)] ease-[var(--abc-ease-out)]',
           isDark
             ? 'border-[var(--abc-sidebar-dark-border)] bg-[var(--abc-sidebar-dark-bg)] text-slate-300'
             : 'border-[var(--abc-border)] bg-[var(--abc-bg-muted)] text-[var(--abc-fg-secondary)]'
@@ -860,10 +1196,10 @@ export const DualColumnNav: React.FC<{
       >
         {brand && (
           <div className="mb-3">
-            <BrandLogoBlock brand={brand} collapsed tone={tone} />
+            <BrandLogoBlock brand={brand} collapsed tone={tone} size={resolvedSize} />
           </div>
         )}
-        <div className="flex w-full flex-1 flex-col items-center gap-1.5 overflow-y-auto px-1.5">
+        <div className={cn('flex w-full flex-1 flex-col items-center overflow-y-auto', m.dualRailWrap)}>
           {items.map((item) => {
             const active = item.key === activeRoot?.key
             return (
@@ -879,7 +1215,9 @@ export const DualColumnNav: React.FC<{
                   }
                 }}
                 className={cn(
-                  'flex w-full flex-col items-center justify-center gap-1 rounded-[var(--abc-radius-md)] py-2 text-[10px] font-medium transition-colors cursor-pointer',
+                  'flex w-full flex-col items-center justify-center rounded-[var(--abc-radius-md)] font-medium cursor-pointer',
+                  NAV_BTN_MOTION_CLASS,
+                  m.dualRailItem,
                   active
                     ? 'bg-[var(--abc-primary)] text-[var(--abc-primary-fg)] shadow-2xs'
                     : isDark
@@ -887,8 +1225,8 @@ export const DualColumnNav: React.FC<{
                       : 'text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
                 )}
               >
-                {renderMenuIcon(item.icon ?? 'folder', iconRegistry, 17)}
-                <span className="max-w-12 truncate">{item.label.slice(0, 4)}</span>
+                {renderMenuIcon(item.icon ?? 'folder', iconRegistry, m.dualRailIcon)}
+                <span className={cn('truncate', m.dualRailLabelMaxW)}>{item.label.slice(0, 4)}</span>
               </button>
             )
           })}
@@ -899,30 +1237,39 @@ export const DualColumnNav: React.FC<{
       {subItems.length > 0 && (
         <div
           style={{ width: 'var(--abc-dual-panel-w)' }}
-          className="flex h-full flex-col border-r border-[var(--abc-border)] bg-[var(--abc-bg-surface)]"
+          className="flex h-full flex-col border-r border-[var(--abc-border)] bg-[var(--abc-bg-surface)] transition-[width] duration-[var(--abc-motion-base)] ease-[var(--abc-ease-out)]"
         >
-          <div className="flex h-[var(--abc-header-h)] items-center justify-between border-b border-[var(--abc-border)] px-3.5">
-            <span className="truncate text-xs font-bold text-[var(--abc-fg)]">
+          <div
+            className={cn(
+              'flex h-[var(--abc-header-h)] items-center justify-between border-b border-[var(--abc-border)]',
+              m.dualPanelHeader
+            )}
+          >
+            <span className={cn('truncate font-bold text-[var(--abc-fg)]', m.dualPanelTitle)}>
               {activeRoot?.label}
             </span>
-            <ChevronRight className="h-3.5 w-3.5 text-[var(--abc-fg-muted)]" />
+            <ChevronRight className={cn('text-[var(--abc-fg-muted)]', m.chevron)} />
           </div>
-          <div className="flex-1 space-y-1 overflow-y-auto p-2">
+          <div className={cn('flex-1 overflow-y-auto', m.dualPanelWrap)}>
             {subItems.map((sub) => {
               const active = sub.path === pathname
               return (
                 <button
                   key={sub.key}
                   type="button"
-                  onClick={() => sub.path && onNavigate(sub.path, sub)}
+                  disabled={sub.disabled}
+                  onClick={() => !sub.disabled && sub.path && onNavigate(sub.path, sub)}
                   className={cn(
-                    'flex w-full items-center gap-2 rounded-[var(--abc-radius-md)] px-3 py-2 text-left text-xs font-medium transition-colors cursor-pointer',
+                    'flex w-full items-center rounded-[var(--abc-radius-md)] text-left font-medium cursor-pointer',
+                    NAV_BTN_MOTION_CLASS,
+                    m.dualPanelItem,
                     active
                       ? 'bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]'
-                      : 'text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
+                      : 'text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]',
+                    sub.disabled && 'opacity-40 cursor-not-allowed'
                   )}
                 >
-                  {renderMenuIcon(sub.icon, iconRegistry, 15)}
+                  {renderMenuIcon(sub.icon, iconRegistry, m.dualPanelIcon)}
                   <span className="truncate">{sub.label}</span>
                 </button>
               )

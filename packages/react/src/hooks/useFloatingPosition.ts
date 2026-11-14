@@ -119,6 +119,7 @@ export function useFloatingPosition({
     actualSide: FloatingSide
     arrowOffset: number
     transformOrigin: string
+    positioned: boolean
   }>(() => ({
     top: 0,
     left: 0,
@@ -126,6 +127,7 @@ export function useFloatingPosition({
     actualSide: preferredSide,
     arrowOffset: 16,
     transformOrigin: resolveTransformOrigin(preferredSide, align),
+    positioned: false,
   }))
 
   const update = useCallback(() => {
@@ -139,9 +141,12 @@ export function useFloatingPosition({
     const vh = window.innerHeight || 768
     const pad = viewportPadding
 
-    const rawFloatW = floatRect?.width || (matchWidth ? triggerRect.width : 180)
+    // 优先读取不受 CSS scale 入场动画影响的布局宽高，防止缩放过程造成坐标二次跳变
+    const layoutW = floatEl ? floatEl.offsetWidth : 0
+    const layoutH = floatEl ? floatEl.offsetHeight : 0
+    const rawFloatW = layoutW || floatRect?.width || (matchWidth ? triggerRect.width : 180)
     const floatW = matchWidth ? Math.max(rawFloatW, triggerRect.width) : rawFloatW
-    const floatH = floatRect?.height || 40
+    const floatH = layoutH || floatRect?.height || 40
 
     // 在 jsdom 等零几何布局测试环境中保持稳定默认坐标
     if (
@@ -157,6 +162,7 @@ export function useFloatingPosition({
         actualSide: preferredSide,
         arrowOffset: 16,
         transformOrigin: resolveTransformOrigin(preferredSide, align),
+        positioned: true,
       })
       return
     }
@@ -244,6 +250,7 @@ export function useFloatingPosition({
 
     setState((prev) => {
       if (
+        prev.positioned &&
         Math.abs(prev.top - clampedTop) < 0.5 &&
         Math.abs(prev.left - clampedLeft) < 0.5 &&
         prev.minWidth === minWidth &&
@@ -260,12 +267,16 @@ export function useFloatingPosition({
         actualSide,
         arrowOffset: Math.round(arrowOffset),
         transformOrigin,
+        positioned: true,
       }
     })
   }, [triggerRef, floatingRef, preferredSide, align, offset, matchWidth, viewportPadding])
 
   useIsomorphicLayoutEffect(() => {
-    if (!open) return
+    if (!open) {
+      setState((prev) => (prev.positioned ? { ...prev, positioned: false } : prev))
+      return
+    }
     update()
     // 首帧渲染后二次校准真实浮层宽高
     const raf =
@@ -286,9 +297,10 @@ export function useFloatingPosition({
     window.addEventListener('scroll', update, true)
 
     let ro: ResizeObserver | null = null
-    if (typeof ResizeObserver !== 'undefined' && floatingRef.current) {
+    if (typeof ResizeObserver !== 'undefined') {
       ro = new ResizeObserver(() => update())
-      ro.observe(floatingRef.current)
+      if (floatingRef.current) ro.observe(floatingRef.current)
+      if (triggerRef.current) ro.observe(triggerRef.current)
     }
 
     return () => {
@@ -296,7 +308,7 @@ export function useFloatingPosition({
       window.removeEventListener('scroll', update, true)
       ro?.disconnect()
     }
-  }, [open, update, floatingRef])
+  }, [open, update, floatingRef, triggerRef])
 
   const portalContainer = open ? getOverlayPortalContainer(triggerRef.current) : null
 
@@ -307,6 +319,8 @@ export function useFloatingPosition({
       left: `${state.left}px`,
       minWidth: state.minWidth ? `${state.minWidth}px` : undefined,
       transformOrigin: state.transformOrigin,
+      // 尚未完成首帧同步坐标测算前先隐藏，防止残影在 (0, 0) 或上次位置闪现一帧
+      visibility: open && !state.positioned ? 'hidden' : undefined,
     },
     actualSide: state.actualSide,
     arrowOffset: state.arrowOffset,

@@ -1,5 +1,7 @@
 import React, { useId, useState } from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { ChevronDown } from 'lucide-react'
+import { useAbcMotion, useAbcSize } from '../../hooks'
 import { cn } from '../../utils/cn'
 
 /* ==================== 1. Descriptions 详情键值列表 ==================== */
@@ -18,7 +20,8 @@ export interface DescriptionsProps {
   items: DescriptionItem[]
   column?: 1 | 2 | 3 | 4
   bordered?: boolean
-  size?: 'sm' | 'md'
+  size?: AbcSize
+  motion?: AbcMotionPreset
   className?: string
 }
 
@@ -32,9 +35,12 @@ export const Descriptions: React.FC<DescriptionsProps> = ({
   items,
   column = 2,
   bordered = true,
-  size = 'sm',
+  size,
+  motion,
   className,
 }) => {
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
   const gridColsClass =
     column === 1
       ? 'grid-cols-1'
@@ -44,13 +50,23 @@ export const Descriptions: React.FC<DescriptionsProps> = ({
           ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
           : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
 
-  const padClass = size === 'sm' ? 'px-3 py-2 text-xs' : 'px-4 py-2.5 text-sm'
+  const padClassMap: Record<AbcSize, string> = {
+    xs: 'px-2.5 py-1.5 text-[11px]',
+    sm: 'px-3 py-2 text-xs',
+    md: 'px-4 py-2.5 text-sm',
+    lg: 'px-5 py-3 text-sm',
+  }
+  const padClass = padClassMap[resolvedSize]
 
   return (
-    <div className={cn('space-y-2.5', className)}>
+    <div data-motion={resolvedMotion} className={cn('space-y-2.5', className)}>
       {(title || extra) && (
         <div className="flex items-center justify-between gap-2">
-          {title && <h4 className="text-xs font-semibold text-[var(--abc-fg)]">{title}</h4>}
+          {title && (
+            <h4 className={cn('font-semibold text-[var(--abc-fg)]', resolvedSize === 'lg' ? 'text-sm' : 'text-xs')}>
+              {title}
+            </h4>
+          )}
           {extra && <div className="flex items-center gap-2">{extra}</div>}
         </div>
       )}
@@ -126,7 +142,23 @@ export interface CollapseProps {
   defaultActiveKeys?: string[]
   activeKeys?: string[]
   onChange?: (activeKeys: string[]) => void
+  size?: AbcSize
+  motion?: AbcMotionPreset
   className?: string
+}
+
+const COLLAPSE_SUMMARY_SIZE: Record<AbcSize, string> = {
+  xs: 'px-3 py-1.5 text-[11px]',
+  sm: 'px-4 py-2.5 text-xs',
+  md: 'px-4 py-3 text-sm',
+  lg: 'px-5 py-3.5 text-sm',
+}
+
+const COLLAPSE_BODY_SIZE: Record<AbcSize, string> = {
+  xs: 'px-3 py-2 text-[11px]',
+  sm: 'px-4 py-3 text-xs',
+  md: 'px-4 py-3.5 text-xs',
+  lg: 'px-5 py-4 text-sm',
 }
 
 /**
@@ -139,9 +171,13 @@ export const Collapse: React.FC<CollapseProps> = ({
   defaultActiveKeys = [],
   activeKeys: controlledKeys,
   onChange,
+  size,
+  motion,
   className,
 }) => {
   const groupName = useId()
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
   const [internalKeys, setInternalKeys] = useState<string[]>(defaultActiveKeys)
   const openKeys = controlledKeys !== undefined ? controlledKeys : internalKeys
 
@@ -162,6 +198,7 @@ export const Collapse: React.FC<CollapseProps> = ({
 
   return (
     <div
+      data-motion={resolvedMotion}
       className={cn(
         'divide-y divide-[var(--abc-border)] overflow-hidden rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)]',
         className
@@ -184,7 +221,8 @@ export const Collapse: React.FC<CollapseProps> = ({
                 handleToggle(item.key, !isOpen)
               }}
               className={cn(
-                'flex items-center justify-between gap-3 px-4 py-2.5 text-xs font-medium text-[var(--abc-fg)] select-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--abc-ring)]',
+                'abc-motion-control flex items-center justify-between gap-3 font-medium text-[var(--abc-fg)] select-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--abc-ring)]',
+                COLLAPSE_SUMMARY_SIZE[resolvedSize],
                 item.disabled
                   ? 'opacity-50 cursor-not-allowed'
                   : 'cursor-pointer hover:bg-[var(--abc-bg-muted)]'
@@ -193,7 +231,7 @@ export const Collapse: React.FC<CollapseProps> = ({
               <span className="inline-flex min-w-0 items-center gap-2">
                 <ChevronDown
                   className={cn(
-                    'h-3.5 w-3.5 shrink-0 text-[var(--abc-fg-muted)] transition-transform duration-200',
+                    'h-3.5 w-3.5 shrink-0 text-[var(--abc-fg-muted)] transition-transform duration-[var(--abc-motion-fast)]',
                     isOpen ? 'rotate-0' : '-rotate-90'
                   )}
                 />
@@ -202,7 +240,12 @@ export const Collapse: React.FC<CollapseProps> = ({
               {item.extra && <span className="shrink-0 text-[var(--abc-fg-muted)]">{item.extra}</span>}
             </summary>
 
-            <div className="border-t border-[var(--abc-border-subtle)] bg-[var(--abc-bg-surface)] px-4 py-3 text-xs leading-relaxed text-[var(--abc-fg-secondary)]">
+            <div
+              className={cn(
+                'border-t border-[var(--abc-border-subtle)] bg-[var(--abc-bg-surface)] leading-relaxed text-[var(--abc-fg-secondary)]',
+                COLLAPSE_BODY_SIZE[resolvedSize]
+              )}
+            >
               {item.children}
             </div>
           </details>
@@ -225,6 +268,8 @@ export interface TimelineItem {
 
 export interface TimelineProps {
   items: TimelineItem[]
+  size?: AbcSize
+  motion?: AbcMotionPreset
   className?: string
 }
 
@@ -239,14 +284,36 @@ const TIMELINE_DOT_CLASSES: Record<NonNullable<TimelineItem['tone']>, string> = 
 /**
  * 操作审计与工单流转垂直时间轴 (Timeline)
  */
-export const Timeline: React.FC<TimelineProps> = ({ items, className }) => {
+export const Timeline: React.FC<TimelineProps> = ({ items, size, motion, className }) => {
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
+
+  const itemPadMap: Record<AbcSize, string> = {
+    xs: 'gap-2.5 pb-2.5 last:pb-0',
+    sm: 'gap-3 pb-4 last:pb-0',
+    md: 'gap-3.5 pb-5 last:pb-0',
+    lg: 'gap-4 pb-6 last:pb-0',
+  }
+  const titleSizeMap: Record<AbcSize, string> = {
+    xs: 'text-[11px]',
+    sm: 'text-xs',
+    md: 'text-sm',
+    lg: 'text-base',
+  }
+  const descSizeMap: Record<AbcSize, string> = {
+    xs: 'text-[11px]',
+    sm: 'text-xs',
+    md: 'text-xs',
+    lg: 'text-sm',
+  }
+
   return (
-    <ol className={cn('m-0 list-none space-y-0 p-0', className)}>
+    <ol data-motion={resolvedMotion} className={cn('m-0 list-none space-y-0 p-0', className)}>
       {items.map((item, idx) => {
         const isLast = idx === items.length - 1
         const tone = item.tone ?? 'primary'
         return (
-          <li key={item.key ?? idx} className="relative flex gap-3 pb-4 last:pb-0">
+          <li key={item.key ?? idx} className={cn('relative flex', itemPadMap[resolvedSize])}>
             {!isLast && (
               <span
                 aria-hidden="true"
@@ -259,7 +326,7 @@ export const Timeline: React.FC<TimelineProps> = ({ items, className }) => {
               ) : (
                 <span
                   className={cn(
-                    'h-2.5 w-2.5 rounded-full border-2 ring-2 ring-[var(--abc-bg-surface)]',
+                    'abc-motion-pop h-2.5 w-2.5 rounded-full border-2 ring-2 ring-[var(--abc-bg-surface)]',
                     TIMELINE_DOT_CLASSES[tone]
                   )}
                 />
@@ -268,7 +335,9 @@ export const Timeline: React.FC<TimelineProps> = ({ items, className }) => {
 
             <div className="min-w-0 flex-1 space-y-0.5">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="text-xs font-medium text-[var(--abc-fg)]">{item.title}</span>
+                <span className={cn('font-medium text-[var(--abc-fg)]', titleSizeMap[resolvedSize])}>
+                  {item.title}
+                </span>
                 {item.time && (
                   <time className="font-mono text-[11px] text-[var(--abc-fg-muted)] tabular-nums">
                     {item.time}
@@ -276,7 +345,7 @@ export const Timeline: React.FC<TimelineProps> = ({ items, className }) => {
                 )}
               </div>
               {item.description && (
-                <div className="text-xs leading-relaxed text-[var(--abc-fg-muted)]">
+                <div className={cn('leading-relaxed text-[var(--abc-fg-muted)]', descSizeMap[resolvedSize])}>
                   {item.description}
                 </div>
               )}

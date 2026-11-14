@@ -1,4 +1,6 @@
 import React, { useId } from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
+import { useAbcMotion, useAbcSize } from '../../hooks'
 import { useControllableState } from '../../hooks/useControllableState'
 import { cn } from '../../utils/cn'
 
@@ -19,7 +21,8 @@ export interface TabsProps<K extends string = string> {
   defaultActiveKey?: K
   onChange?: (key: K) => void
   variant?: 'line' | 'pills' | 'segmented'
-  size?: 'sm' | 'md' | 'lg'
+  size?: AbcSize
+  motion?: AbcMotionPreset
   ariaLabel?: string
   extra?: React.ReactNode
   className?: string
@@ -38,12 +41,15 @@ export function Tabs<K extends string = string>({
   defaultActiveKey,
   onChange,
   variant = 'line',
-  size = 'md',
+  size,
+  motion,
   ariaLabel = '内容切换标签',
   extra,
   className,
   panelClassName,
 }: TabsProps<K>) {
+  const resolvedSize = useAbcSize(size, 'md')
+  const resolvedMotion = useAbcMotion(motion)
   const baseId = useId()
   const [currentKey, setCurrentKey] = useControllableState<K>({
     value: activeKey ?? value,
@@ -70,16 +76,18 @@ export function Tabs<K extends string = string>({
   const hasAnyPanelContent = items.some((item) => item.children !== undefined)
 
   const paddingBySize =
-    size === 'sm'
-      ? 'px-3 py-1.5 text-xs'
-      : size === 'lg'
-        ? 'px-4.5 py-2.5 text-sm'
-        : variant === 'line'
-          ? 'px-3.5 py-2.5 text-xs'
-          : 'px-3.5 py-1.5 text-xs'
+    resolvedSize === 'xs'
+      ? 'px-2.5 py-1 text-[11px]'
+      : resolvedSize === 'sm'
+        ? 'px-3 py-1.5 text-xs'
+        : resolvedSize === 'lg'
+          ? 'px-4.5 py-2.5 text-sm'
+          : variant === 'line'
+            ? 'px-3.5 py-2.5 text-xs'
+            : 'px-3.5 py-1.5 text-xs'
 
   return (
-    <div className={cn('w-full', className)}>
+    <div data-motion={resolvedMotion} className={cn('w-full', className)}>
       <div
         className={cn(
           'flex items-center justify-between gap-3',
@@ -113,7 +121,7 @@ export function Tabs<K extends string = string>({
                 onClick={() => !item.disabled && setCurrentKey(item.key)}
                 onKeyDown={(e) => handleKeyDown(e, idx)}
                 className={cn(
-                  'relative inline-flex flex-none items-center gap-1.5 font-medium whitespace-nowrap transition-colors cursor-pointer select-none',
+                  'abc-motion-control relative inline-flex flex-none items-center gap-1.5 font-medium whitespace-nowrap transition-colors cursor-pointer select-none',
                   'disabled:opacity-45 disabled:cursor-not-allowed',
                   paddingBySize,
                   variant === 'line'
@@ -170,7 +178,9 @@ export function Tabs<K extends string = string>({
                 {...(!selected ? ({ hidden: 'until-found' } as any) : {})}
               >
                 {selected && (
-                  <div className={cn('pt-4', panelClassName)}>{item.children}</div>
+                  <div className={cn('pt-4', resolvedMotion !== 'none' && 'abc-animate-fade-in', panelClassName)}>
+                    {item.children}
+                  </div>
                 )}
               </div>
             )

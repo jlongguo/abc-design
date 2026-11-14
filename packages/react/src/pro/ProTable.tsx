@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { AbcMotionPreset } from '@abc-design/tokens'
 import {
   cleanQueryObject,
   filterAndSortClientRows,
@@ -44,6 +45,7 @@ import TableCore, {
   type AbcTableExpandableConfig,
   type SortDirection,
 } from '../components/table/TableCore'
+import { useAbcMotion } from '../hooks'
 import { useDraftStorage } from '../hooks/useDraftStorage'
 import { useTableSettings, type AbcTableDensity } from '../hooks/useTableSettings'
 import { useAbcConfig } from '../provider/AbcProvider'
@@ -174,6 +176,8 @@ export interface ProTableProps<T extends Record<string, any> = Record<string, an
   }
   /** 工具栏左侧附加按钮插槽 */
   toolbarExtra?: React.ReactNode
+  /** 表格整体交互动效规格 */
+  motion?: AbcMotionPreset
   /** 新建/编辑保存回调 */
   onSaveRecord?: (values: Record<string, any>, editingRecord: T | null) => void | Promise<void>
   /** 单行或批量删除回调 */
@@ -216,10 +220,12 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
   maxHeight,
   permissions,
   toolbarExtra,
+  motion,
   onSaveRecord,
   onDeleteRecords,
 }: ProTableProps<T>) {
   const { toast } = useAbcConfig()
+  const resolvedMotion = useAbcMotion(motion)
   const { hasPermission } = useAbcPermission()
   const {
     settings,
@@ -862,6 +868,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
 
   return (
     <div
+      data-motion={resolvedMotion}
       className={cn(
         'relative space-y-3',
         isFullScreen && 'fixed inset-0 z-[950] m-0 overflow-auto bg-[var(--abc-bg-canvas)] p-4'
@@ -1204,6 +1211,9 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
               columns={columns}
               searchableFieldNames={searchableFieldNames}
               settings={settings}
+              hasActionColumn={hasAnyRowAction}
+              defaultActionWidth={viewable || rowActions.length > 0 ? 184 : 136}
+              motion={resolvedMotion}
               onToggleVisible={toggleColumnVisible}
               onSetAllVisible={setAllColumnsVisible}
               onSetFixed={setColumnFixed}
@@ -1221,6 +1231,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
           rowKey={rowKey}
           loading={loading}
           density={settings.density}
+          motion={resolvedMotion}
           selectedKeys={selectionEnabled ? selectedKeys : undefined}
           onSelectionChange={
             selectionEnabled
@@ -1277,6 +1288,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
           <Pagination
             current={current}
             pageSize={pageSize}
+            motion={resolvedMotion}
             total={displayTotal}
             onChange={(nextPage, nextSize) => {
               setCurrent(nextPage)
@@ -1292,6 +1304,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
           selectedKeys={selectedKeys}
           selectedRows={selectedRows}
           batchActions={permittedBatchActions}
+          motion={resolvedMotion}
           onBatchDelete={
             onDeleteRecords && canDelete ? () => handleBatchDelete(selectedKeys) : undefined
           }

@@ -8,8 +8,10 @@
 1. `'sidebar'`：经典左侧树形菜单（支持深色 `dark` / 浅色 `light` 侧栏独立色调、折叠图标态悬浮二级菜单、手风琴模式）。
 2. `'top'`：顶部水平导航栏，最大化横向表格视野。
 3. `'mix'`：混合导航（顶栏渲染一级业务域，侧边栏自动联动当前域下的二三级菜单）。
-4. `'dual-column'`：双栏侧边导航（左侧 `64px` 一级图标轨 + 右侧二级平铺面板，适合超大型 ERP/SaaS）。
+4. `'dual-column'`：双栏侧边导航（左侧极窄一级图标轨 + 右侧二级平铺面板，适合超大型 ERP/SaaS）。
 5. `'auth'`：登录认证独立壳层（支持左右分屏极光叙事屏 `split` 与居中卡片 `centered`）。
+
+> 说明：`ProLayout`、`SidebarNav`、`DualColumnNav`、`TopHorizontalNav`、`BrandLogoBlock` 与 `MultiTabBar` 均原生继承 `AbcProvider.theme.componentSize`（`xs | sm | md | lg`）与 `theme.motion`（也支持局部传入 `size` / `motion` prop 覆写）；未显式指定 `sidebarWidth` / `headerHeight` 时，侧边栏宽度（`208 / 232 / 248 / 268`）与顶栏高度（`48 / 54 / 58 / 62`）将自动随四档尺寸联动。
 
 ### 2. 核心类型定义
 
@@ -45,9 +47,9 @@ export interface AbcLayoutSettings {
   showTabs: boolean
   keepAlive: boolean
   contentWidth: 'fluid' | 'fixed'
-  /** 展开态侧边栏宽度（200 ~ 320，默认 240） */
+  /** 展开态侧边栏宽度（不指定时随 componentSize 自动联动 208/232/248/268，自定义范围 196 ~ 288） */
   sidebarWidth?: number
-  /** 顶部导航栏高度（48 ~ 72，默认 56） */
+  /** 顶部导航栏高度（不指定时随 componentSize 自动联动 48/54/58/62，自定义范围 46 ~ 66） */
   headerHeight?: number
   /** 多页签栏视觉风格 */
   tabStyle?: 'card' | 'pill' | 'underline'

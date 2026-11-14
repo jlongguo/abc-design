@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import {
   AlertCircle,
   AlertTriangle,
@@ -10,6 +11,7 @@ import {
   ShieldAlert,
   X,
 } from 'lucide-react'
+import { useAbcMotion, useAbcSize } from '../../hooks'
 import Button from '../button/Button'
 import { cn } from '../../utils/cn'
 
@@ -26,6 +28,8 @@ export interface AlertProps {
   closable?: boolean
   onClose?: () => void
   action?: React.ReactNode
+  size?: AbcSize
+  motion?: AbcMotionPreset
   className?: string
 }
 
@@ -48,6 +52,13 @@ const ALERT_STYLES: Record<AlertTone, { box: string; icon: React.ReactNode }> = 
   },
 }
 
+const ALERT_SIZE_MAP: Record<AbcSize, string> = {
+  xs: 'px-2.5 py-1.5 text-[11px]',
+  sm: 'px-3.5 py-2.5 text-xs',
+  md: 'px-4 py-3 text-sm',
+  lg: 'px-5 py-3.5 text-sm',
+}
+
 /**
  * 页内提示横幅组件 (Alert)
  */
@@ -60,9 +71,13 @@ export const Alert: React.FC<AlertProps> = ({
   closable = false,
   onClose,
   action,
+  size,
+  motion,
   className,
 }) => {
   const [closed, setClosed] = useState(false)
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
   if (closed) return null
 
   const cfg = ALERT_STYLES[tone]
@@ -71,8 +86,11 @@ export const Alert: React.FC<AlertProps> = ({
   return (
     <div
       role="alert"
+      data-motion={resolvedMotion}
       className={cn(
-        'flex items-start gap-2.5 rounded-[var(--abc-radius-md)] border px-3.5 py-2.5 text-xs',
+        'abc-motion-surface flex items-start gap-2.5 rounded-[var(--abc-radius-md)] border',
+        ALERT_SIZE_MAP[resolvedSize],
+        resolvedMotion !== 'none' && 'abc-animate-fade-in',
         cfg.box,
         className
       )}
@@ -108,9 +126,24 @@ export interface ProgressProps {
   type?: 'line' | 'circle'
   tone?: 'primary' | 'success' | 'warning' | 'danger'
   showInfo?: boolean
-  /** 环形直径（默认 68px）或线性条高度（默认 8px） */
-  size?: number
+  /** 环形直径 / 线性条高度（支持具体像素或通用 xs/sm/md/lg 规格） */
+  size?: number | AbcSize
+  motion?: AbcMotionPreset
   className?: string
+}
+
+const PROGRESS_CIRCLE_PX: Record<AbcSize, number> = {
+  xs: 48,
+  sm: 68,
+  md: 84,
+  lg: 104,
+}
+
+const PROGRESS_LINE_PX: Record<AbcSize, number> = {
+  xs: 4,
+  sm: 7,
+  md: 9,
+  lg: 12,
 }
 
 const PROGRESS_FILL_COLOR: Record<NonNullable<ProgressProps['tone']>, string> = {
@@ -129,13 +162,16 @@ export const Progress: React.FC<ProgressProps> = ({
   tone = 'primary',
   showInfo = true,
   size,
+  motion,
   className,
 }) => {
+  const resolvedSize = useAbcSize(typeof size === 'string' ? size : undefined, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
   const clamped = Math.max(0, Math.min(100, Math.round(percent)))
   const strokeColor = PROGRESS_FILL_COLOR[tone]
 
   if (type === 'circle') {
-    const diameter = size ?? 68
+    const diameter = typeof size === 'number' ? size : PROGRESS_CIRCLE_PX[resolvedSize]
     const strokeWidth = Math.max(4, Math.round(diameter * 0.09))
     const radius = (diameter - strokeWidth) / 2
     const circumference = 2 * Math.PI * radius
@@ -144,6 +180,7 @@ export const Progress: React.FC<ProgressProps> = ({
     return (
       <div
         role="progressbar"
+        data-motion={resolvedMotion}
         aria-valuenow={clamped}
         aria-valuemin={0}
         aria-valuemax={100}
@@ -169,7 +206,7 @@ export const Progress: React.FC<ProgressProps> = ({
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={dashOffset}
-            className="transition-all duration-300"
+            className="transition-all duration-[var(--abc-motion-slow)]"
           />
         </svg>
         {showInfo && (
@@ -181,10 +218,11 @@ export const Progress: React.FC<ProgressProps> = ({
     )
   }
 
-  const barHeight = size ?? 7
+  const barHeight = typeof size === 'number' ? size : PROGRESS_LINE_PX[resolvedSize]
   return (
     <div
       role="progressbar"
+      data-motion={resolvedMotion}
       aria-valuenow={clamped}
       aria-valuemin={0}
       aria-valuemax={100}
@@ -195,7 +233,7 @@ export const Progress: React.FC<ProgressProps> = ({
         style={{ height: barHeight }}
       >
         <div
-          className="h-full rounded-full transition-all duration-300"
+          className="h-full rounded-full transition-all duration-[var(--abc-motion-slow)]"
           style={{ width: `${clamped}%`, backgroundColor: strokeColor }}
         />
       </div>
@@ -218,6 +256,8 @@ export interface ResultProps {
   subTitle?: React.ReactNode
   extra?: React.ReactNode
   children?: React.ReactNode
+  size?: AbcSize
+  motion?: AbcMotionPreset
   className?: string
 }
 
@@ -261,13 +301,26 @@ export const Result: React.FC<ResultProps> = ({
   subTitle,
   extra,
   children,
+  size,
+  motion,
   className,
 }) => {
   const visual = RESULT_ICONS[status]
+  const resolvedSize = useAbcSize(size, 'md')
+  const resolvedMotion = useAbcMotion(motion)
+  const padSizeMap: Record<AbcSize, string> = {
+    xs: 'px-4 py-6',
+    sm: 'px-5 py-8',
+    md: 'px-6 py-12',
+    lg: 'px-8 py-16',
+  }
   return (
     <div
+      data-motion={resolvedMotion}
       className={cn(
-        'flex flex-col items-center justify-center px-6 py-12 text-center',
+        'flex flex-col items-center justify-center text-center',
+        padSizeMap[resolvedSize],
+        resolvedMotion !== 'none' && 'abc-animate-fade-in',
         className
       )}
     >

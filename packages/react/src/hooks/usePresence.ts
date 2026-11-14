@@ -1,45 +1,47 @@
 import { useEffect, useState } from 'react'
 
+function getPrefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+}
+
 /**
  * 浮层挂载与退场动画协调 Hook
- * 在 open 变为 false 时先触发退场 CSS 动画，待 durationMs 结束后再卸载 DOM，消除闪退跳变
+ * 1. 进入打开态时同步返回 isMounted=true 与 isVisible=true，直接启用入场关键帧，避免首帧误挂退场类造成闪烁；
+ * 2. open 变为 false 时保留退场 DOM 直到 durationMs 结束（durationMs <= 0 或禁用动效时同步卸载）。
  */
 export function usePresence(open: boolean, durationMs = 200): {
   isMounted: boolean
   isVisible: boolean
 } {
-  const [isMounted, setIsMounted] = useState(open)
-  const [isVisible, setIsVisible] = useState(open)
+  const [mounted, setMounted] = useState(open)
+  const prefersReduced = getPrefersReducedMotion()
+
+  // 在 open 刚变为 true 的同一次渲染内同步置为 mounted，确保不延迟产生退场状态帧
+  if (open && !mounted) {
+    setMounted(true)
+  }
 
   useEffect(() => {
-    const prefersReduced =
-      typeof window !== 'undefined' &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
     if (open) {
-      setIsMounted(true)
-      if (prefersReduced) {
-        setIsVisible(true)
-        return
-      }
-      const raf = requestAnimationFrame(() => {
-        setIsVisible(true)
-      })
-      return () => cancelAnimationFrame(raf)
+      setMounted(true)
+      return
     }
 
-    setIsVisible(false)
     if (prefersReduced || durationMs <= 0) {
-      setIsMounted(false)
+      setMounted(false)
       return
     }
 
     const timer = window.setTimeout(() => {
-      setIsMounted(false)
+      setMounted(false)
     }, durationMs)
     return () => window.clearTimeout(timer)
-  }, [open, durationMs])
+  }, [open, durationMs, prefersReduced])
 
-  return { isMounted, isVisible }
+  const isMounted = open ? true : prefersReduced || durationMs <= 0 ? false : mounted
+  return { isMounted, isVisible: open }
 }

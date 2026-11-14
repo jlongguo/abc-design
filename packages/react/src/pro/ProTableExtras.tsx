@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import type { AbcMotionPreset } from '@abc-design/tokens'
 import {
   Filter,
   GripVertical,
@@ -16,6 +17,7 @@ import { Checkbox } from '../components/form/Controls'
 import { Input } from '../components/form/Input'
 import { Select, type SelectOption } from '../components/form/Select'
 import type { AbcColumn } from '../components/table/TableCore'
+import { useAbcMotion } from '../hooks'
 import type { AbcTablePersistedSettings } from '../hooks/useTableSettings'
 import { cn } from '../utils/cn'
 
@@ -184,6 +186,9 @@ export interface ProColumnSettingsPopoverProps<T = Record<string, any>> {
   columns: AbcColumn<T>[]
   searchableFieldNames: Set<string>
   settings: AbcTablePersistedSettings
+  hasActionColumn?: boolean
+  defaultActionWidth?: number
+  motion?: AbcMotionPreset
   onToggleVisible: (key: string) => void
   onSetAllVisible: (allKeys: string[], visible: boolean) => void
   onSetFixed: (key: string, fixed: 'left' | 'right' | null | undefined) => void
@@ -197,6 +202,9 @@ export function ProColumnSettingsPopover<T = Record<string, any>>({
   columns,
   searchableFieldNames,
   settings,
+  hasActionColumn,
+  defaultActionWidth = 184,
+  motion,
   onToggleVisible,
   onSetAllVisible,
   onSetFixed,
@@ -205,10 +213,30 @@ export function ProColumnSettingsPopover<T = Record<string, any>>({
   onSetSearchVisible,
   onReset,
 }: ProColumnSettingsPopoverProps<T>) {
+  const resolvedMotion = useAbcMotion(motion)
   const [open, setOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [tab, setTab] = useState<'all' | 'fixed' | 'hidden'>('all')
   const [dragKey, setDragKey] = useState<string | null>(null)
+  const preDragOrderRef = useRef<string[] | null>(null)
+  const hasLiveSwappedRef = useRef(false)
+
+  useEffect(() => {
+    if (!dragKey) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        const origOrder = preDragOrderRef.current
+        setDragKey(null)
+        preDragOrderRef.current = null
+        hasLiveSwappedRef.current = false
+        if (origOrder) {
+          onSetOrder(origOrder)
+        }
+      }
+    }
+    document.addEventListener('keydown', onKeyDown, true)
+    return () => document.removeEventListener('keydown', onKeyDown, true)
+  }, [dragKey, onSetOrder])
 
   const configurableCols = useMemo(
     () => columns.filter((c) => !c.hideInTable && c.key !== '__abc_actions__'),
@@ -249,12 +277,20 @@ export function ProColumnSettingsPopover<T = Record<string, any>>({
   }, [orderedCols, keyword, tab, settings.hiddenKeys, settings.columnFixed])
 
   const allKeys = useMemo(() => configurableCols.map((c) => c.key), [configurableCols])
+  const actionCol = useMemo(
+    () => columns.find((c) => c.key === '__abc_actions__'),
+    [columns]
+  )
+  const showActionWidthControl = Boolean(hasActionColumn || actionCol)
+  const actionWidthVal =
+    settings.columnWidths['__abc_actions__'] ?? actionCol?.width ?? defaultActionWidth
 
   return (
     <Popover
       open={open}
       onOpenChange={setOpen}
       placement="bottomRight"
+      motion={resolvedMotion}
       panelClassName="w-[356px] overflow-hidden p-0"
       content={
         <div className="text-xs select-none">
@@ -360,28 +396,58 @@ export function ProColumnSettingsPopover<T = Record<string, any>>({
                 return (
                   <div
                     key={col.key}
+                    data-dragging={dragKey === col.key ? 'true' : undefined}
                     draggable
-                    onDragStart={() => setDragKey(col.key)}
-                    onDragOver={(e) => {
-                      if (dragKey && dragKey !== col.key) e.preventDefault()
+                    onDragStart={() => {
+                      preDragOrderRef.current = orderedCols.map((c) => c.key)
+                      hasLiveSwappedRef.current = false
+                      setDragKey(col.key)
                     }}
-                    onDrop={() => {
+                    onDragOver={(e) => {
                       if (!dragKey || dragKey === col.key) return
+                      e.preventDefault()
                       const keys = orderedCols.map((c) => c.key)
                       const from = keys.indexOf(dragKey)
                       const to = keys.indexOf(col.key)
-                      if (from >= 0 && to >= 0) {
-                        const next = [...keys]
-                        const [moved] = next.splice(from, 1)
-                        next.splice(to, 0, moved)
-                        onSetOrder(next)
+                      if (from < 0 || to < 0 || from === to) return
+
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                      if (rect.height > 0) {
+                        if (from < to && e.clientY < rect.top + rect.height * 0.35) return
+                        if (from > to && e.clientY > rect.top + rect.height * 0.65) return
+                      }
+
+                      const next = [...keys]
+                      const [moved] = next.splice(from, 1)
+                      next.splice(to, 0, moved)
+                      hasLiveSwappedRef.current = true
+                      onSetOrder(next)
+                    }}
+                    onDrop={() => {
+                      if (dragKey && dragKey !== col.key && !hasLiveSwappedRef.current) {
+                        const keys = orderedCols.map((c) => c.key)
+                        const from = keys.indexOf(dragKey)
+                        const to = keys.indexOf(col.key)
+                        if (from >= 0 && to >= 0) {
+                          const next = [...keys]
+                          const [moved] = next.splice(from, 1)
+                          next.splice(to, 0, moved)
+                          onSetOrder(next)
+                        }
                       }
                       setDragKey(null)
+                      preDragOrderRef.current = null
+                      hasLiveSwappedRef.current = false
                     }}
-                    onDragEnd={() => setDragKey(null)}
+                    onDragEnd={() => {
+                      setDragKey(null)
+                      preDragOrderRef.current = null
+                      hasLiveSwappedRef.current = false
+                    }}
                     className={cn(
                       'flex items-center justify-between gap-2 rounded-[var(--abc-radius-md)] border border-transparent px-2 py-1.5 transition-colors hover:border-[var(--abc-border)] hover:bg-[var(--abc-bg-muted)]/70',
-                      dragKey === col.key && 'opacity-50'
+                      dragKey === col.key &&
+                        'border-[var(--abc-primary)] bg-[var(--abc-primary-soft)]/60 opacity-90'
                     )}
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -482,6 +548,44 @@ export function ProColumnSettingsPopover<T = Record<string, any>>({
               })
             )}
           </div>
+
+          {showActionWidthControl && (
+            <div className="flex items-center justify-between gap-2 border-t border-[var(--abc-border)] bg-[var(--abc-bg-muted)]/60 px-3 py-2">
+              <div className="min-w-0">
+                <div className="text-[11px] font-medium text-[var(--abc-fg)]">操作列固定宽度</div>
+                <div className="text-[10px] text-[var(--abc-fg-muted)]">
+                  可在表头左缘拖拽或直接设置
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <input
+                  type="number"
+                  min={80}
+                  max={600}
+                  aria-label="操作 列宽"
+                  placeholder="宽px"
+                  defaultValue={actionWidthVal}
+                  key={`__abc_actions___${actionWidthVal}`}
+                  onBlur={(e) => {
+                    const parsed = parseInt(e.target.value, 10)
+                    if (!Number.isNaN(parsed) && parsed >= 80) {
+                      onSetWidth('__abc_actions__', parsed)
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const parsed = parseInt((e.target as HTMLInputElement).value, 10)
+                      if (!Number.isNaN(parsed) && parsed >= 80) {
+                        onSetWidth('__abc_actions__', parsed)
+                      }
+                    }
+                  }}
+                  className="h-6 w-14 rounded-[var(--abc-radius-xs)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-1 text-center font-mono text-[11px] text-[var(--abc-fg)] focus:border-[var(--abc-primary)] focus:outline-none"
+                />
+                <span className="font-mono text-[10px] text-[var(--abc-fg-muted)]">px</span>
+              </div>
+            </div>
+          )}
         </div>
       }
     >
@@ -599,20 +703,27 @@ export function ProFloatingBatchBar<T = Record<string, any>>({
   batchActions = [],
   onBatchDelete,
   onClear,
+  motion,
 }: {
   selectedKeys: Array<string | number>
   selectedRows: T[]
   batchActions?: ProTableBatchAction<T>[]
   onBatchDelete?: () => void
   onClear: () => void
+  motion?: AbcMotionPreset
 }) {
+  const resolvedMotion = useAbcMotion(motion)
   if (selectedKeys.length === 0) return null
 
   return (
     <div
       role="region"
       aria-label="批量操作栏"
-      className="fixed bottom-6 left-1/2 z-40 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-3 rounded-full border border-[var(--abc-border-strong)] bg-[var(--abc-bg-elevated)]/95 px-4 py-2 shadow-[var(--abc-shadow-modal)] backdrop-blur-md abc-floating-bar-in"
+      data-motion={resolvedMotion}
+      className={cn(
+        'fixed bottom-6 left-1/2 z-40 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-3 rounded-full border border-[var(--abc-border-strong)] bg-[var(--abc-bg-elevated)]/95 px-4 py-2 shadow-[var(--abc-shadow-modal)] backdrop-blur-md',
+        resolvedMotion !== 'none' && 'abc-floating-bar-in'
+      )}
     >
       <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--abc-primary-soft)] px-2.5 py-0.5 text-xs font-medium whitespace-nowrap text-[var(--abc-primary)]">
         已选择 <strong className="font-mono font-bold tabular-nums">{selectedKeys.length}</strong> 项

@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { matchKeywordWithPinyin } from '@abc-design/core'
 import { Check, ChevronDown, Search, X } from 'lucide-react'
+import { useAbcMotion, useAbcSize } from '../../hooks/useAbcDefaults'
 import { cn } from '../../utils/cn'
 import Dialog from '../feedback/Dialog'
 import { baseFieldControlClass, Input } from '../form/Input'
@@ -116,7 +118,18 @@ export interface IconPickerProps {
   clearable?: boolean
   /** 是否禁用 */
   disabled?: boolean
+  /** 内联触发器尺寸规格 */
+  size?: AbcSize
+  /** 组件交互动效规格 */
+  motion?: AbcMotionPreset
   className?: string
+}
+
+const TRIGGER_SIZE_CLASS: Record<AbcSize, string> = {
+  xs: 'h-[var(--abc-control-h-xs)] text-xs',
+  sm: 'h-[var(--abc-control-h-sm)] text-xs',
+  md: 'h-[var(--abc-control-h-md)] text-sm',
+  lg: 'h-[var(--abc-control-h-lg)] text-sm',
 }
 
 /**
@@ -135,8 +148,12 @@ export const IconPicker: React.FC<IconPickerProps> = ({
   placeholder = '点击选择菜单图标',
   clearable = true,
   disabled = false,
+  size,
+  motion,
   className,
 }) => {
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
   const [innerOpen, setInnerOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
@@ -288,6 +305,7 @@ export const IconPicker: React.FC<IconPickerProps> = ({
       <div
         role="button"
         tabIndex={disabled ? -1 : 0}
+        data-motion={resolvedMotion}
         onClick={() => !disabled && setInnerOpen(true)}
         onKeyDown={(e) => {
           if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
@@ -296,7 +314,8 @@ export const IconPicker: React.FC<IconPickerProps> = ({
           }
         }}
         className={cn(
-          'flex h-[var(--abc-control-h-sm)] w-full items-center justify-between gap-2 px-2.5 text-xs cursor-pointer select-none',
+          'flex w-full items-center justify-between gap-2 px-2.5 cursor-pointer select-none abc-motion-control',
+          TRIGGER_SIZE_CLASS[resolvedSize],
           baseFieldControlClass,
           disabled && 'opacity-65 cursor-not-allowed bg-[var(--abc-bg-muted)]',
           className

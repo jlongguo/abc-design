@@ -1,5 +1,7 @@
 import React from 'react'
+import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { AlertCircle, Check } from 'lucide-react'
+import { useAbcMotion, useAbcSize } from '../../hooks'
 import { cn } from '../../utils/cn'
 
 export interface BreadcrumbItem {
@@ -13,7 +15,16 @@ export interface BreadcrumbItem {
 export interface BreadcrumbProps {
   items: BreadcrumbItem[]
   ariaLabel?: string
+  size?: AbcSize
+  motion?: AbcMotionPreset
   className?: string
+}
+
+const BREADCRUMB_SIZE: Record<AbcSize, string> = {
+  xs: 'text-[11px]',
+  sm: 'text-xs',
+  md: 'text-sm',
+  lg: 'text-base',
 }
 
 /**
@@ -24,12 +35,20 @@ export interface BreadcrumbProps {
 export const Breadcrumb: React.FC<BreadcrumbProps> = ({
   items,
   ariaLabel = '面包屑导航',
+  size,
+  motion,
   className,
 }) => {
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
   if (!items || items.length === 0) return null
 
   return (
-    <nav aria-label={ariaLabel} className={cn('abc-breadcrumb text-xs', className)}>
+    <nav
+      aria-label={ariaLabel}
+      data-motion={resolvedMotion}
+      className={cn('abc-breadcrumb', BREADCRUMB_SIZE[resolvedSize], className)}
+    >
       <ol className="m-0 flex list-none flex-wrap items-center p-0">
         {items.map((item, idx) => {
           const isLast = idx === items.length - 1
@@ -47,7 +66,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({
                   }
                 }}
                 className={cn(
-                  'inline-flex items-center gap-1 rounded-[var(--abc-radius-xs)] px-1 py-0.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)]',
+                  'abc-motion-control inline-flex items-center gap-1 rounded-[var(--abc-radius-xs)] px-1 py-0.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)]',
                   isLast
                     ? 'font-semibold text-[var(--abc-fg)] cursor-default no-underline'
                     : 'text-[var(--abc-fg-muted)] underline-offset-4 hover:text-[var(--abc-primary)] hover:underline cursor-pointer'
@@ -82,8 +101,24 @@ export interface StepsProps {
   /** 当前步骤整体状态 */
   status?: StepStatus
   direction?: 'horizontal' | 'vertical'
+  size?: AbcSize
+  motion?: AbcMotionPreset
   onChange?: (nextStepIndex: number) => void
   className?: string
+}
+
+const STEPS_CIRCLE_SIZE: Record<AbcSize, string> = {
+  xs: 'h-5 w-5 text-[10px]',
+  sm: 'h-6 w-6 text-xs',
+  md: 'h-7 w-7 text-xs',
+  lg: 'h-8 w-8 text-sm',
+}
+
+const STEPS_TITLE_SIZE: Record<AbcSize, string> = {
+  xs: 'text-[11px] leading-5',
+  sm: 'text-xs leading-6',
+  md: 'text-sm leading-7',
+  lg: 'text-base leading-8',
 }
 
 /**
@@ -95,13 +130,18 @@ export const Steps: React.FC<StepsProps> = ({
   current = 0,
   status = 'process',
   direction = 'horizontal',
+  size,
+  motion,
   onChange,
   className,
 }) => {
   const isVertical = direction === 'vertical'
+  const resolvedSize = useAbcSize(size, 'sm')
+  const resolvedMotion = useAbcMotion(motion)
 
   return (
     <ol
+      data-motion={resolvedMotion}
       className={cn(
         'm-0 list-none p-0',
         isVertical ? 'flex flex-col gap-4' : 'flex flex-wrap items-start gap-3 sm:flex-nowrap',
@@ -138,13 +178,14 @@ export const Steps: React.FC<StepsProps> = ({
               disabled={!isClickable}
               onClick={() => isClickable && onChange?.(idx)}
               className={cn(
-                'group flex min-w-0 items-start gap-2.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)] rounded-[var(--abc-radius-sm)]',
+                'abc-motion-control group flex min-w-0 items-start gap-2.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)] rounded-[var(--abc-radius-sm)]',
                 isClickable ? 'cursor-pointer' : 'cursor-default'
               )}
             >
               <span
                 className={cn(
-                  'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border font-mono text-xs font-semibold transition-colors',
+                  'abc-motion-pop inline-flex shrink-0 items-center justify-center rounded-full border font-mono font-semibold transition-colors',
+                  STEPS_CIRCLE_SIZE[resolvedSize],
                   circleClasses
                 )}
               >
@@ -162,7 +203,8 @@ export const Steps: React.FC<StepsProps> = ({
               <span className="min-w-0">
                 <span
                   className={cn(
-                    'block text-xs font-semibold leading-6',
+                    'block font-semibold',
+                    STEPS_TITLE_SIZE[resolvedSize],
                     resolvedStatus === 'wait'
                       ? 'text-[var(--abc-fg-muted)]'
                       : resolvedStatus === 'error'
