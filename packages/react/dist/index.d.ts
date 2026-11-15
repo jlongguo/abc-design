@@ -12,6 +12,7 @@ import { AbcTreeNode } from '@abc-design/core';
 import { AbcVisualMode } from '@abc-design/tokens';
 import { ClassValue } from 'clsx';
 import { default as default_2 } from 'react';
+import { JSX } from 'react';
 import * as React_2 from 'react';
 
 export declare const ABC_HEADER_HEIGHT_BY_SIZE: Record<AbcSize, number>;
@@ -122,6 +123,8 @@ export declare interface AbcContextValue {
     permissionAdapter?: AbcPermissionAdapter;
     captchaAdapter?: AbcCaptchaAdapter;
     iconRegistry: Record<string, AbcIconComponent>;
+    /** 多级抽屉全局默认展示交互模式：'adjacent' 为平级并排展开（企业级推荐），'stack' 为传统向左层叠推挤 */
+    defaultDrawerCascadeMode?: 'stack' | 'adjacent';
 }
 
 /** 数据字典适配器：按字典编码同步或异步返回选项列表 */
@@ -201,8 +204,10 @@ export declare interface AbcProviderProps {
     defaultWatermarkEnabled?: boolean;
     /** 是否持久化用户主题偏好到 localStorage（默认开启） */
     persist?: boolean;
-    /** 自定义 Toast 适配器（不传则使用内置零依赖 AbcToastViewport） */
+    /** 自定义 Toast 适配器（不传则使用内置零依赖 ToastContainer / AbcToastViewport） */
     toastAdapter?: AbcToastAdapter;
+    /** 全局 ToastContainer 属性配置（如挂载位置、最大数量、动效预设等） */
+    toastContainerProps?: ToastContainerProps;
     /** 注入全局文件上传实现（供 ImageUpload / ProConfigForm 使用） */
     uploadAdapter?: AbcUploadAdapter;
     /** 注入数据字典查询实现（供 DictSelect / DictTag / ProTable 使用） */
@@ -213,6 +218,8 @@ export declare interface AbcProviderProps {
     captchaAdapter?: AbcCaptchaAdapter;
     /** 按需注入扩展图标注册表 */
     iconRegistry?: Record<string, AbcIconComponent>;
+    /** 多级抽屉全局默认展示交互模式：'adjacent' 为平级并排展开（企业级推荐），'stack' 为传统向左层叠推挤 */
+    defaultDrawerCascadeMode?: 'stack' | 'adjacent';
 }
 
 /** 侧边栏独立视觉色调（允许亮色工作区搭配深色专业侧栏，或全浅色通透侧栏） */
@@ -257,7 +264,7 @@ export declare interface AbcTablePersistedSettings {
 export declare type AbcTabStyle = 'card' | 'pill' | 'underline';
 
 /** 零外部依赖的内置全局轻量消息通知实例 */
-export declare const abcToast: AbcToastAdapter;
+export declare const abcToast: AbcToastMethods;
 
 /** 轻量消息提示适配器协议 */
 export declare interface AbcToastAdapter {
@@ -267,12 +274,22 @@ export declare interface AbcToastAdapter {
     warning: (message: string) => void;
 }
 
-/** 全局消息队列挂载宿主（由 AbcProvider 默认渲染） */
+export declare interface AbcToastMethods extends AbcToastAdapter {
+    success: (messageOrOptions: default_2.ReactNode | ToastOptions, duration?: number) => string;
+    error: (messageOrOptions: default_2.ReactNode | ToastOptions, duration?: number) => string;
+    info: (messageOrOptions: default_2.ReactNode | ToastOptions, duration?: number) => string;
+    warning: (messageOrOptions: default_2.ReactNode | ToastOptions, duration?: number) => string;
+    loading: (messageOrOptions: default_2.ReactNode | ToastOptions, duration?: number) => string;
+    push: (tone: ToastTone, messageOrOptions: default_2.ReactNode | ToastOptions, duration?: number) => string;
+    dismiss: (id: string) => void;
+    clear: () => void;
+}
+
+/** 全局消息队列挂载宿主（由 AbcProvider 默认渲染，底层基于 ToastContainer） */
 export declare const AbcToastViewport: default_2.FC<AbcToastViewportProps>;
 
-export declare interface AbcToastViewportProps {
-    size?: AbcSize;
-    motion?: AbcMotionPreset;
+/** 兼容导出命名 */
+export declare interface AbcToastViewportProps extends ToastContainerProps {
 }
 
 export { AbcTreeNode }
@@ -310,6 +327,13 @@ export declare interface ActionCardProps {
     className?: string;
 }
 
+/** 全局活跃抽屉栈项：支撑多级抽屉自动计算宽度与平级并排/层叠推挤 */
+export declare interface ActiveDrawerEntry {
+    id: string;
+    cascadeMode?: 'stack' | 'adjacent';
+    widthPx: number;
+}
+
 /**
  * 页内提示横幅组件 (Alert)
  */
@@ -330,6 +354,40 @@ export declare interface AlertProps {
 }
 
 export declare type AlertTone = 'info' | 'success' | 'warning' | 'danger';
+
+export declare function AsyncInlineError({ error, fallbackTitle, fallbackMessage, action, retry, retryLabel, isRetrying, className, ...props }: AsyncInlineErrorProps): React_2.JSX.Element | null;
+
+export declare interface AsyncInlineErrorProps extends React_2.HTMLAttributes<HTMLDivElement> {
+    error: unknown;
+    fallbackTitle?: React_2.ReactNode;
+    fallbackMessage?: React_2.ReactNode;
+    action?: React_2.ReactNode;
+    retry?: () => void;
+    retryLabel?: React_2.ReactNode;
+    isRetrying?: boolean;
+}
+
+export declare interface AttentionEntry {
+    kind: string;
+    severity: 'critical' | 'high' | 'medium' | 'low' | string;
+    count: number;
+    label: string;
+    href?: string;
+    restriction?: string;
+    onClick?: () => void;
+}
+
+/**
+ * 重点待办与告警关注清单 (AttentionList)
+ * 用于控制台仪表盘、运营概览中展示聚合的高危与中危告警信号
+ */
+export declare function AttentionList({ items, emptyMessage, className, }: AttentionListProps): JSX.Element;
+
+export declare interface AttentionListProps {
+    items: AttentionEntry[];
+    emptyMessage?: string;
+    className?: string;
+}
 
 /** 柔和极光背景装饰层（适配 Auth 登录布局及大屏视觉头部） */
 export declare const AuroraBackground: default_2.FC<{
@@ -500,6 +558,22 @@ export declare function buttonVariants({ variant, size, className, }?: {
     className?: string;
 }): string;
 
+export declare const BYTE_UNIT_FACTORS: Record<ByteUnit, number>;
+
+export declare const BYTE_UNITS: readonly ByteUnit[];
+
+export declare function ByteQuotaInput({ locale, zeroMeansUnlimited, defaultZeroUnit, allowedUnits, unitAriaLabel, ...rest }: ByteQuotaInputProps): React_2.JSX.Element;
+
+export declare interface ByteQuotaInputProps extends QuotaUnitInputBaseProps {
+    locale?: 'en' | 'zh';
+    zeroMeansUnlimited?: boolean;
+    defaultZeroUnit?: ByteUnit;
+    allowedUnits?: readonly ByteUnit[];
+    unitAriaLabel?: string;
+}
+
+export declare type ByteUnit = 'B' | 'KB' | 'MB' | 'GB' | 'TB';
+
 /**
  * 标准企业级表面容器卡片
  * 统一取代零散的 panelClass / filterCardClass / tableCardClass，支持四档尺寸、五种视觉表面、封面图与容器查询
@@ -628,6 +702,9 @@ export declare interface CheckCardProps {
 
 export declare type CheckCardValue = string | number;
 
+/** 清空当前所有进行中的 Toast 通知 */
+export declare function clearToasts(): void;
+
 /** 合并条件类名并自动消解 Tailwind 工具类冲突 */
 export declare function cn(...inputs: ClassValue[]): string;
 
@@ -705,6 +782,28 @@ export declare interface CommandPaletteProps {
 declare const confirm_2: typeof abcConfirm;
 export { confirm_2 as confirm }
 
+/**
+ * 结构化二次确认对话框 (ConfirmDialog)
+ * 相比命令式 confirm()，支持自定义表单内容、破坏性警示样式、异步加载中与完全无障碍支持
+ */
+export declare function ConfirmDialog({ open, title, description, cancelLabel, confirmLabel, workingLabel, variant, loading, closeLabel, className, onCancel, onConfirm, children, }: ConfirmDialogProps): React_2.JSX.Element;
+
+export declare interface ConfirmDialogProps {
+    open: boolean;
+    title: React_2.ReactNode;
+    description?: React_2.ReactNode;
+    cancelLabel?: React_2.ReactNode;
+    confirmLabel?: React_2.ReactNode;
+    workingLabel?: React_2.ReactNode;
+    variant?: 'default' | 'destructive';
+    loading?: boolean;
+    closeLabel?: string;
+    className?: string;
+    onCancel: () => void;
+    onConfirm: () => void;
+    children?: React_2.ReactNode;
+}
+
 export declare interface ConfirmOptions {
     title?: string;
     message?: default_2.ReactNode;
@@ -725,6 +824,17 @@ export declare const ConfirmProvider: default_2.FC<{
 }>;
 
 export declare type ControlSize = AbcSize;
+
+export declare const CopyableCode: React_2.ForwardRefExoticComponent<CopyableCodeProps & React_2.RefAttributes<HTMLSpanElement>>;
+
+export declare interface CopyableCodeProps extends React_2.HTMLAttributes<HTMLSpanElement> {
+    value: string;
+    displayValue?: React_2.ReactNode;
+    copyLabel?: string;
+    copiedLabel?: string;
+    hideCopyButton?: boolean;
+    codeClassName?: string;
+}
 
 /**
  * 一键点击复制文本组件
@@ -758,9 +868,26 @@ export declare interface CopyableTextProps {
 }
 
 /**
+ * 独立的轻量复制图标按钮
+ * 广泛用于表格列、卡片、代码块内快速复制 ID/Key 等场景
+ */
+export declare const CopyButton: default_2.FC<CopyButtonProps>;
+
+export declare interface CopyButtonProps extends default_2.ButtonHTMLAttributes<HTMLButtonElement> {
+    value: string;
+    title?: string;
+    copyLabel?: string;
+    copiedLabel?: string;
+    successDuration?: number;
+}
+
+/**
  * 写入文本至系统剪贴板（优先使用 Clipboard API，非安全上下文下自动回退至隐藏 textarea）
  */
 export declare function copyToClipboard(text: string): Promise<boolean>;
+
+/** 游标流式分页器（专用于 CDP 抓包、高频作业队列等无深总数的大数据场景） */
+export declare const CursorPagination: default_2.FC<PaginationProps>;
 
 /**
  * 企业级单日期选择器 (DatePicker)
@@ -844,6 +971,44 @@ export declare interface DescriptionItem {
     span?: number;
 }
 
+export declare interface DescriptionItemData {
+    key?: React_2.Key;
+    label: React_2.ReactNode;
+    value: React_2.ReactNode;
+    mono?: boolean;
+    copyValue?: string;
+    span?: 1 | 2 | 3 | 'full';
+    className?: string;
+}
+
+export declare interface DescriptionItemProps extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'title'> {
+    label: React_2.ReactNode;
+    value?: React_2.ReactNode;
+    mono?: boolean;
+    copyValue?: string;
+    span?: 1 | 2 | 3 | 'full';
+    variant?: 'default' | 'cards' | 'divided' | 'compact';
+    valueClassName?: string;
+}
+
+/**
+ * 结构化元数据描述列表组件
+ * 基于语义化 dl/dt/dd 标签，支持多列网格、卡片化、分隔线与紧凑排版
+ */
+export declare const DescriptionList: React_2.ForwardRefExoticComponent<DescriptionListProps & React_2.RefAttributes<HTMLDListElement>>;
+
+export declare const DescriptionListItem: React_2.ForwardRefExoticComponent<DescriptionItemProps & React_2.RefAttributes<HTMLDivElement>>;
+
+export declare type DescriptionListItemProps = DescriptionItemProps;
+
+export declare interface DescriptionListProps extends React_2.HTMLAttributes<HTMLDListElement> {
+    columns?: 1 | 2 | 3 | 4;
+    variant?: 'default' | 'cards' | 'divided' | 'compact';
+    density?: 'default' | 'compact';
+    bordered?: boolean;
+    items?: DescriptionItemData[];
+}
+
 /**
  * 详情键值对描述列表 (Descriptions)
  * 用于用户画像抽屉、订单详情弹窗与配置参数核对面板
@@ -863,10 +1028,30 @@ export declare interface DescriptionsProps {
 
 /**
  * 企业级模态对话框
+ *
+ * 【交互与容器选型规范】
+ * 1. 专用于小表单操作与轻量确认（如重命名、状态流转、单字段修改、二次确认等少字段场景），居中聚焦单一任务。
+ * 2. 天然支持多级遮罩堆叠（通过多层 Dialog 依次弹出与关闭）。
+ * 3. 严禁承载大表单或复杂长表单（大表单必须使用 Drawer，避免顶部被顶出视口）。
+ *
  * 采用原生 HTML <dialog> + showModal() 顶层渲染，天然具备背景 inert 隔离、焦点锁与归还能力；
  * 结合 CSS overscroll-behavior: contain 杜绝滚动穿透且不篡改 body overflow 导致页面滚动条跳动。
  */
 export declare const Dialog: default_2.FC<DialogProps>;
+
+export declare function DialogContent({ className, children, ...props }: DialogContentProps): default_2.JSX.Element;
+
+export declare interface DialogContentProps extends default_2.HTMLAttributes<HTMLDivElement> {
+    closeLabel?: string;
+    closeDisabled?: boolean;
+    onClose?: () => void;
+}
+
+export declare function DialogDescription({ className, children, ...props }: default_2.HTMLAttributes<HTMLParagraphElement>): default_2.JSX.Element;
+
+export declare function DialogFooter({ className, children, ...props }: default_2.HTMLAttributes<HTMLDivElement>): default_2.JSX.Element;
+
+export declare function DialogHeader({ className, children, ...props }: default_2.HTMLAttributes<HTMLDivElement>): default_2.JSX.Element;
 
 export declare interface DialogProps {
     /** 控制模态框显隐（兼容 open / visible / isOpen 三种命名习惯） */
@@ -874,7 +1059,9 @@ export declare interface DialogProps {
     visible?: boolean;
     isOpen?: boolean;
     /** 请求关闭回调 */
-    onClose: () => void;
+    onClose?: () => void;
+    /** 兼容 onOpenChange 签名 */
+    onOpenChange?: (open: boolean) => void;
     /** 标题内容 */
     title?: default_2.ReactNode;
     /** 副标题或辅助描述 */
@@ -907,7 +1094,18 @@ export declare interface DialogProps {
     className?: string;
 }
 
+/**
+ * 企业级高保真模态弹窗组件 (Dialog / Modal)
+ *
+ * 【容器交互选型与多级交互铁律】
+ * 1. 对于大表单交互操作展示必须使用抽屉（Drawer），全高右侧贴合具备吸附 Header/Footer 与原生垂直滚动流，避免居中 Modal 在大表单下顶部被顶出可视区。
+ * 2. 打开一层抽屉是大表单、在该表单上需要打开另一个表单也是大表单的情况，必须使用子级抽屉（二级抽屉 L1 -> L2），优先使用 cascadeMode="adjacent"（平级并排对比展示），避免多层遮罩覆盖与内容割裂。
+ * 3. 如果是小表单或轻量确认操作（操作项较小、步骤简单），使用 Modal/Dialog，支持多级堆叠展示（z-index 自动高于抽屉）。
+ * 4. Dialog 内部采用显式绝对居中规范，彻底避免在非标准视口或长内容下被顶出可视区。
+ */
 export declare type DialogSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl';
+
+export declare function DialogTitle({ className, children, ...props }: default_2.HTMLAttributes<HTMLHeadingElement>): default_2.JSX.Element;
 
 /** 字典驱动下拉框（通过 AbcProvider.dictAdapter 解耦具体业务接口） */
 export declare const DictSelect: default_2.FC<DictSelectProps>;
@@ -938,6 +1136,7 @@ export declare interface DictTagProps {
     className?: string;
 }
 
+/** 关闭并销毁指定 ID 的 Toast 通知 */
 export declare function dismissToast(id: string): void;
 
 /** 分割线组件 */
@@ -952,9 +1151,22 @@ export declare function downloadTableCsv<T extends Record<string, any>>(filename
 
 /**
  * 企业级多级可调宽抽屉组件
- * 支持多抽屉栈层叠推挤（L1/L2 层级角标）、拖拽边缘无级调宽、宽度预设切换与本地记忆
+ *
+ * 【容器交互选型与多级交互铁律】
+ * 1. 对于大表单交互操作展示必须使用抽屉（Drawer），全高右侧贴合具备吸附 Header/Footer 与原生垂直滚动流，避免居中 Modal 在大表单下顶部被顶出可视区。
+ * 2. 打开一层抽屉是大表单、在该表单上需要打开另一个表单也是大表单的情况，必须使用子级抽屉（二级抽屉 L1 -> L2），优先使用 cascadeMode="adjacent"（平级并排对比展示），避免多层遮罩覆盖与内容割裂。
+ * 3. 如果是小表单或轻量确认操作（操作项较小、步骤简单），使用 Modal/Dialog，支持多级堆叠展示（z-index 自动高于抽屉）。
+ * 4. 支持多抽屉栈自动协同管理、视口宽度碰撞自适应等比缩放、拖拽边缘无级调宽与本地记忆。
  */
 export declare const Drawer: default_2.FC<DrawerProps>;
+
+export declare function DrawerBody({ className, ...props }: default_2.HTMLAttributes<HTMLDivElement>): default_2.JSX.Element;
+
+export declare function DrawerDescription({ className, ...props }: default_2.HTMLAttributes<HTMLParagraphElement>): default_2.JSX.Element;
+
+export declare function DrawerFooter({ className, ...props }: default_2.HTMLAttributes<HTMLDivElement>): default_2.JSX.Element;
+
+export declare function DrawerHeader({ className, ...props }: default_2.HTMLAttributes<HTMLDivElement>): default_2.JSX.Element;
 
 export declare interface DrawerProps {
     open?: boolean;
@@ -977,12 +1189,20 @@ export declare interface DrawerProps {
     storageKey?: string;
     /** 打开子抽屉时当前抽屉是否自动向左层叠推移（默认开启） */
     push?: boolean;
-    /** 每层子抽屉推移像素值 */
+    /** 每层子抽屉推移像素值（stack 模式下生效，默认 140） */
     pushDistance?: number;
+    /** 多级抽屉展示交互模式：'stack' 为传统向左堆叠推挤缩放，'adjacent' 为平级并排展开以便两级同时清晰观测 */
+    cascadeMode?: 'stack' | 'adjacent';
+    /** 平级并排展示模式下的向左推移间距（默认 560px） */
+    adjacentOffset?: number;
     bodyClassName?: string;
+    className?: string;
+    role?: string;
 }
 
 export declare type DrawerSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+
+export declare function DrawerTitle({ className, ...props }: default_2.HTMLAttributes<HTMLHeadingElement>): default_2.JSX.Element;
 
 /**
  * 视口感知顶层下拉菜单与气泡浮层组件 (Dropdown / Popover)
@@ -1034,6 +1254,22 @@ export declare const DualColumnNav: default_2.FC<{
     onNavigate: (path: string, item: AbcMenuItem) => void;
 }>;
 
+export declare const DURATION_UNIT_FACTORS: Record<DurationUnit, number>;
+
+export declare const DURATION_UNITS: readonly DurationUnit[];
+
+export declare function DurationQuotaInput({ locale, zeroMeansUnlimited, defaultZeroUnit, allowedUnits, unitAriaLabel, ...rest }: DurationQuotaInputProps): React_2.JSX.Element;
+
+export declare interface DurationQuotaInputProps extends QuotaUnitInputBaseProps {
+    locale?: 'en' | 'zh';
+    zeroMeansUnlimited?: boolean;
+    defaultZeroUnit?: DurationUnit;
+    allowedUnits?: readonly DurationUnit[];
+    unitAriaLabel?: string;
+}
+
+export declare type DurationUnit = 's' | 'm' | 'h' | 'd';
+
 /** 空状态占位组件（支持多尺寸层级与一键重置筛选交互） */
 export declare const EmptyState: default_2.FC<EmptyStateProps>;
 
@@ -1080,6 +1316,43 @@ declare interface ErrorBoundaryState {
     error: Error | null;
 }
 
+/**
+ * 分类胶囊单选组 (FilterPillGroup)
+ * 用于状态过滤（如 全部/待审批/已通过/已拒绝）的快速切换
+ */
+export declare function FilterPillGroup<T extends string = string>({ options, value, onValueChange, size, className, ...props }: FilterPillGroupProps<T>): React_2.JSX.Element;
+
+export declare interface FilterPillGroupProps<T extends string = string> extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'onChange'> {
+    options: ReadonlyArray<FilterPillOption<T>>;
+    value: T;
+    onValueChange: (value: T) => void;
+    size?: 'sm' | 'md';
+}
+
+export declare interface FilterPillOption<T extends string = string> {
+    value: T;
+    label: React_2.ReactNode;
+    count?: number;
+    icon?: React_2.ReactNode;
+    disabled?: boolean;
+}
+
+/**
+ * 筛选工具栏 (FilterToolbar)
+ * 用于统一容纳快速搜索框、筛选项下拉组、枚举胶囊组与全局重置按钮
+ */
+export declare const FilterToolbar: React_2.ForwardRefExoticComponent<FilterToolbarProps & React_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface FilterToolbarProps extends React_2.HTMLAttributes<HTMLDivElement> {
+    surface?: boolean;
+    hasActiveFilters?: boolean;
+    onReset?: () => void;
+    resetLabel?: React_2.ReactNode;
+    search?: React_2.ReactNode;
+    filters?: React_2.ReactNode;
+    trailing?: React_2.ReactNode;
+}
+
 export declare function findBreadcrumbChain(items: AbcMenuItem[], pathname: string, acc?: AbcMenuItem[]): AbcMenuItem[];
 
 export declare type FloatingPlacement = 'top' | 'bottom' | 'left' | 'right' | 'bottomLeft' | 'bottomRight' | 'topLeft' | 'topRight' | 'rightStart';
@@ -1094,6 +1367,10 @@ export declare interface FloatingPositionResult {
 }
 
 export declare type FloatingSide = 'top' | 'bottom' | 'left' | 'right';
+
+export declare function formatQuotaBytes(bytes: number, _locale?: 'en' | 'zh', zeroLabel?: string): string;
+
+export declare function formatQuotaDuration(seconds: number, locale?: 'en' | 'zh', zeroLabel?: string): string;
 
 /**
  * 标准表单项包装容器
@@ -1147,6 +1424,18 @@ export declare interface HeaderColumnFilterPopoverProps {
 export declare const Icon: default_2.FC<IconProps>;
 
 export declare const ICON_CATALOG: IconItem[];
+
+/**
+ * 图标文字组合徽标 (IconBadge)
+ */
+export declare function IconBadge({ icon, label, variant, size, className, ...props }: IconBadgeProps): React_2.JSX.Element;
+
+export declare interface IconBadgeProps extends React_2.HTMLAttributes<HTMLSpanElement> {
+    icon?: React_2.ReactNode;
+    label: React_2.ReactNode;
+    variant?: 'default' | 'success' | 'warning' | 'error' | 'info';
+    size?: 'xs' | 'sm' | 'md';
+}
 
 export declare interface IconItem {
     name: string;
@@ -1315,6 +1604,32 @@ export declare interface InputProps extends Omit<default_2.InputHTMLAttributes<H
     wrapperClassName?: string;
 }
 
+/**
+ * 右侧检视面板 (InspectorPanel)
+ * 用于承载右侧选定项的字段详情、状态流转和关联操作
+ */
+export declare const InspectorPanel: React_2.ForwardRefExoticComponent<InspectorPanelProps & React_2.RefAttributes<HTMLElement>>;
+
+export declare interface InspectorPanelProps extends Omit<React_2.HTMLAttributes<HTMLElement>, 'title'> {
+    'aria-label'?: string;
+    title?: React_2.ReactNode;
+    subtitle?: React_2.ReactNode;
+    badge?: React_2.ReactNode;
+    headerActions?: React_2.ReactNode;
+    showClear?: boolean;
+    onClear?: () => void;
+    clearLabel?: string;
+    loading?: boolean;
+    loadingText?: React_2.ReactNode;
+    error?: React_2.ReactNode;
+    isEmpty?: boolean;
+    hasSelection?: boolean;
+    emptyIcon?: React_2.ReactNode;
+    emptyMessage?: React_2.ReactNode;
+    emptyDescription?: React_2.ReactNode;
+    footer?: React_2.ReactNode;
+}
+
 export declare function isSvgSource(src?: string | null): boolean;
 
 /** 键盘快捷键徽标 */
@@ -1349,6 +1664,17 @@ export declare interface KeepAliveContainerProps {
     children: default_2.ReactNode;
 }
 
+/**
+ * 独立的表单控件文本标签 (Label)
+ * 语义化 label 标签，保持与 FormField 完全一致的字体规范、必填星号与色值
+ */
+export declare const Label: default_2.ForwardRefExoticComponent<LabelProps & default_2.RefAttributes<HTMLLabelElement>>;
+
+export declare interface LabelProps extends default_2.LabelHTMLAttributes<HTMLLabelElement> {
+    size?: AbcSize;
+    required?: boolean;
+}
+
 /** 轻量加载指示器与局部容器遮罩组件 */
 export declare const Loading: default_2.FC<LoadingProps>;
 
@@ -1369,6 +1695,14 @@ export declare interface LoadingProps {
     fullScreen?: boolean;
     className?: string;
     children?: default_2.ReactNode;
+}
+
+export declare function LoadingStateCard({ message, paused, size, className, ...props }: LoadingStateCardProps): React_2.JSX.Element;
+
+export declare interface LoadingStateCardProps extends React_2.HTMLAttributes<HTMLDivElement> {
+    message: React_2.ReactNode;
+    paused?: boolean;
+    size?: 'sm' | 'md';
 }
 
 export declare function menuContainsPath(item: AbcMenuItem, pathname: string): boolean;
@@ -1401,6 +1735,10 @@ export declare interface MetricCardTrend {
     label?: string;
 }
 
+export declare const Modal: default_2.FC<DialogProps>;
+
+export declare type ModalProps = DialogProps;
+
 /**
  * 企业级多页签导航栏
  * 支持卡片式 (card)、胶囊式 (pill)、极简下划线 (underline) 三种视觉风格，同步响应四档尺寸与动效规格
@@ -1421,6 +1759,57 @@ export declare interface MultiTabBarProps {
     onTogglePin?: (path: string) => void;
     onRefresh?: (path: string) => void;
     className?: string;
+}
+
+/**
+ * 统一页内通知横幅
+ * 支持 4 种语义状态、状态码与请求 ID 追踪徽章、操作按钮与关闭能力
+ */
+export declare const NotificationBanner: React_2.ForwardRefExoticComponent<NotificationBannerProps & React_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface NotificationBannerProps extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'title'> {
+    variant?: NotificationVariant;
+    title?: React_2.ReactNode;
+    message?: React_2.ReactNode;
+    description?: React_2.ReactNode;
+    code?: string;
+    status?: number;
+    requestId?: string;
+    actionHint?: React_2.ReactNode;
+    action?: React_2.ReactNode;
+    onDismiss?: () => void;
+    dismissLabel?: string;
+    hideIcon?: boolean;
+}
+
+export declare type NotificationVariant = 'error' | 'warning' | 'success' | 'info';
+
+/**
+ * 一次性敏感密钥/凭证展示弹窗 (OneTimeSecretDialog)
+ * 专用于只下发一次的 API Key、Token、临时密码，强制提醒管理员及时安全保存
+ */
+export declare function OneTimeSecretDialog({ title, secret, open, secretValue, description, secretLabel, metadata, closeLabel, acknowledgeLabel, copyLabel, copiedLabel, copyErrorMessage, className, onClose, }: OneTimeSecretDialogProps): React_2.JSX.Element | null;
+
+export declare interface OneTimeSecretDialogProps {
+    title: string;
+    secret?: string | null;
+    open?: boolean;
+    secretValue?: string | null;
+    description?: string;
+    secretLabel?: string;
+    metadata?: OneTimeSecretMetadataItem[];
+    closeLabel?: string;
+    acknowledgeLabel?: string;
+    copyLabel?: string;
+    copiedLabel?: string;
+    copyErrorMessage?: string;
+    className?: string;
+    onClose: () => void;
+}
+
+export declare interface OneTimeSecretMetadataItem {
+    label: string;
+    value: string;
 }
 
 /**
@@ -1448,10 +1837,33 @@ export declare interface PageContainerProps {
     children: default_2.ReactNode;
 }
 
-/** 企业级紧凑数据分页器（支持快速页码跳转、边界自动 Clamp 与零数据优雅提示） */
+/** 企业级紧凑数据分页器（支持快速页码跳转、边界自动 Clamp、双模游标流水与零数据优雅提示） */
 export declare const Pagination: default_2.FC<PaginationProps>;
 
-export declare interface PaginationProps {
+export declare interface PaginationCursorMeta {
+    /** 游标模式：是否包含下一页数据 */
+    hasNext?: boolean;
+    /** 游标模式：是否包含上一页数据 */
+    hasPrev?: boolean;
+    /** 下一页游标标识符 */
+    nextCursor?: string | null;
+    /** 上一页游标标识符 */
+    prevCursor?: string | null;
+    /** 当前游标标识符 */
+    currentCursor?: string | null;
+    /** 已加载累计记录数 */
+    loadedCount?: number;
+    /** 点击下一页游标回调 */
+    onNext?: () => void;
+    /** 点击上一页游标回调 */
+    onPrev?: () => void;
+    /** 重置游标返回第一批/最新数据 */
+    onResetCursor?: () => void;
+}
+
+export declare interface PaginationProps extends Partial<PaginationCursorMeta> {
+    /** 分页模式：'offset' 页码偏移模式（默认） | 'cursor' 游标时间线模式 */
+    mode?: 'offset' | 'cursor';
     current?: number;
     currentPage?: number;
     page?: number;
@@ -1461,7 +1873,7 @@ export declare interface PaginationProps {
     /** 分页器控件尺寸规格（避免与数字型 pageSize 冲突时的显式指定入口） */
     controlSize?: AbcSize;
     motion?: AbcMotionPreset;
-    total: number;
+    total?: number;
     pageSizeOptions?: number[];
     onChange?: (page: number, pageSize: number) => void;
     onPageChange?: (page: number) => void;
@@ -1470,7 +1882,11 @@ export declare interface PaginationProps {
     showTotal?: boolean | ((total: number) => default_2.ReactNode);
     showQuickJumper?: boolean;
     className?: string;
+    loading?: boolean;
 }
+
+/** 暂停指定 Toast 的自动关闭倒计时 */
+export declare function pauseToast(id: string): void;
 
 /** PermissionGuard 简短语义别名 */
 export declare const Permission: default_2.FC<PermissionGuardProps>;
@@ -1495,6 +1911,16 @@ export declare interface PermissionGuardProps {
     fallbackNode?: default_2.ReactNode;
     children: default_2.ReactNode;
 }
+
+export declare function pickBestByteUnit(bytes: number, zeroUnit?: ByteUnit, allowedUnits?: readonly ByteUnit[]): {
+    unit: ByteUnit;
+    amount: string;
+};
+
+export declare function pickBestDurationUnit(seconds: number, zeroUnit?: DurationUnit, allowedUnits?: readonly DurationUnit[]): {
+    unit: DurationUnit;
+    amount: string;
+};
 
 /** 气泡卡片组件（基于顶层视口感知 Portal 引擎，承载富交互面板、筛选器或说明卡片） */
 export declare const Popover: default_2.FC<PopoverProps>;
@@ -1690,7 +2116,7 @@ export declare const ProRowActionsOverflow: default_2.FC<{
  * - 定时自动轮询、UTF-8 CSV 导出、沉浸全屏工作台、列宽/列序/左右冻结/筛选项持久化
  * - 行操作自动溢出折叠、毛玻璃悬浮批量操作胶囊栏、草稿自动记忆与字段级校验
  */
-export declare function ProTable<T extends Record<string, any> = Record<string, any>>({ storageKey, title, columns, fields, dataSource, request, rowKey, defaultPageSize, clientFilter: initialClientFilter, showClientFilterSwitch, defaultSearchCollapsed, autoRefresh, exportable, onExport, syncToUrl, viewable, formContainer, formColumns, rowActions, maxInlineActions, rowSelection, batchActions, expandable, maxHeight, permissions, toolbarExtra, motion, onSaveRecord, onDeleteRecords, }: ProTableProps<T>): default_2.JSX.Element;
+export declare function ProTable<T extends Record<string, any> = Record<string, any>>({ storageKey, title, columns, fields, dataSource, loading: propLoading, request, rowKey, defaultPageSize, pagination, renderPagination, selectedRowKey, onRowClick, searchVariant, onSearchChange, onSearchSubmit, onSearchReset, clientFilter: initialClientFilter, showClientFilterSwitch, defaultSearchCollapsed, autoRefresh, exportable, onExport, syncToUrl, viewable, formContainer, formColumns, rowActions, maxInlineActions, rowSelection, batchActions, expandable, maxHeight, permissions, toolbarExtra, motion, onSaveRecord, onDeleteRecords, }: ProTableProps<T>): default_2.JSX.Element;
 
 export declare interface ProTableBatchAction<T = Record<string, any>> {
     key: string;
@@ -1721,6 +2147,10 @@ export declare interface ProTableFieldSchema {
     hideInForm?: boolean;
 }
 
+export declare type ProTablePaginationConfig = boolean | (PaginationProps & {
+    mode?: 'offset' | 'cursor';
+});
+
 export declare interface ProTableProps<T extends Record<string, any> = Record<string, any>> {
     /** 表格标识键（用于本地持久化列宽、列序、固定列、显隐与新建表单草稿） */
     storageKey?: string;
@@ -1730,10 +2160,33 @@ export declare interface ProTableProps<T extends Record<string, any> = Record<st
     fields?: ProTableFieldSchema[];
     /** 静态数据源（纯前端模式或外层受控数据） */
     dataSource?: T[];
+    /** 是否处于加载状态（支持受控外部 loading，默认在 request 查询期间自驱动） */
+    loading?: boolean;
     /** 异步服务端查询函数 */
     request?: (params: ProTableRequestParams) => Promise<ProTableRequestResult<T>>;
     rowKey?: keyof T | ((record: T) => string | number);
     defaultPageSize?: number;
+    /** 自定义分页器配置：传 false 隐藏底栏分页，或传具体 Pagination 配置，或完全由 request 自动推导 */
+    pagination?: ProTablePaginationConfig;
+    /** 自定义底部分页插槽渲染函数 */
+    renderPagination?: (paginationMeta: {
+        current: number;
+        pageSize: number;
+        total: number;
+        mode: 'offset' | 'cursor';
+    }) => default_2.ReactNode;
+    /** 受控单行高亮键值（与 Drawer 抽屉详情联动） */
+    selectedRowKey?: string | number | null;
+    /** 行点击回调（单行点击唤起 Drawer 或选中） */
+    onRowClick?: (record: T, event: default_2.MouseEvent<HTMLTableRowElement>) => void;
+    /** 搜索面板展示形态：'card' 默认多维折叠卡片 | 'toolbar' 紧凑水平工具条 | 'none' 不展示搜索面板 */
+    searchVariant?: 'card' | 'toolbar' | 'none';
+    /** 搜索条件实时变更时的受控回调 */
+    onSearchChange?: (filters: Record<string, any>) => void;
+    /** 点击搜索按钮或提交检索时的回调 */
+    onSearchSubmit?: (filters: Record<string, any>) => void;
+    /** 点击重置按钮时的回调 */
+    onSearchReset?: () => void;
     /**
      * 是否启用当前数据本地前端筛选模式（默认自动判断：无 request 时开启；后端接口不支持搜索时亦可开启）
      */
@@ -1807,7 +2260,50 @@ export declare interface ProTableRowAction<T = Record<string, any>> {
     onClick: (record: T) => void;
 }
 
-export declare function pushToast(tone: ToastTone, message: string, duration?: number): string;
+/** 向全局队列推送一条 Toast 消息 */
+export declare function pushToast(tone: ToastTone, messageOrOptions: default_2.ReactNode | ToastOptions, duration?: number): string;
+
+/**
+ * 快捷选择条 (QuickSelectBar)
+ * 紧凑型水平快速筛选器
+ */
+export declare function QuickSelectBar({ label, items, selectedId, headerAction, onSelect, onClear, allLabel, className, }: QuickSelectBarProps): React_2.JSX.Element;
+
+export declare interface QuickSelectBarItem {
+    id?: string;
+    key?: string;
+    label: React_2.ReactNode;
+    code?: string;
+    active?: boolean;
+    count?: number;
+    onSelect?: () => void;
+}
+
+export declare interface QuickSelectBarProps {
+    label: string;
+    items: QuickSelectBarItem[];
+    selectedId?: string | null;
+    headerAction?: React_2.ReactNode;
+    onSelect?: (id: string | null) => void;
+    onClear?: () => void;
+    allLabel?: string;
+    className?: string;
+}
+
+export declare interface QuotaUnitInputBaseProps {
+    id?: string;
+    value: number;
+    onChange: (value: number) => void;
+    min?: number;
+    max?: number;
+    size?: 'default' | 'sm';
+    disabled?: boolean;
+    hideHint?: boolean;
+    className?: string;
+    'aria-label'?: string;
+    'aria-describedby'?: string;
+    placeholder?: string;
+}
 
 /** 单选组（支持常规圆点与分段胶囊卡片双样式、全四档尺寸规格及动效规格） */
 export declare const RadioGroup: default_2.FC<RadioGroupProps>;
@@ -1828,6 +2324,79 @@ export declare interface RadioGroupProps {
     motion?: AbcMotionPreset;
     disabled?: boolean;
     className?: string;
+}
+
+export declare function ReadErrorBanner({ message, code, status, requestId, onRetry, retryLabel, pendingLabel, retryAriaLabel, pending, action, ...props }: ReadErrorBannerProps): React_2.JSX.Element;
+
+export declare interface ReadErrorBannerProps extends Omit<NotificationBannerProps, 'action' | 'variant'> {
+    onRetry?: () => void;
+    retryLabel?: string;
+    pendingLabel?: string;
+    retryAriaLabel?: string;
+    pending?: boolean;
+    action?: React_2.ReactNode;
+}
+
+/**
+ * 必填审计原因确认弹窗 (ReasonedActionDialog)
+ * 专用于高安全等级操作（如删除租户、切换环境、强制变更配额、重置密钥等），强制要求填入审计说明
+ */
+export declare function ReasonedActionDialog({ open, title, description, confirmLabel, cancelLabel, workingLabel, reasonLabel, reasonPlaceholder, reasonHint, reasonTooLongMessage, closeLabel, minReasonLength, maxReasonLength, destructive, variant, pending, confirmDisabled, error, maxWidthClass, className, children, onOpenChange, onConfirm, }: ReasonedActionDialogProps): React_2.JSX.Element;
+
+export declare interface ReasonedActionDialogProps {
+    open: boolean;
+    title: React_2.ReactNode;
+    description: React_2.ReactNode;
+    confirmLabel: React_2.ReactNode;
+    cancelLabel?: React_2.ReactNode;
+    workingLabel?: React_2.ReactNode;
+    reasonLabel?: React_2.ReactNode;
+    reasonPlaceholder?: string;
+    reasonHint?: React_2.ReactNode;
+    reasonTooLongMessage?: React_2.ReactNode;
+    closeLabel?: string;
+    minReasonLength?: number;
+    maxReasonLength?: number;
+    destructive?: boolean;
+    variant?: 'default' | 'destructive';
+    pending?: boolean;
+    confirmDisabled?: boolean;
+    error?: string | null;
+    maxWidthClass?: string;
+    className?: string;
+    children?: React_2.ReactNode;
+    onOpenChange: (open: boolean) => void;
+    onConfirm: (reason: string) => void;
+}
+
+/**
+ * 必填审计原因侧边抽屉 (ReasonedActionDrawer)
+ * 专用于承载复杂大表单（如配额上限配置、权限清单）且需要强制填写审计原因的场景，支持与主抽屉平级并排展开
+ */
+export declare function ReasonedActionDrawer({ open, onClose, title, description, confirmLabel, cancelLabel, workingLabel, reasonLabel, reasonPlaceholder, reasonHint, reasonTooLongMessage, minReasonLength, maxReasonLength, destructive, pending, confirmDisabled, error, width, cascadeMode, children, onConfirm, }: ReasonedActionDrawerProps): React_2.JSX.Element;
+
+export declare interface ReasonedActionDrawerProps {
+    open: boolean;
+    onClose: () => void;
+    title: React_2.ReactNode;
+    description?: React_2.ReactNode;
+    confirmLabel: React_2.ReactNode;
+    cancelLabel?: React_2.ReactNode;
+    workingLabel?: React_2.ReactNode;
+    reasonLabel?: React_2.ReactNode;
+    reasonPlaceholder?: string;
+    reasonHint?: React_2.ReactNode;
+    reasonTooLongMessage?: React_2.ReactNode;
+    minReasonLength?: number;
+    maxReasonLength?: number;
+    destructive?: boolean;
+    pending?: boolean;
+    confirmDisabled?: boolean;
+    error?: string | null;
+    width?: number | string;
+    cascadeMode?: 'stack' | 'adjacent';
+    children?: React_2.ReactNode;
+    onConfirm: (reason: string) => void;
 }
 
 /** 全局注册自定义业务图标映射，供菜单路由配置按字符串名称动态解析 */
@@ -1858,6 +2427,59 @@ export declare interface ResultProps {
 }
 
 export declare type ResultStatus = 'success' | 'info' | 'warning' | 'error' | '403' | '404' | '500';
+
+/** 恢复指定 Toast 的自动关闭倒计时 */
+export declare function resumeToast(id: string): void;
+
+/**
+ * 富图标文本解析组件 (RichIconText)
+ * 兼容 `[icon:xxx]` 占位符解析
+ */
+export declare function RichIconText({ text, iconSize, preserveSrToken, className, ...props }: RichIconTextProps): React_2.JSX.Element;
+
+export declare interface RichIconTextProps extends React_2.HTMLAttributes<HTMLSpanElement> {
+    text: string;
+    iconSize?: number;
+    preserveSrToken?: boolean;
+}
+
+/**
+ * 统一定制搜索框组件 (SearchInput)
+ * 基于 Input 的原生 prefix/suffix 机制，图标垂直精确居中，支持一键清空与回车监听
+ */
+export declare const SearchInput: React_2.ForwardRefExoticComponent<SearchInputProps & React_2.RefAttributes<HTMLInputElement>>;
+
+export declare interface SearchInputProps extends Omit<InputProps, 'prefix'> {
+    containerClassName?: string;
+    wrapperClassName?: string;
+    onClear?: () => void;
+    clearLabel?: string;
+}
+
+/**
+ * 分段选择器控件 (SegmentedControl)
+ * 用于在多个互斥选项之间进行快捷切换，支持图标、角标、等宽/流式自适应布局
+ */
+export declare function SegmentedControl<T extends string | number>({ options, value, onChange, onValueChange, disabled, size, motion, block, className, ...props }: SegmentedControlProps<T>): React_2.JSX.Element;
+
+export declare interface SegmentedControlProps<T extends string | number> extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'onChange'> {
+    options: ReadonlyArray<SegmentedOption<T>>;
+    value: T;
+    onChange?: (value: T) => void;
+    onValueChange?: (value: T) => void;
+    disabled?: boolean;
+    size?: AbcSize;
+    motion?: AbcMotionPreset;
+    block?: boolean;
+}
+
+export declare interface SegmentedOption<T extends string | number> {
+    value: T;
+    label: React_2.ReactNode;
+    icon?: React_2.ReactNode;
+    disabled?: boolean;
+    badge?: React_2.ReactNode;
+}
 
 /**
  * 企业级选择器组件
@@ -1971,6 +2593,9 @@ export declare interface SliderVerifyProps {
     captchaFetcher?: AbcCaptchaAdapter;
 }
 
+/** 智能双模分页器（自动根据是否提供 total 或游标属性平滑降级切换） */
+export declare const SmartPagination: default_2.FC<PaginationProps>;
+
 export declare type SortDirection = 'asc' | 'desc' | null;
 
 /** 弹性间距编排容器 */
@@ -1981,6 +2606,19 @@ export declare interface SpaceProps extends default_2.HTMLAttributes<HTMLDivElem
     size?: AbcSize;
     wrap?: boolean;
     align?: 'start' | 'center' | 'end' | 'stretch';
+}
+
+/**
+ * 主从分栏布局 (SplitInspectorLayout)
+ * 广泛用于主表/右侧实时详情检视的经典工作台模式，支持自适应断点与粘性定位
+ */
+export declare function SplitInspectorLayout({ children, inspector, ratio, stickyInspector, className, ...props }: SplitInspectorLayoutProps): React_2.JSX.Element;
+
+export declare interface SplitInspectorLayoutProps extends React_2.HTMLAttributes<HTMLDivElement> {
+    children: React_2.ReactNode;
+    inspector?: React_2.ReactNode;
+    ratio?: 'default' | 'balanced' | 'wide-master';
+    stickyInspector?: boolean;
 }
 
 /** 聚光灯跟随交互卡片（常用于登录页、仪表盘核心指标卡与亮眼特性展示） */
@@ -2089,7 +2727,7 @@ export declare const TableCell: React_2.ForwardRefExoticComponent<React_2.TdHTML
  * 支持多列累加粘性左/右固定列、表头右键快捷菜单、拖拽调节列宽、拖拽交换列序、
  * 排序、表头气泡/内联双模筛选、可展开子面板与树形数据、语义化 valueType 渲染及键盘可访问滚动区
  */
-export declare function TableCore<T extends Record<string, any> = Record<string, any>>({ columns, data, rowKey, loading, density, selectedKeys, onSelectionChange, sortState, onSortChange, headerFilterMode, headerFilters, onHeaderFilterChange, headerFilterRender, columnWidths, onColumnResize, resizable, motion, columnFixed, onColumnPin, onColumnHide, onResetColumns, onColumnReorder, expandable, onRowView, onEmptyReset, maxHeight, ariaLabel, emptyText, className, }: TableCoreProps<T>): default_2.JSX.Element;
+export declare function TableCore<T extends Record<string, any> = Record<string, any>>({ columns, data, rowKey, loading, density, selectedKeys, onSelectionChange, sortState, onSortChange, headerFilterMode, headerFilters, onHeaderFilterChange, headerFilterRender, columnWidths, onColumnResize, resizable, motion, columnFixed, onColumnPin, onColumnHide, onResetColumns, onColumnReorder, expandable, onRowView, activeRowKey, onRowClick, onEmptyReset, maxHeight, ariaLabel, emptyText, className, }: TableCoreProps<T>): default_2.JSX.Element;
 
 export declare interface TableCoreProps<T = Record<string, any>> {
     columns: AbcColumn<T>[];
@@ -2132,6 +2770,10 @@ export declare interface TableCoreProps<T = Record<string, any>> {
     expandable?: AbcTableExpandableConfig<T>;
     /** linkToView 列点击触发查看详情回调 */
     onRowView?: (record: T) => void;
+    /** 受控单行高亮键值（如与抽屉详情联动） */
+    activeRowKey?: string | number | null;
+    /** 行点击回调（单行点击唤起 Drawer 或选中） */
+    onRowClick?: (record: T, event: default_2.MouseEvent<HTMLTableRowElement>) => void;
     /** 空状态下一键清空筛选条件回调 */
     onEmptyReset?: () => void;
     /** 表格滚动区域最大高度（开启后表头纵向吸顶） */
@@ -2182,6 +2824,12 @@ export declare interface TabsProps<K extends string = string> {
 }
 
 /**
+ * 语义化标签组件 (Tag)
+ * 完全集成自 ABC Design 的 StatusTag 规范体系
+ */
+export declare const Tag: default_2.FC<TagProps>;
+
+/**
  * 多标签胶囊输入框 (TagInput)
  * 支持四档规格、动效规格、回车或英文逗号生成标签、自动去重与退格删除末尾项
  */
@@ -2198,6 +2846,15 @@ export declare interface TagInputProps {
     motion?: AbcMotionPreset;
     className?: string;
 }
+
+export declare interface TagProps extends default_2.HTMLAttributes<HTMLSpanElement> {
+    variant?: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info' | string;
+    dot?: boolean;
+}
+
+export declare function tagVariants(_opts?: {
+    variant?: string;
+}): string;
 
 /** 多行文本域组件（支持四档尺寸、动效规格、内联标签、错误文案与实时字数统计） */
 export declare const Textarea: default_2.ForwardRefExoticComponent<TextareaProps & default_2.RefAttributes<HTMLTextAreaElement>>;
@@ -2247,14 +2904,145 @@ export declare interface TimelineProps {
     className?: string;
 }
 
-export declare interface ToastItem {
-    id: string;
-    tone: ToastTone;
-    message: string;
-    duration: number;
+/** 兼容简短别名 */
+export declare const toast: AbcToastMethods;
+
+/**
+ * ToastContainer — 企业级轻量通知挂载容器
+ * 支持 6 种视口定位、悬停倒计时暂停、图文/操作卡片排版、Portal 目标自定义与多容器隔离
+ */
+export declare const ToastContainer: default_2.FC<ToastContainerProps>;
+
+export declare interface ToastContainerProps {
+    /**
+     * 挂载屏幕位置
+     * @default 'top-right'
+     */
+    position?: ToastPosition;
+    /**
+     * 尺寸规格（xs | sm | md | lg），默认继承全局配置或 'sm'
+     */
+    size?: AbcSize;
+    /**
+     * 动效预设（none | subtle | smooth | spring），默认继承全局 motion
+     */
+    motion?: AbcMotionPreset;
+    /**
+     * 屏幕同屏最大展示数量
+     * @default 5
+     */
+    maxCount?: number;
+    /**
+     * 鼠标悬停时是否暂停自动关闭计时
+     * @default true
+     */
+    pauseOnHover?: boolean;
+    /**
+     * 是否新通知展示在最上方
+     * @default false
+     */
+    newestOnTop?: boolean;
+    /**
+     * 是否默认显示关闭图标
+     * @default true
+     */
+    closable?: boolean;
+    /**
+     * 外层悬浮定位容器类名
+     */
+    className?: string;
+    /**
+     * 外层悬浮定位容器样式
+     */
+    style?: default_2.CSSProperties;
+    /**
+     * 单条 Toast 附加类名
+     */
+    toastClassName?: string;
+    /**
+     * 单条 Toast 附加样式
+     */
+    toastStyle?: default_2.CSSProperties;
+    /**
+     * Portal 挂载目标 DOM 节点，默认 document.body
+     */
+    container?: HTMLElement | (() => HTMLElement | null) | null;
+    /**
+     * 容器隔离标识 ID（配合 ToastOptions.containerId 使用）
+     */
+    containerId?: string;
+    /**
+     * 自定义单项渲染器
+     */
+    renderItem?: (item: ToastItem, dismiss: (id: string) => void) => default_2.ReactNode;
+    /**
+     * 独立受控数据源（提供时脱离内置全局队列）
+     */
+    items?: ToastItem[];
+    /**
+     * 配合受控 items 时的关闭回调
+     */
+    onDismiss?: (id: string) => void;
 }
 
-export declare type ToastTone = 'success' | 'error' | 'info' | 'warning';
+export declare interface ToastItem extends ToastOptions {
+    id: string;
+    tone: ToastTone;
+    message: default_2.ReactNode;
+    duration: number;
+    createdAt: number;
+}
+
+/** 单条 Toast 视图呈现组件 */
+export declare const ToastItemView: default_2.FC<ToastItemViewProps>;
+
+export declare interface ToastItemViewProps {
+    item: ToastItem;
+    resolvedSize: AbcSize;
+    resolvedMotion: AbcMotionPreset;
+    closable: boolean;
+    pauseOnHover: boolean;
+    toastClassName?: string;
+    toastStyle?: default_2.CSSProperties;
+    onDismiss: (id: string) => void;
+}
+
+export declare interface ToastOptions {
+    /** 提示类型（success | error | warning | info | loading | danger） */
+    tone?: ToastTone;
+    /** 标题文本或自定义节点 */
+    title?: default_2.ReactNode;
+    /** 正文内容 */
+    message?: default_2.ReactNode;
+    /** message 语义别名 */
+    content?: default_2.ReactNode;
+    /** 辅助描述信息 */
+    description?: default_2.ReactNode;
+    /** 自定义显示时长（毫秒），0 为不自动关闭 */
+    duration?: number;
+    /** 是否展示关闭按钮（默认 true） */
+    closable?: boolean;
+    /** 自定义左侧图标（覆盖 tone 默认图标） */
+    icon?: default_2.ReactNode;
+    /** 操作区节点（如撤销按钮、详情链接等） */
+    action?: default_2.ReactNode;
+    /** 自定义指定挂载位置 */
+    position?: ToastPosition;
+    /** 目标容器 ID（用于多容器分流） */
+    containerId?: string;
+    /** 自定义类名 */
+    className?: string;
+    /** 自定义行内样式 */
+    style?: default_2.CSSProperties;
+    /** 关闭时触发的回调 */
+    onClose?: () => void;
+}
+
+export declare type ToastPosition = 'top-right' | 'top-left' | 'top-center' | 'bottom-right' | 'bottom-left' | 'bottom-center';
+
+export declare type ToastTone = 'success' | 'error' | 'warning' | 'info' | 'loading' | 'danger';
+
+export declare const TONE_ICONS: Record<string, default_2.ReactNode>;
 
 /**
  * 视口感知顶层悬浮文字提示 (Tooltip)
@@ -2335,6 +3123,12 @@ export declare function useAbcDict(dictCode: string): {
     options: AbcDictOption[];
     loading: boolean;
 };
+
+/**
+ * 解析多级抽屉默认展现交互（'adjacent' 平级并排展开 / 'stack' 传统堆叠推挤）
+ * 优先级：组件显式 cascadeMode prop > AbcProvider 全局 defaultDrawerCascadeMode > 'adjacent'
+ */
+export declare function useAbcDrawerCascadeMode(propMode?: 'stack' | 'adjacent'): 'stack' | 'adjacent';
 
 /**
  * 解析组件最终生效的微交互动效规格（none | subtle | smooth | spring）

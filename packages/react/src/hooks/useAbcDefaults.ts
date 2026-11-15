@@ -18,3 +18,12 @@ export function useAbcMotion(propMotion?: AbcMotionPreset): AbcMotionPreset {
   const { theme } = useAbcConfig()
   return propMotion ?? theme.motion ?? 'smooth'
 }
+
+/**
+ * 解析多级抽屉默认展现交互（'adjacent' 平级并排展开 / 'stack' 传统堆叠推挤）
+ * 优先级：组件显式 cascadeMode prop > AbcProvider 全局 defaultDrawerCascadeMode > 'adjacent'
+ */
+export function useAbcDrawerCascadeMode(propMode?: 'stack' | 'adjacent'): 'stack' | 'adjacent' {
+  const config = useAbcConfig()
+  return propMode ?? config.defaultDrawerCascadeMode ?? 'adjacent'
+}

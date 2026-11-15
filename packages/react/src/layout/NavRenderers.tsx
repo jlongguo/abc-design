@@ -814,7 +814,7 @@ export const SidebarNav: React.FC<{
 
               {/* 展开态平滑网格高度过渡二级子菜单 */}
               <div
-                inert={!expanded}
+                inert={!expanded ? ('' as any) : undefined}
                 className={cn(
                   'grid transition-[grid-template-rows,opacity] duration-[var(--abc-motion-base)] ease-[var(--abc-ease-out)]',
                   expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'

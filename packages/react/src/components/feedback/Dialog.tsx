@@ -6,6 +6,15 @@ import { useAbcMotion } from '../../hooks'
 import { usePresence } from '../../hooks/usePresence'
 import { cn } from '../../utils/cn'
 
+/**
+ * 企业级高保真模态弹窗组件 (Dialog / Modal)
+ *
+ * 【容器交互选型与多级交互铁律】
+ * 1. 对于大表单交互操作展示必须使用抽屉（Drawer），全高右侧贴合具备吸附 Header/Footer 与原生垂直滚动流，避免居中 Modal 在大表单下顶部被顶出可视区。
+ * 2. 打开一层抽屉是大表单、在该表单上需要打开另一个表单也是大表单的情况，必须使用子级抽屉（二级抽屉 L1 -> L2），优先使用 cascadeMode="adjacent"（平级并排对比展示），避免多层遮罩覆盖与内容割裂。
+ * 3. 如果是小表单或轻量确认操作（操作项较小、步骤简单），使用 Modal/Dialog，支持多级堆叠展示（z-index 自动高于抽屉）。
+ * 4. Dialog 内部采用显式绝对居中规范，彻底避免在非标准视口或长内容下被顶出可视区。
+ */
 export type DialogSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl'
 
 export interface DialogProps {
@@ -14,7 +23,9 @@ export interface DialogProps {
   visible?: boolean
   isOpen?: boolean
   /** 请求关闭回调 */
-  onClose: () => void
+  onClose?: () => void
+  /** 兼容 onOpenChange 签名 */
+  onOpenChange?: (open: boolean) => void
   /** 标题内容 */
   title?: React.ReactNode
   /** 副标题或辅助描述 */
@@ -61,6 +72,12 @@ const SIZE_WIDTH_MAP: Record<string, string> = {
 
 /**
  * 企业级模态对话框
+ *
+ * 【交互与容器选型规范】
+ * 1. 专用于小表单操作与轻量确认（如重命名、状态流转、单字段修改、二次确认等少字段场景），居中聚焦单一任务。
+ * 2. 天然支持多级遮罩堆叠（通过多层 Dialog 依次弹出与关闭）。
+ * 3. 严禁承载大表单或复杂长表单（大表单必须使用 Drawer，避免顶部被顶出视口）。
+ *
  * 采用原生 HTML <dialog> + showModal() 顶层渲染，天然具备背景 inert 隔离、焦点锁与归还能力；
  * 结合 CSS overscroll-behavior: contain 杜绝滚动穿透且不篡改 body overflow 导致页面滚动条跳动。
  */
@@ -69,6 +86,7 @@ export const Dialog: React.FC<DialogProps> = ({
   visible,
   isOpen: isOpenProp,
   onClose,
+  onOpenChange,
   title,
   description,
   children,
@@ -93,8 +111,15 @@ export const Dialog: React.FC<DialogProps> = ({
   const dialogRef = useRef<HTMLDialogElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const pressedOutsideRef = useRef(false)
-  const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
+  const handleClose = useCallback(() => {
+    if (onClose) {
+      onClose()
+    } else if (onOpenChange) {
+      onOpenChange(false)
+    }
+  }, [onClose, onOpenChange])
+  const onCloseRef = useRef(handleClose)
+  onCloseRef.current = handleClose
 
   const [internalFullscreen, setInternalFullscreen] = useState(false)
   const isFullscreen = controlledFullscreen !== undefined ? controlledFullscreen : internalFullscreen
@@ -235,23 +260,40 @@ export const Dialog: React.FC<DialogProps> = ({
       aria-labelledby={title ? titleId : undefined}
       aria-label={!title ? '对话框' : undefined}
       aria-describedby={description ? descId : undefined}
+      style={{
+        display: isOpen ? 'flex' : 'none',
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100dvh',
+        maxWidth: '100vw',
+        maxHeight: '100dvh',
+        alignItems: 'center',
+        justifyContent: 'center',
+        margin: 0,
+        padding: isFullscreen ? 0 : '1rem',
+        border: 'none',
+        backgroundColor: 'rgba(2, 6, 23, 0.5)',
+        backdropFilter: 'blur(2px)',
+        zIndex: 1100,
+      }}
       onPointerDown={(e) => {
         pressedOutsideRef.current = closeOnClickModal && isPointerOutsidePanel(e)
       }}
       onPointerUp={(e) => {
         if (closeOnClickModal && pressedOutsideRef.current && isPointerOutsidePanel(e)) {
-          onClose()
+          onCloseRef.current()
         }
         pressedOutsideRef.current = false
       }}
       onClick={(e) => {
         // 兼容测试脚本直接对 dialog 根遮罩触发 click 事件
         if (closeOnClickModal && e.target === dialogRef.current && !pressedOutsideRef.current) {
-          onClose()
+          onCloseRef.current()
         }
       }}
       className={cn(
-        'fixed inset-0 z-[1000] m-0 h-dvh max-h-none w-dvw max-w-none border-0 bg-transparent p-4 open:flex items-center justify-center',
+        'fixed inset-0 z-[1100] m-0 h-dvh max-h-none w-dvw max-w-none border-0 p-4 flex items-center justify-center',
         isFullscreen && 'p-0',
         resolvedMotion !== 'none' && (isVisible ? 'abc-animate-fade-in' : 'abc-animate-fade-out')
       )}
@@ -268,7 +310,7 @@ export const Dialog: React.FC<DialogProps> = ({
               : undefined,
         }}
         className={cn(
-          'relative flex flex-col overflow-hidden border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] shadow-[var(--abc-shadow-dialog)]',
+          'relative flex flex-col overflow-hidden border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] shadow-[var(--abc-shadow-dialog)] m-auto',
           isFullscreen
             ? 'h-dvh w-dvw rounded-none'
             : cn('max-h-[88dvh] w-full rounded-[var(--abc-radius-xl)]', !width && sizeClass),
@@ -338,6 +380,55 @@ export const Dialog: React.FC<DialogProps> = ({
       </div>
     </dialog>,
     document.body
+  )
+}
+
+export const Modal = Dialog
+export type ModalProps = DialogProps
+
+export interface DialogContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  closeLabel?: string
+  closeDisabled?: boolean
+  onClose?: () => void
+}
+
+export function DialogContent({ className, children, ...props }: DialogContentProps) {
+  return (
+    <div data-slot="dialog-content" className={cn('space-y-4', className)} {...props}>
+      {children}
+    </div>
+  )
+}
+
+export function DialogHeader({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div data-slot="dialog-header" className={cn('flex flex-col space-y-1.5 text-left', className)} {...props}>
+      {children}
+    </div>
+  )
+}
+
+export function DialogFooter({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div data-slot="dialog-footer" className={cn('flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 pt-2', className)} {...props}>
+      {children}
+    </div>
+  )
+}
+
+export function DialogTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h2 data-slot="dialog-title" className={cn('text-base font-semibold leading-none tracking-tight text-[var(--abc-fg)]', className)} {...props}>
+      {children}
+    </h2>
+  )
+}
+
+export function DialogDescription({ className, children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
+  return (
+    <p data-slot="dialog-description" className={cn('text-xs text-[var(--abc-fg-muted)]', className)} {...props}>
+      {children}
+    </p>
   )
 }
 

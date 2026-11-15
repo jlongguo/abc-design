@@ -169,9 +169,11 @@ export function AdminShell() {
 3. **`Checkbox` 与 `Switch` 的 `onChange` 直接返回 `boolean`**：
    - 正确：`<Switch checked={enabled} onChange={(checked) => setEnabled(checked)} />`
    - 正确：`<Checkbox checked={agreed} onChange={(checked) => setAgreed(checked)} label="同意协议" />`
-4. **`Dialog` 与 `Drawer` 顶层浮层规范**：
-   - 统一通过 `open: boolean` 与 `onClose: () => void` 控制（`Dialog` 亦兼容 `isOpen` 别名）。
-   - 底层已采用原生 `<dialog>` Top Layer 与 `overscroll-behavior: contain`，**严禁**在业务代码中手动向 `document.body` 注入 `overflow: hidden` 或 `position: fixed`。
+4. **大表单与小表单浮层容器选型准则（严禁大表单进 Modal，大小表单分流规范）**：
+   - **大表单交互操作展示必须使用抽屉（Drawer）**：凡包含多字段、复杂输入组合、网格对比、折叠面板或长数据录入的大表单（高度易超视口或字段较多），必须使用右侧全高抽屉 `<Drawer placement="right" size="lg|xl|2xl">`。抽屉具备吸附 Header、原生垂直滚动 Body 与吸附 Footer，天然避免居中弹窗因绝对居中 `translate(-50%, -50%)` 被挤出视口顶部（负坐标）导致标题被裁切的硬伤。
+   - **大表单嵌套大表单必须使用子级抽屉（二级/多级抽屉，L1 -> L2 -> L3）**：当打开一层是大表单，在表单中需要进一步打开另一个表单也是大表单的情况，**严禁弹窗套弹窗或直接盖死当前表单**，必须使用子级抽屉（二级抽屉）；系统已提供 `cascadeMode="adjacent"`（并排平级展开，支持两级大表单数据同时观测与比对）与 `cascadeMode="stack"`（向左层叠推挤与 L1/L2 标识），确保多级大表单的上下文连续性。
+   - **小表单与轻量确认操作使用 Modal（Dialog），可支持多级堆叠**：对于字段很少、操作项轻量的即时交互（如单输入框修改、重命名、状态流转、危险操作二次确认、8–512 字符审计原因输入等），必须使用居中 `<Dialog>`；聚焦当前单一操作任务，且支持多级遮罩堆叠（通过多层 Dialog 依次弹出与关闭）。
+   - 统一通过 `open: boolean` 与 `onClose: () => void` 控制（`Dialog` 亦兼容 `isOpen` 别名）。底层已采用原生 `<dialog>` Top Layer 与 `overscroll-behavior: contain`，**严禁**在业务代码中手动向 `document.body` 注入 `overflow: hidden` 或 `position: fixed`。
 5. **后端接口不支持搜索时的表格处理**：
    - 使用 `<ProTable>` 时，若后端列表接口无搜索/过滤参数，直接开启 `clientFilter` 或 `showClientFilterSwitch`，即可零后端改动获得当前数据集的中文+拼音首字母即时检索与多列排序。
 6. **命令式确认框与轻提示**：

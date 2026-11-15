@@ -88,4 +88,6 @@ export interface AbcContextValue {
   permissionAdapter?: AbcPermissionAdapter
   captchaAdapter?: AbcCaptchaAdapter
   iconRegistry: Record<string, AbcIconComponent>
+  /** 多级抽屉全局默认展示交互模式：'adjacent' 为平级并排展开（企业级推荐），'stack' 为传统向左层叠推挤 */
+  defaultDrawerCascadeMode?: 'stack' | 'adjacent'
 }

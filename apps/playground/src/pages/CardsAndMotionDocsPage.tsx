@@ -5,6 +5,11 @@ import {
   BentoGrid,
   Button,
   Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
   CheckCard,
   CheckCardGroup,
   Checkbox,
@@ -334,6 +339,100 @@ export function Demo() {
                 <StatusTag tone="info" size="xs">交互响应</StatusTag>
               </div>
             </SpotlightCard>
+          </div>
+        </ComponentDocPreview>
+
+        {/* 2.1 Card 复合子组件 (CardHeader / CardTitle / CardDescription / CardContent / CardFooter) */}
+        <ComponentDocPreview
+          title="Card 复合子组件 (CardHeader / CardTitle / CardDescription / CardContent / CardFooter)"
+          description="遵循现代原子化组件库设计规范，提供模块化分拆插槽，满足更精细排版、多栏嵌套以及自定义图表与操作栏的复杂卡片需求。"
+          code={`import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+  Button,
+} from '@abc-design/react'
+
+<Card variant="bordered" className="max-w-md">
+  <CardHeader>
+    <CardTitle>多活集群自动化巡检</CardTitle>
+    <CardDescription>系统每 15 分钟执行一次健康探活与故障自愈演练</CardDescription>
+  </CardHeader>
+  <CardContent className="text-xs text-[var(--abc-fg-secondary)]">
+    最近一次巡检报告已生成，全部 128 个微服务 Pod 均处于 Healthy 状态。
+  </CardContent>
+  <CardFooter className="justify-between">
+    <span className="text-xs text-[var(--abc-fg-muted)]">调度周期: T+15m</span>
+    <Button size="xs" variant="primary">查看明细</Button>
+  </CardFooter>
+</Card>`}
+          apiRows={[
+            { prop: 'CardHeader', type: 'HTMLAttributes<HTMLDivElement>', description: '卡片头部容器，内置上下间距与下边框' },
+            { prop: 'CardTitle', type: 'HTMLAttributes<HTMLHeadingElement>', description: '卡片一级标题 h3 语义标签' },
+            { prop: 'CardDescription', type: 'HTMLAttributes<HTMLParagraphElement>', description: '卡片副标题说明文字' },
+            { prop: 'CardContent', type: 'HTMLAttributes<HTMLDivElement>', description: '卡片核心内容插槽' },
+            { prop: 'CardFooter', type: 'HTMLAttributes<HTMLDivElement>', description: '卡片吸底操作条，内置上边框' },
+          ]}
+        >
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Card variant="bordered" hoverable>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>微服务网格拓扑治理</CardTitle>
+                  <StatusTag tone="success" size="xs">已纳管</StatusTag>
+                </div>
+                <CardDescription>
+                  自动同步 Envoy 路由规则与服务发现注册中心（Consul / Nacos）
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 pt-4">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[var(--abc-fg-secondary)]">健康度评分:</span>
+                  <span className="font-mono font-semibold text-[var(--abc-success)]">99.8% (Tier-0)</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[var(--abc-fg-secondary)]">跨机房 RTT 延迟:</span>
+                  <span className="font-mono text-[var(--abc-fg)]">0.82ms</span>
+                </div>
+              </CardContent>
+              <CardFooter className="justify-between pt-4">
+                <span className="text-[11px] text-[var(--abc-fg-muted)]">同步协议: gRPC TLS</span>
+                <Button size="xs" variant="outline">
+                  管理网格
+                </Button>
+              </CardFooter>
+            </Card>
+
+            <Card variant="elevated" hoverable>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>弹性算力自动扩缩容</CardTitle>
+                  <StatusTag tone="primary" size="xs">运行中</StatusTag>
+                </div>
+                <CardDescription>
+                  依据 CPU / 内存及实时 QPS 突发流量自动弹性伸缩
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 pt-4">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[var(--abc-fg-secondary)]">当前副本数:</span>
+                  <span className="font-mono font-semibold text-[var(--abc-fg)]">12 / 64 Pods</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[var(--abc-fg-secondary)]">预热冷启动耗时:</span>
+                  <span className="font-mono text-[var(--abc-primary)]">&lt; 1.2s</span>
+                </div>
+              </CardContent>
+              <CardFooter className="justify-between pt-4">
+                <span className="text-[11px] text-[var(--abc-fg-muted)]">伸缩算法: PID 控制器</span>
+                <Button size="xs" variant="primary">
+                  配置规则
+                </Button>
+              </CardFooter>
+            </Card>
           </div>
         </ComponentDocPreview>
 

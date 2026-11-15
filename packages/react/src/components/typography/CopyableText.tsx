@@ -216,4 +216,59 @@ export const Kbd: React.FC<KbdProps> = ({ size, motion, className, children, ...
   )
 }
 
+export interface CopyButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  value: string
+  title?: string
+  copyLabel?: string
+  copiedLabel?: string
+  successDuration?: number
+}
+
+/**
+ * 独立的轻量复制图标按钮
+ * 广泛用于表格列、卡片、代码块内快速复制 ID/Key 等场景
+ */
+export const CopyButton: React.FC<CopyButtonProps> = ({
+  value,
+  title,
+  copyLabel = '复制',
+  copiedLabel = '已复制',
+  successDuration = 1800,
+  className,
+  ...props
+}) => {
+  const [copied, setCopied] = useState(false)
+  const defaultLabel = title || copyLabel
+
+  const handleCopy = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    const success = await copyToClipboard(value)
+    if (success) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), successDuration)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      aria-label={copied ? copiedLabel : defaultLabel}
+      title={copied ? copiedLabel : defaultLabel}
+      onClick={handleCopy}
+      className={cn(
+        'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--abc-radius-sm,6px)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg-muted)] transition-all hover:border-[var(--abc-primary)] hover:text-[var(--abc-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--abc-primary)] cursor-pointer',
+        copied && 'border-emerald-500/50 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400',
+        className
+      )}
+      {...props}
+    >
+      {copied ? (
+        <Check className="h-3 w-3 stroke-[2.5]" aria-hidden="true" />
+      ) : (
+        <Copy className="h-3 w-3 stroke-[2]" aria-hidden="true" />
+      )}
+    </button>
+  )
+}
+
 export default CopyableText

@@ -31,7 +31,7 @@ description: 使用 @abc-design/*（tokens、core、react、charts）搭建或�
 - `headerExtra`: 挂载多租户切换器、环境标识或通知中心。
 
 ### 第三步：使用 `<PageContainer>` + Pro 套件交付业务页面
-- **列表与增删改查页**：优先使用 `<ProTable>`，通过 `columns` + `fields` 一处配置同时驱动顶部检索栏、表头内联筛选、远程/本地拼音双引擎过滤（`clientFilter` / `showClientFilterSwitch`）、详情查看（`viewable`）与带草稿防丢失的弹窗/抽屉表单（`formContainer: 'dialog' | 'drawer'`）。
+- **列表与增删改查页**：优先使用 `<ProTable>`，通过 `columns` + `fields` 一处配置同时驱动顶部检索栏、表头内联筛选、远程/本地拼音双引擎过滤（`clientFilter` / `showClientFilterSwitch`）、详情查看（`viewable`）与带草稿防丢失的表单容器（`formContainer: 'drawer' | 'dialog'`，大表单务必使用 `'drawer'`）。
 - **分组参数设置页**：优先使用 `<ProConfigForm>`，支持 `split`（左侧锚点描述 + 右侧表单卡片）或 `grid` 布局，内置图片/SVG 实时预览与脏数据检测。
 - **经营分析看板页**：使用 `@abc-design/charts` 的 `<StatCard>`（等宽数字 + 涨跌绿红标）与 `<AbcChart>`（自动适配暗黑模式、6 大品牌色与容器 `ResizeObserver`）。
 
@@ -42,3 +42,8 @@ description: 使用 @abc-design/*（tokens、core、react、charts）搭建或�
 - `Checkbox` / `Switch`：`onChange={(checked: boolean) => ...}`。
 - `Tree`：`checkable` 模式下自动处理父子级联与半选态，`onCheck={(checkedKeys, { halfCheckedKeys }) => ...}`。
 - `ImagePreview`：同时支持位图直链与内联 `<svg>` 源码缩略图及全屏缩放旋转预览。
+
+### 第五步：表单容器与多级交互设计准则（大小表单分流规范）
+- **大表单交互操作展示必须使用抽屉（`Drawer`）**：字段较多、含分组卡片、多指标配额等复杂业务表单，采用右侧全高抽屉，提供吸附 Header/Footer 与原生垂直滚动流，坚决避免使用绝对居中 Modal 导致顶部被裁切。
+- **大表单嵌套大表单必须使用子级抽屉（`cascadeMode="adjacent"` / `"stack"`）**：打开一层是大表单，表单上需要打开另一个表单也是大表单时，必须使用二级抽屉（L1 -> L2），严禁使用 Modal。
+- **小表单与轻量确认操作使用 `Dialog`**：仅包含少数字段输入（如重命名、状态修改、删除确认等极少操作项）时使用居中 Modal，天然支持多级遮罩堆叠。

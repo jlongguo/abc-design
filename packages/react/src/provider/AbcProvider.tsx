@@ -17,7 +17,7 @@ import {
   type AbcVisualMode,
 } from '@abc-design/tokens'
 import { AbcConfirmHost } from '../components/feedback/Confirm'
-import { AbcToastViewport, abcToast } from '../components/feedback/Toast'
+import { AbcToastViewport, abcToast, type ToastContainerProps } from '../components/feedback/Toast'
 import type {
   AbcCaptchaAdapter,
   AbcContextValue,
@@ -45,8 +45,10 @@ export interface AbcProviderProps {
   defaultWatermarkEnabled?: boolean
   /** 是否持久化用户主题偏好到 localStorage（默认开启） */
   persist?: boolean
-  /** 自定义 Toast 适配器（不传则使用内置零依赖 AbcToastViewport） */
+  /** 自定义 Toast 适配器（不传则使用内置零依赖 ToastContainer / AbcToastViewport） */
   toastAdapter?: AbcToastAdapter
+  /** 全局 ToastContainer 属性配置（如挂载位置、最大数量、动效预设等） */
+  toastContainerProps?: ToastContainerProps
   /** 注入全局文件上传实现（供 ImageUpload / ProConfigForm 使用） */
   uploadAdapter?: AbcUploadAdapter
   /** 注入数据字典查询实现（供 DictSelect / DictTag / ProTable 使用） */
@@ -57,6 +59,8 @@ export interface AbcProviderProps {
   captchaAdapter?: AbcCaptchaAdapter
   /** 按需注入扩展图标注册表 */
   iconRegistry?: Record<string, AbcIconComponent>
+  /** 多级抽屉全局默认展示交互模式：'adjacent' 为平级并排展开（企业级推荐），'stack' 为传统向左层叠推挤 */
+  defaultDrawerCascadeMode?: 'stack' | 'adjacent'
 }
 
 function readStoredTheme(fallback: AbcThemeConfig, persist: boolean): AbcThemeConfig {
@@ -125,11 +129,13 @@ export const AbcProvider: React.FC<AbcProviderProps> = ({
   defaultWatermarkEnabled = false,
   persist = true,
   toastAdapter,
+  toastContainerProps,
   uploadAdapter,
   dictAdapter,
   permissionAdapter,
   captchaAdapter,
   iconRegistry = {},
+  defaultDrawerCascadeMode = 'adjacent',
 }) => {
   const mergedInitial = useMemo<AbcThemeConfig>(
     () => ({ ...DEFAULT_ABC_THEME, ...defaultTheme }),
@@ -270,6 +276,7 @@ export const AbcProvider: React.FC<AbcProviderProps> = ({
       permissionAdapter,
       captchaAdapter,
       iconRegistry,
+      defaultDrawerCascadeMode,
     }),
     [
       theme,
@@ -295,13 +302,14 @@ export const AbcProvider: React.FC<AbcProviderProps> = ({
       permissionAdapter,
       captchaAdapter,
       iconRegistry,
+      defaultDrawerCascadeMode,
     ]
   )
 
   return (
     <AbcContext.Provider value={contextValue}>
       {children}
-      {!toastAdapter && <AbcToastViewport />}
+      {!toastAdapter && <AbcToastViewport {...toastContainerProps} />}
       <AbcConfirmHost />
     </AbcContext.Provider>
   )

@@ -26,7 +26,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import Button from '../components/button/Button'
-import { Pagination } from '../components/display/FeedbackStates'
+import { Pagination, type PaginationProps } from '../components/display/FeedbackStates'
 import { Dropdown, Tooltip } from '../components/display/Overlays'
 import { Descriptions } from '../components/display/StructuredDisplay'
 import { abcConfirm } from '../components/feedback/Confirm'
@@ -121,6 +121,12 @@ const AUTO_REFRESH_INTERVALS = [
   { key: 300000, label: '5分钟' },
 ]
 
+export type ProTablePaginationConfig =
+  | boolean
+  | (PaginationProps & {
+      mode?: 'offset' | 'cursor'
+    })
+
 export interface ProTableProps<T extends Record<string, any> = Record<string, any>> {
   /** 表格标识键（用于本地持久化列宽、列序、固定列、显隐与新建表单草稿） */
   storageKey?: string
@@ -130,10 +136,33 @@ export interface ProTableProps<T extends Record<string, any> = Record<string, an
   fields?: ProTableFieldSchema[]
   /** 静态数据源（纯前端模式或外层受控数据） */
   dataSource?: T[]
+  /** 是否处于加载状态（支持受控外部 loading，默认在 request 查询期间自驱动） */
+  loading?: boolean
   /** 异步服务端查询函数 */
   request?: (params: ProTableRequestParams) => Promise<ProTableRequestResult<T>>
   rowKey?: keyof T | ((record: T) => string | number)
   defaultPageSize?: number
+  /** 自定义分页器配置：传 false 隐藏底栏分页，或传具体 Pagination 配置，或完全由 request 自动推导 */
+  pagination?: ProTablePaginationConfig
+  /** 自定义底部分页插槽渲染函数 */
+  renderPagination?: (paginationMeta: {
+    current: number
+    pageSize: number
+    total: number
+    mode: 'offset' | 'cursor'
+  }) => React.ReactNode
+  /** 受控单行高亮键值（与 Drawer 抽屉详情联动） */
+  selectedRowKey?: string | number | null
+  /** 行点击回调（单行点击唤起 Drawer 或选中） */
+  onRowClick?: (record: T, event: React.MouseEvent<HTMLTableRowElement>) => void
+  /** 搜索面板展示形态：'card' 默认多维折叠卡片 | 'toolbar' 紧凑水平工具条 | 'none' 不展示搜索面板 */
+  searchVariant?: 'card' | 'toolbar' | 'none'
+  /** 搜索条件实时变更时的受控回调 */
+  onSearchChange?: (filters: Record<string, any>) => void
+  /** 点击搜索按钮或提交检索时的回调 */
+  onSearchSubmit?: (filters: Record<string, any>) => void
+  /** 点击重置按钮时的回调 */
+  onSearchReset?: () => void
   /**
    * 是否启用当前数据本地前端筛选模式（默认自动判断：无 request 时开启；后端接口不支持搜索时亦可开启）
    */
@@ -199,9 +228,18 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
   columns,
   fields = [],
   dataSource,
+  loading: propLoading,
   request,
   rowKey = 'id',
   defaultPageSize = 10,
+  pagination,
+  renderPagination,
+  selectedRowKey,
+  onRowClick,
+  searchVariant = 'card',
+  onSearchChange,
+  onSearchSubmit,
+  onSearchReset,
   clientFilter: initialClientFilter,
   showClientFilterSwitch = false,
   defaultSearchCollapsed = true,
@@ -269,7 +307,8 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
   const [pageSize, setPageSize] = useState<number>(
     () => Number(initialUrlParams.pageSize) || defaultPageSize
   )
-  const [loading, setLoading] = useState(false)
+  const [internalLoading, setInternalLoading] = useState(false)
+  const loading = propLoading !== undefined ? propLoading : internalLoading
   const [remoteRows, setRemoteRows] = useState<T[]>([])
   const [remoteTotal, setRemoteTotal] = useState(0)
   const [selectedKeys, setSelectedKeys] = useState<Array<string | number>>([])
@@ -339,7 +378,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
   const fetchServerData = useCallback(async () => {
     if (!request) return
     const seq = ++requestSeqRef.current
-    setLoading(true)
+    setInternalLoading(true)
     try {
       const res = await request({
         current,
@@ -357,7 +396,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
       }
     } finally {
       if (seq === requestSeqRef.current) {
-        setLoading(false)
+        setInternalLoading(false)
       }
     }
   }, [request, current, pageSize, isClientFilter, appliedFilters, sortState, toast])
@@ -456,7 +495,9 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
     setAppliedFilters({})
     setQuickKeyword('')
     setCurrent(1)
-  }, [])
+    onSearchReset?.()
+    onSearchChange?.({})
+  }, [onSearchReset, onSearchChange])
 
   const buildDefaultFormValues = useCallback(() => {
     const defaults: Record<string, any> = {}
@@ -643,10 +684,18 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
     toast.success(`已导出 ${exportTargetRows.length} 条记录`)
   }
 
-  const renderSearchControl = (f: ProTableFieldSchema) => {
+  const renderSearchControl = (
+    f: ProTableFieldSchema,
+    extraCls?: { input?: string; select?: string }
+  ) => {
     const val = searchInputs[f.name]
-    const setVal = (nextVal: any) =>
-      setSearchInputs((prev) => ({ ...prev, [f.name]: nextVal }))
+    const setVal = (nextVal: any) => {
+      setSearchInputs((prev) => {
+        const next = { ...prev, [f.name]: nextVal }
+        onSearchChange?.(next)
+        return next
+      })
+    }
 
     if (f.type === 'select') {
       return (
@@ -658,6 +707,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
           placeholder={f.placeholder ?? `全部${f.label}`}
           value={val ?? (f.multiple ? [] : '')}
           onChange={setVal}
+          className={extraCls?.select}
         />
       )
     }
@@ -684,6 +734,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
           value={val ?? null}
           placeholder={f.placeholder ?? `输入${f.label}`}
           onChange={setVal}
+          className={extraCls?.input}
         />
       )
     }
@@ -693,6 +744,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
         placeholder={f.placeholder ?? `搜索${f.label}`}
         value={val ?? ''}
         onChange={(e) => setVal(e.target.value)}
+        wrapperClassName={extraCls?.input}
       />
     )
   }
@@ -874,8 +926,49 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
         isFullScreen && 'fixed inset-0 z-[950] m-0 overflow-auto bg-[var(--abc-bg-canvas)] p-4'
       )}
     >
+      {/* 紧凑水平工具条搜索模式 (toolbar) */}
+      {searchVariant === 'toolbar' && visibleSearchFields.length > 0 && !headerFilterMode && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] p-3 text-[var(--abc-fg)] shadow-[var(--abc-shadow-card)]">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              setCurrent(1)
+              setAppliedFilters({ ...searchInputs })
+              onSearchSubmit?.(searchInputs)
+            }}
+            className="flex flex-wrap items-center gap-2.5"
+          >
+            {displayedSearchFields.map((f) => (
+              <div key={f.name} className="flex items-center">
+                {renderSearchControl(f, {
+                  input: f.span === 2 ? 'w-80 sm:w-96' : 'w-72 sm:w-80',
+                  select: 'w-40',
+                })}
+              </div>
+            ))}
+            <Button size="sm" type="submit" variant="primary" icon={<Search className="h-3.5 w-3.5" />}>
+              搜索
+            </Button>
+            <Button
+              size="sm"
+              type="button"
+              variant="secondary"
+              icon={<RotateCcw className="h-3.5 w-3.5" />}
+              onClick={resetAllFilters}
+            >
+              重置
+            </Button>
+            {activeFilterCount > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--abc-primary-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--abc-primary)]">
+                已生效 {activeFilterCount} 项
+              </span>
+            )}
+          </form>
+        </div>
+      )}
+
       {/* 顶部高级可折叠条件检索面板 */}
-      {visibleSearchFields.length > 0 && !headerFilterMode && (
+      {searchVariant === 'card' && visibleSearchFields.length > 0 && !headerFilterMode && (
         <Card padding="none">
           <div className="flex items-center justify-between border-b border-[var(--abc-border)]/70 px-4 py-2.5">
             <div className="flex items-center gap-2">
@@ -918,6 +1011,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
                   e.preventDefault()
                   setCurrent(1)
                   setAppliedFilters({ ...searchInputs })
+                  onSearchSubmit?.(searchInputs)
                 }}
                 className="grid grid-cols-1 items-end gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4"
               >
@@ -1278,24 +1372,52 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
           onResetColumns={resetSettings}
           onColumnReorder={setColumnOrder}
           expandable={expandable}
+          activeRowKey={selectedRowKey}
+          onRowClick={onRowClick}
           onRowView={viewable ? (record) => setViewingRecord(record) : undefined}
           onEmptyReset={activeFilterCount > 0 ? resetAllFilters : undefined}
           maxHeight={maxHeight}
           className="rounded-none border-0"
         />
 
-        <div className="border-t border-[var(--abc-border)] px-4 py-3">
-          <Pagination
-            current={current}
-            pageSize={pageSize}
-            motion={resolvedMotion}
-            total={displayTotal}
-            onChange={(nextPage, nextSize) => {
-              setCurrent(nextPage)
-              setPageSize(nextSize)
-            }}
-          />
-        </div>
+        {pagination !== false && (
+          <div className="border-t border-[var(--abc-border)] px-4 py-3">
+            {renderPagination ? (
+              renderPagination({
+                current,
+                pageSize,
+                total: displayTotal,
+                mode:
+                  typeof pagination === 'object' && pagination.mode
+                    ? pagination.mode
+                    : 'offset',
+              })
+            ) : typeof pagination === 'object' ? (
+              <Pagination
+                current={current}
+                pageSize={pageSize}
+                motion={resolvedMotion}
+                total={displayTotal}
+                onChange={(nextPage, nextSize) => {
+                  setCurrent(nextPage)
+                  setPageSize(nextSize)
+                }}
+                {...pagination}
+              />
+            ) : (
+              <Pagination
+                current={current}
+                pageSize={pageSize}
+                motion={resolvedMotion}
+                total={displayTotal}
+                onChange={(nextPage, nextSize) => {
+                  setCurrent(nextPage)
+                  setPageSize(nextSize)
+                }}
+              />
+            )}
+          </div>
+        )}
       </Card>
 
       {/* 悬浮底部毛玻璃批量操作栏 */}

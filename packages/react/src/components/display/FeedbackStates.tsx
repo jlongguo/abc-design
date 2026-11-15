@@ -130,7 +130,30 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   )
 }
 
-export interface PaginationProps {
+export interface PaginationCursorMeta {
+  /** 游标模式：是否包含下一页数据 */
+  hasNext?: boolean
+  /** 游标模式：是否包含上一页数据 */
+  hasPrev?: boolean
+  /** 下一页游标标识符 */
+  nextCursor?: string | null
+  /** 上一页游标标识符 */
+  prevCursor?: string | null
+  /** 当前游标标识符 */
+  currentCursor?: string | null
+  /** 已加载累计记录数 */
+  loadedCount?: number
+  /** 点击下一页游标回调 */
+  onNext?: () => void
+  /** 点击上一页游标回调 */
+  onPrev?: () => void
+  /** 重置游标返回第一批/最新数据 */
+  onResetCursor?: () => void
+}
+
+export interface PaginationProps extends Partial<PaginationCursorMeta> {
+  /** 分页模式：'offset' 页码偏移模式（默认） | 'cursor' 游标时间线模式 */
+  mode?: 'offset' | 'cursor'
   current?: number
   currentPage?: number
   page?: number
@@ -140,7 +163,7 @@ export interface PaginationProps {
   /** 分页器控件尺寸规格（避免与数字型 pageSize 冲突时的显式指定入口） */
   controlSize?: AbcSize
   motion?: AbcMotionPreset
-  total: number
+  total?: number
   pageSizeOptions?: number[]
   onChange?: (page: number, pageSize: number) => void
   onPageChange?: (page: number) => void
@@ -149,6 +172,7 @@ export interface PaginationProps {
   showTotal?: boolean | ((total: number) => React.ReactNode)
   showQuickJumper?: boolean
   className?: string
+  loading?: boolean
 }
 
 const PAGINATION_SIZE_MAP: Record<
@@ -185,8 +209,9 @@ const PAGINATION_SIZE_MAP: Record<
   },
 }
 
-/** 企业级紧凑数据分页器（支持快速页码跳转、边界自动 Clamp 与零数据优雅提示） */
+/** 企业级紧凑数据分页器（支持快速页码跳转、边界自动 Clamp、双模游标流水与零数据优雅提示） */
 export const Pagination: React.FC<PaginationProps> = ({
+  mode,
   current,
   currentPage,
   page,
@@ -203,6 +228,16 @@ export const Pagination: React.FC<PaginationProps> = ({
   showTotal = true,
   showQuickJumper = true,
   className,
+  hasNext,
+  hasPrev,
+  nextCursor: _nextCursor,
+  prevCursor: _prevCursor,
+  currentCursor: _currentCursor,
+  loadedCount,
+  onNext,
+  onPrev,
+  onResetCursor,
+  loading = false,
 }) => {
   const activePage = current ?? currentPage ?? page ?? 1
   const activeSize = pageSize ?? (typeof size === 'number' ? size : undefined) ?? 10
@@ -212,12 +247,113 @@ export const Pagination: React.FC<PaginationProps> = ({
   )
   const resolvedMotion = useAbcMotion(motion)
   const sizeCls = PAGINATION_SIZE_MAP[resolvedControlSize]
-  const totalPages = Math.max(1, Math.ceil(total / Math.max(1, activeSize)))
+
+  const resolvedMode: 'offset' | 'cursor' =
+    mode ??
+    (total === undefined && (hasNext !== undefined || hasPrev !== undefined || onNext !== undefined)
+      ? 'cursor'
+      : 'offset')
+
+  const triggerSize = (nextSize: number) => {
+    onChange?.(1, nextSize)
+    onSizeChange?.(nextSize)
+    onPageSizeChange?.(nextSize)
+  }
+
+  // 游标流水模式渲染
+  if (resolvedMode === 'cursor') {
+    return (
+      <div
+        data-testid="pagination-cursor"
+        data-motion={resolvedMotion}
+        className={cn(
+          'flex flex-wrap items-center justify-between gap-3 text-[var(--abc-fg-muted)] select-none',
+          sizeCls.wrap,
+          className
+        )}
+      >
+        <div className="flex items-center gap-2 font-mono tabular-nums">
+          {showTotal === false ? null : typeof showTotal === 'function' ? (
+            showTotal(loadedCount ?? 0)
+          ) : loadedCount !== undefined ? (
+            <span>
+              已连续加载 <strong className="font-semibold text-[var(--abc-fg)]">{loadedCount}</strong> 条记录
+            </span>
+          ) : (
+            <span className="text-xs text-[var(--abc-fg-muted)]">流水式游标分页</span>
+          )}
+          {onResetCursor && (
+            <button
+              type="button"
+              onClick={onResetCursor}
+              disabled={loading || !hasPrev}
+              className="text-xs text-[var(--abc-primary)] hover:underline disabled:opacity-40 disabled:hover:no-underline cursor-pointer"
+            >
+              返回最新
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {pageSizeOptions && pageSizeOptions.length > 0 && onSizeChange && (
+            <select
+              aria-label="每页条数"
+              value={activeSize}
+              onChange={(e) => triggerSize(Number(e.target.value))}
+              disabled={loading}
+              className={cn(
+                'rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] focus:border-[var(--abc-primary)] focus:outline-none cursor-pointer',
+                sizeCls.select
+              )}
+            >
+              {pageSizeOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt} 条/页
+                </option>
+              ))}
+            </select>
+          )}
+
+          <button
+            type="button"
+            aria-label="上一页"
+            disabled={!hasPrev || loading}
+            onClick={onPrev}
+            className={cn(
+              'abc-motion-control inline-flex items-center justify-center gap-1 rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-2 text-[var(--abc-fg-secondary)] enabled:hover:bg-[var(--abc-bg-subtle)] disabled:opacity-40 cursor-pointer',
+              sizeCls.navBtn
+            )}
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            <span className="text-xs">上一页</span>
+          </button>
+
+          <button
+            type="button"
+            aria-label="下一页"
+            disabled={!hasNext || loading}
+            onClick={onNext}
+            className={cn(
+              'abc-motion-control inline-flex items-center justify-center gap-1 rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-2 text-[var(--abc-fg-secondary)] enabled:hover:bg-[var(--abc-bg-subtle)] disabled:opacity-40 cursor-pointer',
+              sizeCls.navBtn
+            )}
+          >
+            <span className="text-xs">下一页</span>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // 标准 Offset 模式
+  const safeTotal = total ?? 0
+  const totalPages = Math.max(1, Math.ceil(safeTotal / Math.max(1, activeSize)))
 
   const [jumperVal, setJumperVal] = useState('')
   const lastJumpedRef = useRef<string | null>(null)
 
-  if (total <= 0) {
+  if (safeTotal <= 0) {
     return (
       <div
         data-testid="pagination-empty"
@@ -246,12 +382,6 @@ export const Pagination: React.FC<PaginationProps> = ({
     if (clamped === activePage) return
     onChange?.(clamped, activeSize)
     onPageChange?.(clamped)
-  }
-
-  const triggerSize = (nextSize: number) => {
-    onChange?.(1, nextSize)
-    onSizeChange?.(nextSize)
-    onPageSizeChange?.(nextSize)
   }
 
   const commitJump = () => {
@@ -297,10 +427,10 @@ export const Pagination: React.FC<PaginationProps> = ({
     >
       <div className="font-mono tabular-nums">
         {showTotal === false ? null : typeof showTotal === 'function' ? (
-          showTotal(total)
+          showTotal(safeTotal)
         ) : (
           <span>
-            共 <strong className="font-semibold text-[var(--abc-fg)]">{total}</strong> 条记录
+            共 <strong className="font-semibold text-[var(--abc-fg)]">{safeTotal}</strong> 条记录
           </span>
         )}
       </div>
@@ -406,6 +536,14 @@ export const Pagination: React.FC<PaginationProps> = ({
     </div>
   )
 }
+
+/** 游标流式分页器（专用于 CDP 抓包、高频作业队列等无深总数的大数据场景） */
+export const CursorPagination: React.FC<PaginationProps> = (props) => (
+  <Pagination mode="cursor" {...props} />
+)
+
+/** 智能双模分页器（自动根据是否提供 total 或游标属性平滑降级切换） */
+export const SmartPagination: React.FC<PaginationProps> = (props) => <Pagination {...props} />
 
 export type SkeletonVariant = 'text' | 'circular' | 'rectangular' | 'rounded'
 export type SkeletonAnimation = 'wave' | 'pulse' | 'none'

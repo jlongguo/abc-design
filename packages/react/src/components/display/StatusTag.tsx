@@ -36,8 +36,8 @@ export interface StatusTagProps extends React.HTMLAttributes<HTMLSpanElement> {
 
 const TONE_STYLES: Record<StatusTone, { tag: string; dot: string }> = {
   neutral: {
-    tag: 'bg-[var(--abc-bg-subtle)] text-[var(--abc-fg-secondary)] border-[var(--abc-border)]',
-    dot: 'bg-[var(--abc-fg-muted)]',
+    tag: 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800/90 dark:text-slate-200 dark:border-slate-600 shadow-2xs font-semibold ring-1 ring-slate-400/20 dark:ring-slate-600/50',
+    dot: 'bg-slate-500 dark:bg-slate-400',
   },
   primary: {
     tag: 'bg-[var(--abc-primary-soft)] text-[var(--abc-primary)] border-transparent',
@@ -300,5 +300,49 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name = 'U', size, motion, c
     </span>
   )
 }
+
+export interface TagProps extends React.HTMLAttributes<HTMLSpanElement> {
+  variant?: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info' | string
+  dot?: boolean
+}
+
+export function tagVariants(_opts: { variant?: string } = {}) {
+  return ''
+}
+
+/**
+ * 语义化标签组件 (Tag)
+ * 完全集成自 ABC Design 的 StatusTag 规范体系
+ */
+export const Tag: React.FC<TagProps> = ({
+  variant = 'default',
+  dot = false,
+  className,
+  children,
+  ...props
+}) => {
+  const toneMap: Record<string, StatusTone> = {
+    default: 'primary',
+    secondary: 'neutral',
+    destructive: 'danger',
+    outline: 'neutral',
+    success: 'success',
+    warning: 'warning',
+    info: 'info',
+  }
+  const tone = toneMap[variant] ?? 'neutral'
+
+  return (
+    <StatusTag
+      tone={tone}
+      dot={dot}
+      className={cn(variant === 'outline' && 'bg-transparent border-[var(--abc-border)]', className)}
+      {...props}
+    >
+      {children}
+    </StatusTag>
+  )
+}
+Tag.displayName = 'Tag'
 
 export default StatusTag

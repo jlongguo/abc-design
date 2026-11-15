@@ -26,7 +26,7 @@ export const OverviewPage: React.FC<{
   return (
     <PageContainer
       title="ABC Design 企业级设计系统与官方预览站"
-      subtitle="4 包协同架构（Tokens + Headless Core + React UI/ProLayout + Charts）· 45+ 生产级组件 · AI Agent 零幻觉对接规范"
+      subtitle="4 包协同架构（Tokens + Headless Core + React UI/ProLayout + Charts）· 55+ 生产级组件 · 大小表单分流规范 · AI Agent 零幻觉对接体系"
       tags={
         <StatusTag tone="primary" dot pulse>
           v0.1.0 Public Release Ready
@@ -62,8 +62,8 @@ export const OverviewPage: React.FC<{
             {
               icon: <Layers className="h-4 w-4 text-[var(--abc-primary)]" />,
               pkg: '@abc-design/react',
-              val: '45+ 组件 + 5 布局',
-              desc: 'Adapter 注入上传/字典/权限/验证码/Toast，ProLayout + ProTable 全栈覆盖',
+              val: '55+ 组件 + 5 布局',
+              desc: '大小表单分流规范、审计原因弹窗、FilterToolbar、主从检视面板、ProLayout + ProTable 全栈覆盖',
               target: '/docs/display',
             },
             {
@@ -213,6 +213,42 @@ export const OverviewPage: React.FC<{
             </div>
           </Card>
         </div>
+
+        {/* 最近几轮组件库演进亮点 */}
+        <Card
+          title="最新架构演进与设计规范特性 (Recent Enhancements)"
+          subtitle="已在组件库与 Playground 全面落地，规范驱动开发与高质量企业级交互"
+        >
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 text-xs">
+            <div className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)] p-3.5 space-y-1.5">
+              <div className="font-semibold text-[var(--abc-fg)]">大小表单分流规范</div>
+              <p className="text-[var(--abc-fg-muted)] leading-relaxed">
+                复杂大表单必须使用右侧全高抽屉 (Drawer)；大表单嵌套大表单使用二级抽屉 (adjacent 并排比对或 stack 层叠)；小表单与轻量确认使用 Dialog。
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)] p-3.5 space-y-1.5">
+              <div className="font-semibold text-[var(--abc-fg)]">强制审计与凭据安全</div>
+              <p className="text-[var(--abc-fg-muted)] leading-relaxed">
+                ReasonedActionDialog / Drawer 强制操作原因审计留痕；OneTimeSecretDialog 提供 API Key 一次性展示、脱敏与安全复制下载。
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)] p-3.5 space-y-1.5">
+              <div className="font-semibold text-[var(--abc-fg)]">主从检视与复合工具栏</div>
+              <p className="text-[var(--abc-fg-muted)] leading-relaxed">
+                SplitInspectorLayout + InspectorPanel 带来高效主从属性检视；FilterToolbar + FilterPillGroup 打造高聚合检索与状态胶囊。
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)] p-3.5 space-y-1.5">
+              <div className="font-semibold text-[var(--abc-fg)]">原子增强与表格骨架</div>
+              <p className="text-[var(--abc-fg-muted)] leading-relaxed">
+                Button 9 种变体、SearchInput、SegmentedControl、QuotaUnitInput 容量时长配额、TablePrimitives 语义原语与 Card 复合插槽。
+              </p>
+            </div>
+          </div>
+        </Card>
       </div>
     </PageContainer>
   )

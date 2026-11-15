@@ -28,6 +28,8 @@ import {
   Input,
   MetricCard,
   Pagination,
+  CursorPagination,
+  SmartPagination,
   Permission,
   PermissionGuard,
   PricingCard,
@@ -1368,5 +1370,123 @@ describe('ABC Design System — 全栈四层架构单元测试', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('24. ProTable 受控 selectedRowKey 高亮与 onRowClick 联动、searchVariant="toolbar" 紧凑模式及双模 SmartPagination/CursorPagination', () => {
+    // 1) 游标模式分页器测试
+    const onNext = vi.fn()
+    const onPrev = vi.fn()
+    const onReset = vi.fn()
+
+    const { rerender } = render(
+      <CursorPagination
+        hasNext={true}
+        hasPrev={false}
+        loadedCount={50}
+        onNext={onNext}
+        onPrev={onPrev}
+        onResetCursor={onReset}
+      />
+    )
+
+    expect(screen.getByTestId('pagination-cursor')).toBeTruthy()
+    expect(screen.getByText('50')).toBeTruthy()
+    expect(screen.getByText(/已连续加载/)).toBeTruthy()
+
+    // 上一页应禁用，下一页可点击
+    const prevBtn = screen.getByLabelText('上一页') as HTMLButtonElement
+    const nextBtn = screen.getByLabelText('下一页') as HTMLButtonElement
+    expect(prevBtn.disabled).toBe(true)
+    expect(nextBtn.disabled).toBe(false)
+
+    fireEvent.click(nextBtn)
+    expect(onNext).toHaveBeenCalledTimes(1)
+
+    // 重新渲染为有上一页
+    rerender(
+      <SmartPagination
+        mode="cursor"
+        hasNext={false}
+        hasPrev={true}
+        loadedCount={100}
+        onNext={onNext}
+        onPrev={onPrev}
+        onResetCursor={onReset}
+      />
+    )
+    expect(screen.getByText('100')).toBeTruthy()
+    const updatedPrevBtn = screen.getByLabelText('上一页') as HTMLButtonElement
+    const updatedNextBtn = screen.getByLabelText('下一页') as HTMLButtonElement
+    expect(updatedPrevBtn.disabled).toBe(false)
+    expect(updatedNextBtn.disabled).toBe(true)
+    fireEvent.click(updatedPrevBtn)
+    expect(onPrev).toHaveBeenCalledTimes(1)
+
+    // 2) ProTable searchVariant="toolbar" + selectedRowKey + onRowClick
+    const rows = [
+      { id: 'job-1', title: '作业 A', status: 'running' },
+      { id: 'job-2', title: '作业 B', status: 'completed' },
+    ]
+    const onRowClick = vi.fn()
+
+    render(
+      <AbcProvider persist={false}>
+        <ProTable
+          rowKey="id"
+          title="作业审查"
+          dataSource={rows}
+          searchVariant="toolbar"
+          fields={[
+            { name: 'search', label: '作业名称', placeholder: '按名称搜索' },
+            {
+              name: 'status',
+              label: '状态',
+              type: 'select',
+              options: [
+                { label: '运行中', value: 'running' },
+                { label: '已完成', value: 'completed' },
+              ],
+            },
+          ]}
+          columns={[
+            { key: 'title', title: '作业', dataIndex: 'title' },
+            { key: 'status', title: '状态', dataIndex: 'status' },
+          ]}
+          selectedRowKey="job-2"
+          onRowClick={onRowClick}
+          pagination={{
+            mode: 'cursor',
+            hasNext: true,
+            hasPrev: false,
+            loadedCount: 2,
+            onNext,
+          }}
+        />
+      </AbcProvider>
+    )
+
+    // 验证搜索栏为 toolbar 紧凑形态（非大卡片）
+    expect(screen.getByPlaceholderText('按名称搜索')).toBeTruthy()
+    expect(screen.getByText('搜索')).toBeTruthy()
+    expect(screen.getByText('重置')).toBeTruthy()
+
+    // 验证行选中高亮与 data-state="selected"
+    const row2Cell = screen.getByText('作业 B')
+    const row2Tr = row2Cell.closest('tr')
+    expect(row2Tr).not.toBeNull()
+    expect(row2Tr?.getAttribute('data-state')).toBe('selected')
+    expect(row2Tr?.className).toContain('bg-[var(--abc-primary-soft)]')
+
+    // 验证行点击回调
+    if (row2Tr) {
+      fireEvent.click(row2Tr)
+      expect(onRowClick).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'job-2', title: '作业 B' }),
+        expect.anything()
+      )
+    }
+
+    // 验证底栏游标分页渲染
+    expect(screen.getAllByText(/已连续加载/).length).toBe(2)
   })
 })

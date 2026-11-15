@@ -118,4 +118,35 @@ export const FormField: React.FC<FormFieldProps> = ({
   )
 }
 
+export interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
+  size?: AbcSize
+  required?: boolean
+}
+
+/**
+ * 独立的表单控件文本标签 (Label)
+ * 语义化 label 标签，保持与 FormField 完全一致的字体规范、必填星号与色值
+ */
+export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
+  ({ className, size = 'sm', required, children, ...props }, ref) => (
+    <label
+      ref={ref}
+      className={cn(
+        'inline-flex items-center gap-1 font-medium text-[var(--abc-fg-secondary)] select-none',
+        LABEL_SIZE_CLASS[size] || 'text-xs',
+        className
+      )}
+      {...props}
+    >
+      {children}
+      {required && (
+        <span aria-hidden="true" className="text-[var(--abc-danger)] font-bold">
+          *
+        </span>
+      )}
+    </label>
+  )
+)
+Label.displayName = 'Label'
+
 export default FormField

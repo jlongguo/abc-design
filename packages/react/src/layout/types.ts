@@ -95,7 +95,7 @@ export const DEFAULT_ABC_LAYOUT_SETTINGS: AbcLayoutSettings = {
   sidebarTone: 'dark',
   sidebarCollapsed: false,
   sidebarAccordion: true,
-  showTabs: true,
+  showTabs: false,
   tabStyle: 'card',
   keepAlive: true,
   contentWidth: 'fluid',

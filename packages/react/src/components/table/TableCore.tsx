@@ -132,6 +132,10 @@ export interface TableCoreProps<T = Record<string, any>> {
   expandable?: AbcTableExpandableConfig<T>
   /** linkToView 列点击触发查看详情回调 */
   onRowView?: (record: T) => void
+  /** 受控单行高亮键值（如与抽屉详情联动） */
+  activeRowKey?: string | number | null
+  /** 行点击回调（单行点击唤起 Drawer 或选中） */
+  onRowClick?: (record: T, event: React.MouseEvent<HTMLTableRowElement>) => void
   /** 空状态下一键清空筛选条件回调 */
   onEmptyReset?: () => void
   /** 表格滚动区域最大高度（开启后表头纵向吸顶） */
@@ -313,6 +317,8 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
   onColumnReorder,
   expandable,
   onRowView,
+  activeRowKey,
+  onRowClick,
   onEmptyReset,
   maxHeight,
   ariaLabel = '数据表格',
@@ -1092,6 +1098,10 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
           ) : (
             flattenedRows.map(({ record, key, rowIdx, depth, hasTreeChildren }) => {
               const isSelected = Boolean(selectable && selectedKeys.includes(key))
+              const isRowActive =
+                activeRowKey !== undefined &&
+                activeRowKey !== null &&
+                String(activeRowKey) === String(key)
               const isExpanded = expandedKeys.includes(key)
               const canPanelExpand =
                 hasExpandColumn &&
@@ -1100,9 +1110,40 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
               return (
                 <React.Fragment key={String(key)}>
                   <tr
+                    data-state={isRowActive ? 'selected' : isSelected ? 'selected' : undefined}
+                    tabIndex={onRowClick ? 0 : undefined}
+                    onClick={
+                      onRowClick
+                        ? (e) => {
+                            const target = e.target as HTMLElement | null
+                            if (
+                              target &&
+                              target.closest(
+                                'button, a, input, select, textarea, [role="button"], [role="checkbox"], [role="menuitem"], details'
+                              )
+                            ) {
+                              return
+                            }
+                            onRowClick(record, e)
+                          }
+                        : undefined
+                    }
+                    onKeyDown={
+                      onRowClick
+                        ? (e) => {
+                            if (e.target !== e.currentTarget) return
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              onRowClick(record, e as any)
+                            }
+                          }
+                        : undefined
+                    }
                     className={cn(
                       'group transition-colors duration-150',
-                      isSelected
+                      onRowClick &&
+                        'cursor-pointer focus-visible:bg-[var(--abc-bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--abc-primary)]',
+                      isSelected || isRowActive
                         ? 'bg-[var(--abc-primary-soft)]/60'
                         : 'hover:bg-[var(--abc-bg-muted)]/85'
                     )}

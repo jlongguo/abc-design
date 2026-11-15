@@ -20,26 +20,45 @@ export * from './components/typography/CopyableText'
 export * from './components/surface/Card'
 export * from './components/surface/Cards'
 export * from './components/navigation/Navigation'
+export * from './components/navigation/SegmentedControl'
 export * from './components/form/FormField'
 export * from './components/form/Input'
+export * from './components/form/SearchInput'
 export * from './components/form/Select'
 export * from './components/form/Controls'
 export * from './components/form/DatePicker'
 export * from './components/form/ImageUpload'
 export * from './components/form/AdvancedControls'
+export * from './components/form/QuotaUnitInput'
 export * from './components/display/StatusTag'
 export * from './components/display/Tabs'
 export * from './components/display/Overlays'
 export * from './components/display/ImagePreview'
 export * from './components/display/FeedbackStates'
 export * from './components/display/StructuredDisplay'
+export {
+  DescriptionList,
+  DescriptionListItem,
+  CopyableCode,
+  type DescriptionListProps,
+  type DescriptionItemProps,
+  type DescriptionListItemProps,
+  type DescriptionItemData,
+  type CopyableCodeProps,
+} from './components/display/DescriptionList'
+export * from './components/display/IconBadge'
+export * from './components/display/AttentionList'
 export * from './components/feedback/Toast'
 export * from './components/feedback/Dialog'
 export * from './components/feedback/Confirm'
+export * from './components/feedback/ConfirmDialog'
 export * from './components/feedback/Drawer'
 export * from './components/feedback/Loading'
 export * from './components/feedback/Watermark'
 export * from './components/feedback/FeedbackExtras'
+export * from './components/feedback/NotificationBanner'
+export * from './components/feedback/OneTimeSecretDialog'
+export * from './components/layout/InspectorPanel'
 export * from './components/table/TableCore'
 export * from './components/table/TablePrimitives'
 
@@ -58,5 +77,7 @@ export * from './layout/ProLayout'
 export * from './pro/PermissionAndDict'
 export * from './pro/ProFormLayout'
 export * from './pro/ProConfigForm'
+export * from './pro/FilterToolbar'
+export * from './pro/ReasonedAction'
 export * from './pro/ProTableExtras'
 export * from './pro/ProTable'

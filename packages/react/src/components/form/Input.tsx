@@ -181,7 +181,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
       >
         {leadingNode && (
-          <div className="pointer-events-none absolute left-3 z-10 flex items-center text-[var(--abc-fg-muted)]">
+          <div className="pointer-events-none absolute inset-y-0 left-3 z-10 flex items-center text-[var(--abc-fg-muted)]">
             {leadingNode}
           </div>
         )}
@@ -214,7 +214,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           {...rest}
         />
         {(isClearable || canTogglePwd || trailingNode) && (
-          <div className="absolute right-2.5 z-10 flex items-center gap-1 text-[var(--abc-fg-muted)]">
+          <div className="absolute inset-y-0 right-2.5 z-10 flex items-center gap-1 text-[var(--abc-fg-muted)]">
             {isClearable && (
               <button
                 type="button"

@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
 import {
+  ByteQuotaInput,
   Button,
   Card,
   Checkbox,
   DatePicker,
   DateRangePicker,
   DictSelect,
+  DurationQuotaInput,
   Icon,
   IconPicker,
   ImageUpload,
@@ -15,6 +17,8 @@ import {
   Pagination,
   Progress,
   RadioGroup,
+  SearchInput,
+  SegmentedControl,
   Select,
   SliderVerify,
   StatusTag,
@@ -30,7 +34,7 @@ import {
   type ButtonSize,
   type ButtonVariant,
 } from '@abc-design/react'
-import { Download, Search } from 'lucide-react'
+import { ArrowRight, Download, RefreshCw, Search, Sparkles } from 'lucide-react'
 import { ComponentDocPreview } from '../components/ComponentDocPreview'
 
 const ORG_TREE: AbcTreeNode[] = [
@@ -59,6 +63,14 @@ export const GeneralAndFormDocsPage: React.FC = () => {
   const [btnSize, setBtnSize] = useState<ButtonSize>('sm')
   const [btnLoading, setBtnLoading] = useState(false)
   const [btnDisabled, setBtnDisabled] = useState(false)
+  const [btnWithIcons, setBtnWithIcons] = useState(true)
+  const [btnIconOnly, setBtnIconOnly] = useState(false)
+
+  // SegmentedControl & Search & Quota
+  const [segmentedChoice, setSegmentedChoice] = useState<'day' | 'week' | 'month'>('week')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [byteQuota, setByteQuota] = useState(1024 * 1024 * 512) // 512 MB
+  const [durationQuota, setDurationQuota] = useState(3600 * 24 * 7) // 7 days
 
   // IconPicker
   const [pickedIcon, setPickedIcon] = useState('shield')
@@ -247,56 +259,62 @@ export const GeneralAndFormDocsPage: React.FC = () => {
         {/* 1. Button */}
         <ComponentDocPreview
           title="Button 按钮"
-          description="语义化 Token 驱动的通用触发按钮，支持 8 种视觉变体、4 档紧凑高度规格与防重入加载态。"
+          description="语义化 Token 驱动的通用触发按钮，全面支持 9 种视觉变体、4 档紧凑规格、前置/后置图标、加载中状态文案与纯图标形态。"
           controls={
             <>
-              <RadioGroup
-                variant="segmented"
-                value={btnVariant}
-                onChange={(v) => setBtnVariant(v as ButtonVariant)}
-                options={[
-                  { label: 'primary', value: 'primary' },
-                  { label: 'secondary', value: 'secondary' },
-                  { label: 'outline', value: 'outline' },
-                  { label: 'danger', value: 'danger' },
-                  { label: 'success', value: 'success' },
-                  { label: 'ghost', value: 'ghost' },
-                ]}
-              />
-              <RadioGroup
-                variant="segmented"
-                value={btnSize}
-                onChange={(v) => setBtnSize(v as ButtonSize)}
-                options={[
-                  { label: 'xs', value: 'xs' },
-                  { label: 'sm', value: 'sm' },
-                  { label: 'md', value: 'md' },
-                  { label: 'lg', value: 'lg' },
-                ]}
-              />
-              <Checkbox label="loading" checked={btnLoading} onChange={setBtnLoading} />
-              <Checkbox label="disabled" checked={btnDisabled} onChange={setBtnDisabled} />
+              <div className="flex flex-wrap items-center gap-2">
+                <RadioGroup
+                  variant="segmented"
+                  value={btnVariant}
+                  onChange={(v) => setBtnVariant(v as ButtonVariant)}
+                  options={[
+                    { label: 'primary', value: 'primary' },
+                    { label: 'secondary', value: 'secondary' },
+                    { label: 'outline', value: 'outline' },
+                    { label: 'danger', value: 'danger' },
+                    { label: 'warning', value: 'warning' },
+                    { label: 'success', value: 'success' },
+                    { label: 'ghost', value: 'ghost' },
+                    { label: 'text', value: 'text' },
+                    { label: 'link', value: 'link' },
+                  ]}
+                />
+                <RadioGroup
+                  variant="segmented"
+                  value={btnSize}
+                  onChange={(v) => setBtnSize(v as ButtonSize)}
+                  options={[
+                    { label: 'xs', value: 'xs' },
+                    { label: 'sm', value: 'sm' },
+                    { label: 'md', value: 'md' },
+                    { label: 'lg', value: 'lg' },
+                  ]}
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <Checkbox label="loading (加载中)" checked={btnLoading} onChange={setBtnLoading} />
+                <Checkbox label="disabled (禁用)" checked={btnDisabled} onChange={setBtnDisabled} />
+                <Checkbox label="双侧图标" checked={btnWithIcons} onChange={setBtnWithIcons} />
+                <Checkbox label="iconOnly (纯图标)" checked={btnIconOnly} onChange={setBtnIconOnly} />
+              </div>
             </>
           }
           code={`import { Button } from '@abc-design/react'
-import { Download } from 'lucide-react'
+import { Download, ArrowRight, RefreshCw } from 'lucide-react'
 
-export function Demo() {
-  return (
-    <Button
-      variant="${btnVariant}"
-      size="${btnSize}"${btnLoading ? '\n      loading' : ''}${btnDisabled ? '\n      disabled' : ''}
-      icon={<Download className="h-3.5 w-3.5" />}
-    >
-      导出财务报表
-    </Button>
-  )
-}`}
+<Button
+  variant="${btnVariant}"
+  size="${btnSize}"${btnLoading ? '\n  loading\n  loadingText="导出处理中…"' : ''}${btnDisabled ? '\n  disabled' : ''}${btnIconOnly ? '\n  iconOnly\n  aria-label="下载报表"' : ''}${btnWithIcons && !btnIconOnly ? '\n  leftIcon={<Download className="h-3.5 w-3.5" />}\n  rightIcon={<ArrowRight className="h-3.5 w-3.5" />}' : ''}
+>
+  ${btnIconOnly ? '<Download className="h-3.5 w-3.5" />' : '导出财务对账报表'}
+</Button>`}
           apiRows={[
-            { prop: 'variant', type: "'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'warning' | 'ghost' | 'text'", defaultValue: "'primary'", description: '按钮语义色调变体' },
-            { prop: 'size', type: "'xs' | 'sm' | 'md' | 'lg'", defaultValue: "'sm'", description: '对齐 --abc-control-h-* 的高度规格' },
+            { prop: 'variant', type: "'primary' | 'secondary' | 'outline' | 'danger' | 'warning' | 'success' | 'ghost' | 'text' | 'link'", defaultValue: "'secondary'", description: '按钮语义色调变体' },
+            { prop: 'size', type: "'xs' | 'sm' | 'md' | 'lg'", defaultValue: "'sm'", description: '对齐 --abc-control-h-* 的四档高度规格' },
             { prop: 'loading', type: 'boolean', defaultValue: 'false', description: '加载态自动渲染旋转指示器并禁用重复点击' },
-            { prop: 'icon', type: 'ReactNode', description: '前置图标插槽' },
+            { prop: 'loadingText', type: 'ReactNode', description: '加载中的替代文案（如“提交中…”）' },
+            { prop: 'leftIcon / rightIcon', type: 'ReactNode', description: '前置或后置图标插槽' },
+            { prop: 'iconOnly', type: 'boolean', defaultValue: 'false', description: '正方形纯图标按钮，必须配合 aria-label' },
             { prop: 'block', type: 'boolean', defaultValue: 'false', description: '是否撑满父容器 100% 宽度' },
           ]}
         >
@@ -305,11 +323,127 @@ export function Demo() {
               variant={btnVariant}
               size={btnSize}
               loading={btnLoading}
+              loadingText="处理中…"
               disabled={btnDisabled}
-              icon={<Download className="h-3.5 w-3.5" />}
+              leftIcon={btnWithIcons && !btnIconOnly ? <Download className="h-3.5 w-3.5" /> : undefined}
+              rightIcon={btnWithIcons && !btnIconOnly ? <ArrowRight className="h-3.5 w-3.5" /> : undefined}
+              aria-label={btnIconOnly ? '下载' : undefined}
             >
-              导出财务报表
+              {btnIconOnly ? <Download className="h-3.5 w-3.5" /> : '导出财务对账报表'}
             </Button>
+            <Button variant="outline" size={btnSize} leftIcon={<RefreshCw className="h-3.5 w-3.5" />}>
+              辅助轮询
+            </Button>
+            <Button variant="ghost" size={btnSize}>
+              取消返回
+            </Button>
+            <Button variant="link" size={btnSize}>
+              查看结算规则文档 →
+            </Button>
+          </div>
+        </ComponentDocPreview>
+
+        {/* 1.1 SegmentedControl / SearchInput / QuotaUnitInput */}
+        <ComponentDocPreview
+          title="SegmentedControl / SearchInput / QuotaUnitInput 敏捷输入组合"
+          description="中后台高频表单与筛选套件：分段选择器（支持角标与平滑滑块）、统一定制搜索框（一键清空与回车监听）以及企业级容量/时长配额联动输入框（内置单位自适应换算）。"
+          controls={
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <span className="text-[var(--abc-fg-secondary)]">分段当前选值:</span>
+              <span className="font-mono font-semibold text-[var(--abc-primary)]">{segmentedChoice}</span>
+              <span className="ml-3 text-[var(--abc-fg-secondary)]">当前搜索词:</span>
+              <span className="font-mono font-semibold text-[var(--abc-primary)]">{searchQuery || '(空)'}</span>
+            </div>
+          }
+          code={`import { SegmentedControl, SearchInput, ByteQuotaInput, DurationQuotaInput } from '@abc-design/react'
+
+// 1. 分段选择器
+<SegmentedControl
+  value={choice}
+  onChange={setChoice}
+  size="sm"
+  options={[
+    { value: 'day', label: '按日统计' },
+    { value: 'week', label: '按周归档', badge: '本周' },
+    { value: 'month', label: '月度汇总' },
+  ]}
+/>
+
+// 2. 定制搜索框
+<SearchInput
+  value={query}
+  onChange={(e) => setQuery(e.target.value)}
+  onClear={() => setQuery('')}
+  placeholder="输入服务名称、IP 或拼音首字母..."
+/>
+
+// 3. 存储容量配额联动输入
+<ByteQuotaInput
+  value={bytes}
+  onChange={setBytes}
+  allowedUnits={['MB', 'GB', 'TB']}
+  ariaLabel="集群磁盘配额"
+/>`}
+          apiRows={[
+            { prop: 'SegmentedControl.options', type: "Array<{ value, label, icon?, badge?, disabled? }>", description: '分段选项数组，支持角标与图标' },
+            { prop: 'SearchInput.onClear', type: "() => void", description: '传入清空回调时自动提供右侧一键清空按钮与回焦机制' },
+            { prop: 'ByteQuotaInput.value / onChange', type: "number, (val: number) => void", description: '底层以 byte 为原子单位双向绑定，界面智能折算为 MB/GB/TB' },
+            { prop: 'DurationQuotaInput.value / onChange', type: "number, (val: number) => void", description: '底层以秒(s)为原子单位，界面智能折算为分钟/小时/天' },
+          ]}
+        >
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-[var(--abc-fg-secondary)]">
+                分段选择器 (SegmentedControl)
+              </div>
+              <SegmentedControl
+                value={segmentedChoice}
+                onChange={setSegmentedChoice}
+                size="sm"
+                block
+                options={[
+                  { value: 'day', label: '按日统计', icon: <Sparkles className="h-3.5 w-3.5" /> },
+                  { value: 'week', label: '按周归档', badge: 12 },
+                  { value: 'month', label: '月度汇总' },
+                ]}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-[var(--abc-fg-secondary)]">
+                统一定制搜索框 (SearchInput)
+              </div>
+              <SearchInput
+                placeholder="搜索服务节点、网关或拼音..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onClear={() => setSearchQuery('')}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-[var(--abc-fg-secondary)]">
+                存储容量配额 (ByteQuotaInput)
+              </div>
+              <ByteQuotaInput
+                value={byteQuota}
+                onChange={setByteQuota}
+                allowedUnits={['MB', 'GB', 'TB']}
+                aria-label="存储配额"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-[var(--abc-fg-secondary)]">
+                任务超时时长 (DurationQuotaInput)
+              </div>
+              <DurationQuotaInput
+                value={durationQuota}
+                onChange={setDurationQuota}
+                allowedUnits={['m', 'h', 'd']}
+                aria-label="超时时间"
+              />
+            </div>
           </div>
         </ComponentDocPreview>
 

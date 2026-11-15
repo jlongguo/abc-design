@@ -9,19 +9,37 @@
 ### 1. `Button`
 ```tsx
 <Button
-  variant="primary" // 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'warning' | 'ghost' | 'text'
+  variant="primary" // 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'warning' | 'ghost' | 'text' | 'link'
   size="sm"         // 'xs' | 'sm' | 'md' | 'lg'
   loading={false}
+  loadingText="提交中…"
   disabled={false}
   block={false}
-  icon={<Plus className="h-3.5 w-3.5" />}
+  leftIcon={<Plus className="h-3.5 w-3.5" />}
+  rightIcon={<ArrowRight className="h-3.5 w-3.5" />}
+  iconOnly={false}
   onClick={handleClick}
 >
   新建租户
 </Button>
 ```
 
-### 2. `Icon` & `IconPicker`
+### 2. `SegmentedControl`
+分段选择器控件，用于在多个互斥选项之间进行快捷切换，支持图标、角标、等宽/流式自适应布局与物理动效：
+```tsx
+<SegmentedControl
+  value={scope}
+  onChange={setScope}
+  size="sm"
+  options={[
+    { value: 'all', label: '全部' },
+    { value: 'active', label: '运行中', badge: 12 },
+    { value: 'frozen', label: '已冻结' },
+  ]}
+/>
+```
+
+### 3. `Icon` & `IconPicker`
 - `Icon`：按需具名映射 120+ 高频中后台 Lucide 图标，兼容历史 `el-icon-*` 类名与中文菜单标题智能推断（`text` 属性）。
 - `IconPicker`：同时支持两种模式：
   1. **内联表单字段模式**：`<IconPicker value={icon} onChange={setIcon} clearable />`
@@ -69,8 +87,18 @@
 </FormField>
 ```
 
-### 2. `Input` / `InputNumber` / `Textarea`
+### 2. `Input` / `InputNumber` / `Textarea` / `SearchInput` / `QuotaUnitInput`
 - `Input`：支持 `size` (`'xs'|'sm'|'md'|'lg'`)、`prefix` / `prefixIcon`、`suffix` / `suffixIcon`、`allowClear` / `clearable`（清空后自动回焦）、`passwordToggle`（`type="password"` 默认开启明密文眼睛按钮）、`showCount`、内联 `label` / `error` / `helperText`。
+- `SearchInput`：统一定制搜索框组件，内置搜索图标居中、一键清空与回车提交监听（`<SearchInput placeholder="检索规则或拼音首字母..." onClear={handleClear} />`）。
+- `QuotaUnitInput`（含 `ByteQuotaInput` / `DurationQuotaInput`）：容量/时长配额与单位联动输入，支持自动换算（B/KB/MB/GB/TB 或 s/m/h/d）、自适应单位匹配与范围保护：
+  ```tsx
+  <ByteQuotaInput
+    value={quotaBytes}
+    onChange={setQuotaBytes}
+    allowedUnits={['MB', 'GB', 'TB']}
+    ariaLabel="磁盘配额"
+  />
+  ```
 - `InputNumber`：`value: number | null`，`onChange: (value: number | null) => void`，支持 `min`、`max`、`step`、键盘上下键步进。
 - `Textarea`：支持 `showCount`、`maxLength`、内联 `label` / `error` / `helperText`。
 
@@ -118,9 +146,18 @@
 
 ## 三、表面容器与数据展示
 
-- **`Card` / `SpotlightCard` / `BorderBeam` / `AuroraBackground` / `Divider` / `Space`**：
+- **`Card` / `CardHeader` / `CardTitle` / `CardDescription` / `CardContent` / `CardFooter` / `SpotlightCard` / `BorderBeam` / `AuroraBackground` / `Divider` / `Space`**：
   `<Card as="article" title="标题" subtitle="副标题" extra={<Button>操作</Button>} size="md" variant="default" cover={...} statusRibbon={{ text: '推荐', tone: 'primary' }} loading={false} hoverable motion="smooth">`
+  - 新增复合插槽子组件（`CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter`），支持更精细的模块化卡片排版。
   - 新增 `variant?: 'default' | 'bordered' | 'ghost' | 'elevated' | 'glass'`、`size?: AbcSize`（`xs | sm | md | lg`）、`loading`、`cover`、`statusRibbon` 与 `@container` 容器查询上下文。
+- **`TablePrimitives` 复合基础表格骨架**：
+  - 提供轻量、复合无业务绑定的表格原语：`Table`（内置水平滚动视口与无障碍 role）、`TableHeader`（支持 `sticky` 吸顶）、`TableBody`、`TableFooter`、`TableRow`、`TableHead`、`TableCell`、`TableCaption`。
+- **`DescriptionList` / `DescriptionListItem` / `CopyableCode`**：
+  - 基于语义化 `<dl>`/`<dt>`/`<dd>`，支持 `columns`（1~4 列）、`variant`（`'default' | 'cards' | 'divided' | 'compact'`）与一键内联复制组件 `CopyableCode`。
+- **`IconBadge` & `RichIconText`**：
+  - 图标与文字组合徽标（`<IconBadge icon={<Shield className="h-3 w-3" />} label="BGP 专线" variant="success" size="sm" />`）。
+- **`AttentionList`**：
+  - 重点待办与聚合运营告警清单，展示高危/中危风险信号及直达处理链接。
 - **企业级卡片矩阵（`Cards` 模块）**：
   - `MetricCard`：`title`, `value`, `prefix`, `suffix`, `trend?: { value, direction?: 'up' | 'down' | 'flat', label? }`, `sparkline?: number[]`, `icon`, `footer`, `loading`, `hoverable`, `size`, `motion`
   - `CheckCardGroup` / `CheckCard`：`multiple`, `value`, `defaultValue`, `onChange`, `columns?: 1 | 2 | 3 | 4`, `disabled`, `size`, `motion`（`CheckCard`：`value`, `title`, `description`, `avatar`, `icon`, `extra`, `checked`, `disabled`）
@@ -142,8 +179,36 @@
 
 ## 四、反馈、安全浮层与权限守卫
 
-- **`Dialog`**：`<Dialog open={open} onClose={handleClose} title="编辑" size="md" footer={...}>`（支持标题栏拖拽移动与双击最大化，`size` 支持 `'sm'|'md'|'lg'|'xl'|'full'`，亦兼容 `isOpen` 与 `maxWidth`）。
-- **`Drawer`**：`<Drawer open={open} onClose={handleClose} title="详情" placement="right" size="lg" resizable push>`（支持多层 `L1/L2` 抽屉自动左移层叠与侧边拖拽调宽）。
+- **`Dialog`**：`<Dialog open={open} onClose={handleClose} title="快捷操作" size="md" footer={...}>`（支持标题栏拖拽移动与双击最大化，`size` 支持 `'sm'|'md'|'lg'|'xl'|'full'`，亦兼容 `isOpen` 与 `maxWidth`）。
+  - **定位与使用场景**：专用于**小表单操作与轻量确认**（如修改名称、停用、快速输入操作原因等少字段场景），居中弹出且天然支持多级 Modal 遮罩堆叠。
+- **`Drawer`**：`<Drawer open={open} onClose={handleClose} title="配额与能力配置" placement="right" size="lg" resizable push cascadeMode="adjacent">`（支持侧边拖拽调宽，以及多级抽屉自动左移层叠 `stack` 或并排平级展开 `adjacent`）。
+  - **定位与使用场景**：专用于**大表单交互操作展示**（多指标、长录入、多分类卡片与复杂校验），全高贴合无视口裁切风险；**若大表单内部需要再打开另一个大表单，必须使用子级抽屉（二级抽屉 L1 -> L2）**，严禁使用 Modal。
+- **`ConfirmDialog`**：
+  - 结构化二次确认对话框，相比简易命令式 `abcConfirm`，支持嵌入自定义表单内容、破坏性警示样式、异步加载中与无障碍焦点锁定：
+  ```tsx
+  <ConfirmDialog
+    open={confirmOpen}
+    title="确认删除该网关节点？"
+    description="删除后将立即剔除路由转发池并释放弹性 IP，此操作不可撤销。"
+    variant="destructive"
+    loading={deleting}
+    onCancel={() => setConfirmOpen(false)}
+    onConfirm={handleDelete}
+  />
+  ```
+- **`OneTimeSecretDialog`**：
+  - 一次性敏感密钥/凭证展示弹窗，专用于仅下发一次的 API Key、Token 或临时密码，提供强安全提醒与一键复制确认：
+  ```tsx
+  <OneTimeSecretDialog
+    open={Boolean(newSecret)}
+    title="已生成只读访问凭证"
+    secret={newSecret}
+    metadata={[{ label: '权限范围', value: 'read:billing, read:nodes' }]}
+    onClose={() => setNewSecret(null)}
+  />
+  ```
+- **`NotificationBanner`**：
+  - 局部与全局通知横幅（支持 `'error' | 'warning' | 'success' | 'info'` 四种状态），支持标题、错误码、RequestId、操作按钮及可关闭态。
 - **`abcConfirm`（别名 `confirm` / `useConfirm`）**：
   ```ts
   const ok = await abcConfirm({
@@ -155,6 +220,10 @@
 - **`Alert` / `Progress` / `Result` / `Loading` / `Watermark` / `ErrorBoundary` / `TabErrorBoundary`**：
   - `<Result status="403" title="无权限" subTitle="说明" extra={<Button>返回</Button>} />`
   - `<TabErrorBoundary resetKey={location.pathname}>{children}</TabErrorBoundary>`
+- **`ToastContainer`（别名 `AbcToastViewport`）**：
+  - `<ToastContainer position="top-right" maxCount={5} pauseOnHover newestOnTop={false} closable />`
+  - 支持 6 种视口定位（`top-right`、`top-left`、`top-center`、`bottom-right`、`bottom-left`、`bottom-center`）、鼠标悬停暂停倒计时（`pauseOnHover`）、`newestOnTop` 排序、Portal 挂载目标节点定制、多容器 `containerId` 隔离及单条富文本卡片（`title` + `description` + `action`）。
+  - 命令式调用（亦导出 `toast` 简写）：`abcToast.success('保存成功')`、`abcToast.error('异常')`、`abcToast.warning('警告')`、`abcToast.info('提示')`、`abcToast.loading('加载中')`、`abcToast.dismiss(id)`、`abcToast.clear()`。
 - **`PermissionGuard`（别名 `Permission`）**：
   ```tsx
   <Permission code="sys:user:delete" fallbackStrategy="disable">

@@ -197,33 +197,59 @@ export function RoleManagePage() {
 }
 ```
 
+> **表单容器选型与多级嵌套准则**：
+> 1. **大表单交互操作展示必须使用抽屉（`Drawer`）**：字段较多、含分组卡片、配额配置等复杂业务表单，必须采用右侧全高抽屉，提供吸附 Header/Footer 与原生垂直滚动流，坚决避免使用绝对居中 Modal 导致顶部被裁切。
+> 2. **大表单嵌套大表单必须使用子级抽屉（`cascadeMode="adjacent"` / `"stack"`）**：若在第一层大表单中需要进一步唤起另一个大表单，必须使用二级抽屉（L1 -> L2），严禁使用 Modal。
+> 3. **小表单与轻量确认操作使用 `Dialog`**：仅包含 1-3 个输入项、状态修改、删除确认等极少操作项时，使用居中 Modal，天然支持多级遮罩堆叠。
+
 ---
 
-## 四、`ProConfigForm` — 分组系统参数与多租户配置表单
+## 五、Pro 增强交互套件（工具栏、审计操作与检视面板）
 
-专用于站点设置、租户品牌配置、支付密钥配置等分组长表单场景；`type: 'image'` 且开启 `allowDirectUrlInput` 时，左侧自动渲染支持 **SVG 源码与图片直链双兼容** 的 `<ImagePreview>` 实时放大缩略框：
-
+### 1. `FilterToolbar` & `FilterPillGroup` 复合筛选工具栏
+专用于列表头部容纳快速搜索、分类状态胶囊与重置按钮：
 ```tsx
-import { ProConfigForm } from '@abc-design/react'
+import { FilterToolbar, FilterPillGroup, SearchInput, Button } from '@abc-design/react'
 
-<ProConfigForm
-  layoutMode="split" // 'split'（左导览右表单） | 'grid'
-  initialValues={{ siteName: 'BytesFlows', siteLogo: 'https://example.com/logo.svg', openRegister: true }}
-  groups={[
-    {
-      key: 'brand',
-      title: '租户品牌标识',
-      description: '配置控制台左上角与登录页展示的品牌名称及矢量图标',
-      columns: 2,
-      fields: [
-        { name: 'siteName', label: '系统名称', required: true },
-        { name: 'siteLogo', label: '品牌 Logo（支持 SVG 或直链）', type: 'image', allowDirectUrlInput: true },
-        { name: 'openRegister', label: '开放自助注册', type: 'switch' },
-      ],
-    },
-  ]}
-  onSubmit={async (values) => {
-    await saveTenantConfig(values)
-  }}
+<FilterToolbar
+  surface
+  hasActiveFilters={Boolean(status || keyword)}
+  onReset={() => { setStatus('all'); setKeyword('') }}
+  search={<SearchInput value={keyword} onChange={(e) => setKeyword(e.target.value)} onClear={() => setKeyword('')} />}
+  filters={
+    <FilterPillGroup
+      value={status}
+      onValueChange={setStatus}
+      options={[
+        { value: 'all', label: '全部' },
+        { value: 'active', label: '运行中', count: 18 },
+        { value: 'pending', label: '待开通', count: 3 },
+      ]}
+    />
+  }
+  trailing={<Button variant="primary">导出报表</Button>}
 />
+```
+
+### 2. `ReasonedActionDialog` & `ReasonedActionDrawer` 审计操作套件
+用于高安全操作（如封禁账号、强制作废、调低配额），强制填写审计原因：
+- **小表单/快捷操作**：`<ReasonedActionDialog open={open} onOpenChange={setOpen} title="冻结租户" onConfirm={(reason) => apiFreeze(id, reason)} />`
+- **大表单/级联配置**：`<ReasonedActionDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} title="更新租户配额" onConfirm={(reason) => apiUpdateQuota(id, quota, reason)} />`
+
+### 3. `InspectorPanel` & `SplitInspectorLayout` 主从检视面板
+用于主表/右侧详情检视经典布局，支持自适应断点与粘性定位：
+```tsx
+import { SplitInspectorLayout, InspectorPanel, DescriptionList } from '@abc-design/react'
+
+<SplitInspectorLayout
+  inspector={
+    selectedRecord ? (
+      <InspectorPanel title="租户详情" onClear={() => setSelectedRecord(null)}>
+        <DescriptionList columns={1} variant="cards" items={...} />
+      </InspectorPanel>
+    ) : null
+  }
+>
+  <TableCore ... />
+</SplitInspectorLayout>
 ```
