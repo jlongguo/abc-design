@@ -2533,6 +2533,14 @@ export declare interface SelectProps {
     size?: ControlSize;
     motion?: AbcMotionPreset;
     className?: string;
+    /** 外层容器扩展样式类名（如控制宽度 w-32 或 shrink-0 等） */
+    wrapperClassName?: string;
+    /** 下拉浮层容器扩展样式类名 */
+    dropdownClassName?: string;
+    /** 是否同步触发器宽度至下拉菜单最小宽度（默认 true） */
+    matchWidth?: boolean;
+    /** 无障碍语义标签 */
+    'aria-label'?: string;
 }
 
 /** 经典侧边栏树形菜单渲染器（支持深浅双色、四档尺寸与动效、折叠 Portal 悬浮子菜单与平滑网格手风琴展开） */

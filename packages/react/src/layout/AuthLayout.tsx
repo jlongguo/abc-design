@@ -107,7 +107,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           <div className="ml-auto">{topRightExtra}</div>
         </div>
 
-        <div className="mx-auto my-auto w-full max-w-md overflow-hidden rounded-[var(--abc-radius-xl)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] p-7 shadow-[var(--abc-shadow-card)]">
+        <div className="mx-auto my-auto w-full max-w-md overflow-hidden relative rounded-[var(--abc-radius-xl)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] p-7 shadow-[var(--abc-shadow-card)]">
           <BorderBeam />
           {children}
         </div>

@@ -1,9 +1,10 @@
-import React, { useRef, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { ChevronLeft, ChevronRight, FolderSearch, RotateCcw } from 'lucide-react'
 import { useAbcMotion, useAbcSize } from '../../hooks'
 import { cn } from '../../utils/cn'
 import Button from '../button/Button'
+import { Select, type SelectOption } from '../form/Select'
 
 export interface EmptyStateProps {
   title?: React.ReactNode
@@ -177,10 +178,11 @@ export interface PaginationProps extends Partial<PaginationCursorMeta> {
 
 const PAGINATION_SIZE_MAP: Record<
   AbcSize,
-  { wrap: string; select: string; navBtn: string; pageBtn: string; input: string }
+  { wrap: string; selectWrap: string; select: string; navBtn: string; pageBtn: string; input: string }
 > = {
   xs: {
     wrap: 'text-[11px]',
+    selectWrap: 'w-[90px] shrink-0',
     select: 'h-6 px-1.5 text-[11px]',
     navBtn: 'h-6 w-6',
     pageBtn: 'h-6 min-w-6 px-1.5 text-[11px]',
@@ -188,6 +190,7 @@ const PAGINATION_SIZE_MAP: Record<
   },
   sm: {
     wrap: 'text-xs',
+    selectWrap: 'w-[100px] shrink-0',
     select: 'h-7 px-2 text-xs',
     navBtn: 'h-7 w-7',
     pageBtn: 'h-7 min-w-7 px-2 text-xs',
@@ -195,16 +198,18 @@ const PAGINATION_SIZE_MAP: Record<
   },
   md: {
     wrap: 'text-sm',
-    select: 'h-8 px-2.5 text-xs',
+    selectWrap: 'w-[108px] shrink-0',
+    select: 'h-8 px-2 text-xs',
     navBtn: 'h-8 w-8',
-    pageBtn: 'h-8 min-w-8 px-2.5 text-xs',
+    pageBtn: 'h-8 min-w-8 px-2 text-xs',
     input: 'h-8 w-12 text-xs',
   },
   lg: {
     wrap: 'text-sm',
-    select: 'h-9 px-3 text-sm',
+    selectWrap: 'w-[116px] shrink-0',
+    select: 'h-9 px-2.5 text-sm',
     navBtn: 'h-9 w-9',
-    pageBtn: 'h-9 min-w-9 px-3 text-sm',
+    pageBtn: 'h-9 min-w-9 px-2.5 text-sm',
     input: 'h-9 w-14 text-sm',
   },
 }
@@ -260,6 +265,13 @@ export const Pagination: React.FC<PaginationProps> = ({
     onPageSizeChange?.(nextSize)
   }
 
+  const selectOptions: SelectOption[] = useMemo(() => {
+    return (pageSizeOptions || []).map((opt) => ({
+      label: `${opt} 条/页`,
+      value: opt,
+    }))
+  }, [pageSizeOptions])
+
   // 游标流水模式渲染
   if (resolvedMode === 'cursor') {
     return (
@@ -295,23 +307,19 @@ export const Pagination: React.FC<PaginationProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          {pageSizeOptions && pageSizeOptions.length > 0 && onSizeChange && (
-            <select
+          {pageSizeOptions && pageSizeOptions.length > 0 && (onSizeChange || onPageSizeChange || onChange) && (
+            <Select
               aria-label="每页条数"
+              size={resolvedControlSize}
               value={activeSize}
-              onChange={(e) => triggerSize(Number(e.target.value))}
               disabled={loading}
-              className={cn(
-                'rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] focus:border-[var(--abc-primary)] focus:outline-none cursor-pointer',
-                sizeCls.select
-              )}
-            >
-              {pageSizeOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt} 条/页
-                </option>
-              ))}
-            </select>
+              onChange={(val) => triggerSize(Number(val))}
+              options={selectOptions}
+              searchable={false}
+              clearable={false}
+              wrapperClassName={sizeCls.selectWrap}
+              className={cn('cursor-pointer font-sans tabular-nums select-none', sizeCls.select)}
+            />
           )}
 
           <button
@@ -436,21 +444,20 @@ export const Pagination: React.FC<PaginationProps> = ({
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
-        <select
-          aria-label="每页条数"
-          value={activeSize}
-          onChange={(e) => triggerSize(Number(e.target.value))}
-          className={cn(
-            'rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] focus:border-[var(--abc-primary)] focus:outline-none cursor-pointer',
-            sizeCls.select
-          )}
-        >
-          {pageSizeOptions.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt} 条/页
-            </option>
-          ))}
-        </select>
+        {pageSizeOptions && pageSizeOptions.length > 0 && (
+          <Select
+            aria-label="每页条数"
+            size={resolvedControlSize}
+            value={activeSize}
+            disabled={loading}
+            onChange={(val) => triggerSize(Number(val))}
+            options={selectOptions}
+            searchable={false}
+            clearable={false}
+            wrapperClassName={sizeCls.selectWrap}
+            className={cn('cursor-pointer font-sans tabular-nums select-none', sizeCls.select)}
+          />
+        )}
 
         <button
           type="button"
@@ -525,7 +532,7 @@ export const Pagination: React.FC<PaginationProps> = ({
               }}
               onBlur={commitJump}
               className={cn(
-                'rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-1.5 text-center font-mono text-[var(--abc-fg)] tabular-nums focus:border-[var(--abc-primary)] focus:outline-none',
+                'rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-1.5 text-center font-mono text-[var(--abc-fg)] tabular-nums focus:border-[var(--abc-primary)] focus:ring-1 focus:ring-[var(--abc-ring)] focus:outline-none transition-colors',
                 sizeCls.input
               )}
             />

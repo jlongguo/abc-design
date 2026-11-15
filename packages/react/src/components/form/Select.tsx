@@ -39,6 +39,14 @@ export interface SelectProps {
   size?: ControlSize
   motion?: AbcMotionPreset
   className?: string
+  /** 外层容器扩展样式类名（如控制宽度 w-32 或 shrink-0 等） */
+  wrapperClassName?: string
+  /** 下拉浮层容器扩展样式类名 */
+  dropdownClassName?: string
+  /** 是否同步触发器宽度至下拉菜单最小宽度（默认 true） */
+  matchWidth?: boolean
+  /** 无障碍语义标签 */
+  'aria-label'?: string
 }
 
 const SINGLE_SIZE_H: Record<ControlSize, string> = {
@@ -82,6 +90,10 @@ export const Select: React.FC<SelectProps> = ({
   size,
   motion,
   className,
+  wrapperClassName,
+  dropdownClassName,
+  matchWidth = true,
+  'aria-label': ariaLabel,
 }) => {
   const resolvedSize = useAbcSize(size, 'sm')
   const resolvedMotion = useAbcMotion(motion)
@@ -111,7 +123,7 @@ export const Select: React.FC<SelectProps> = ({
     floatingRef: listboxRef,
     placement: 'bottomLeft',
     offset: 4,
-    matchWidth: true,
+    matchWidth,
   })
 
   useEffect(() => {
@@ -241,7 +253,13 @@ export const Select: React.FC<SelectProps> = ({
   }
 
   return (
-    <div ref={rootRef} className="relative min-w-0 w-full">
+    <div
+      ref={rootRef}
+      className={cn(
+        'relative min-w-0',
+        wrapperClassName ? wrapperClassName : 'w-full'
+      )}
+    >
       {label && (
         <label
           htmlFor={selectId}
@@ -264,6 +282,7 @@ export const Select: React.FC<SelectProps> = ({
         id={selectId}
         title={title}
         role="combobox"
+        aria-label={ariaLabel}
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-controls={`${selectId}-listbox`}
@@ -357,8 +376,10 @@ export const Select: React.FC<SelectProps> = ({
             aria-multiselectable={multiple || undefined}
             style={style}
             className={cn(
-              'z-[1300] min-w-[160px] max-w-[min(480px,calc(100vw-16px))] overflow-hidden rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] shadow-[var(--abc-shadow-popover)]',
-              isVisible ? 'abc-animate-popover-in' : 'abc-animate-popover-out'
+              'z-[1300] max-w-[min(480px,calc(100vw-16px))] overflow-hidden rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] shadow-[var(--abc-shadow-popover)]',
+              matchWidth ? 'min-w-full' : 'min-w-[120px]',
+              isVisible ? 'abc-animate-popover-in' : 'abc-animate-popover-out',
+              dropdownClassName
             )}
           >
             {searchable && (
