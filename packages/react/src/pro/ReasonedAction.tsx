@@ -115,6 +115,8 @@ export function ReasonedActionDialog({
   return (
     <Dialog
       open={open}
+      title={typeof title === 'string' ? title : undefined}
+      closeLabel={closeLabel}
       onClose={handleClose}
       onCancel={handleClose}
       onOpenChange={onOpenChange}

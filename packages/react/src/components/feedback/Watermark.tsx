@@ -18,6 +18,7 @@ export interface WatermarkProps {
 /**
  * Retina 高清 Canvas 防篡改水印容器
  * 内置 MutationObserver 守护：当水印节点在控制台被删除或 style 属性被恶意隐藏时自动重建恢复
+ * 严格防自激闭环：更新前主动切断监听、仅监听直接子节点与自身属性，杜绝微任务死循环
  */
 export const Watermark: React.FC<WatermarkProps> = ({
   content,
@@ -30,16 +31,25 @@ export const Watermark: React.FC<WatermarkProps> = ({
   const { resolvedTheme } = useAbcConfig()
   const containerRef = useRef<HTMLDivElement>(null)
   const watermarkRef = useRef<HTMLDivElement | null>(null)
+  const expectedStyleRef = useRef<string>('')
+  const observerRef = useRef<MutationObserver | null>(null)
 
   const renderWatermarkLayer = useCallback(() => {
     const host = containerRef.current
     if (!host) return
+
+    // 1. 内部进行 DOM 变更前，主动断开 MutationObserver，防止自身修改 style/node 触发死循环
+    if (observerRef.current) {
+      observerRef.current.disconnect()
+      observerRef.current = null
+    }
 
     if (!enabled || !content || (Array.isArray(content) && content.length === 0)) {
       if (watermarkRef.current && watermarkRef.current.parentNode === host) {
         host.removeChild(watermarkRef.current)
       }
       watermarkRef.current = null
+      expectedStyleRef.current = ''
       return
     }
 
@@ -82,56 +92,81 @@ export const Watermark: React.FC<WatermarkProps> = ({
       markEl = document.createElement('div')
       watermarkRef.current = markEl
     }
-    markEl.setAttribute('data-watermark-overlay', 'true')
+    if (markEl.getAttribute('data-watermark-overlay') !== 'true') {
+      markEl.setAttribute('data-watermark-overlay', 'true')
+    }
 
-    markEl.setAttribute(
-      'style',
-      [
-        'position: absolute',
-        'inset: 0',
-        'pointer-events: none',
-        'z-index: 40',
-        `background-image: url(${dataUrl})`,
-        'background-repeat: repeat',
-        `background-size: ${tileW}px ${tileH}px`,
-      ].join(' !important; ') + ' !important;'
-    )
+    const expectedStyle = [
+      'position: absolute',
+      'inset: 0',
+      'pointer-events: none',
+      'z-index: 40',
+      `background-image: url(${dataUrl})`,
+      'background-repeat: repeat',
+      `background-size: ${tileW}px ${tileH}px`,
+    ].join(' !important; ') + ' !important;'
+
+    expectedStyleRef.current = expectedStyle
+
+    if (markEl.getAttribute('style') !== expectedStyle) {
+      markEl.setAttribute('style', expectedStyle)
+    }
 
     if (markEl.parentNode !== host) {
       host.appendChild(markEl)
+    }
+
+    // 2. 仅在支持 MutationObserver 环境下挂载安全防篡改监听
+    if (typeof MutationObserver !== 'undefined') {
+      const observer = new MutationObserver((mutations) => {
+        const currentHost = containerRef.current
+        const currentMark = watermarkRef.current
+        if (!currentHost || !currentMark) return
+
+        let needsRestore = false
+        for (const m of mutations) {
+          if (m.type === 'childList') {
+            const removed = Array.from(m.removedNodes)
+            // 只有当水印节点本身被外部恶意移除时才需要重新挂载
+            if (removed.includes(currentMark)) {
+              needsRestore = true
+              break
+            }
+          } else if (m.type === 'attributes' && m.target === currentMark) {
+            // 只有当水印节点的样式或显隐属性被篡改偏离 expectedStyle 时才恢复
+            const currentStyle = currentMark.getAttribute('style') || ''
+            if (currentStyle !== expectedStyleRef.current || currentMark.hidden) {
+              needsRestore = true
+              break
+            }
+          }
+        }
+
+        if (needsRestore) {
+          renderWatermarkLayer()
+        }
+      })
+
+      observerRef.current = observer
+      // 精确监听：仅监听 host 的直接子节点变化（subtree: false 防止监听内部复杂组件产生微任务风暴）
+      observer.observe(host, { childList: true, subtree: false })
+      // 精确监听：仅监听水印节点自身的 style/class/hidden 属性篡改
+      observer.observe(markEl, {
+        attributes: true,
+        attributeFilter: ['style', 'class', 'hidden'],
+      })
     }
   }, [content, enabled, gap, resolvedTheme, rotate])
 
   useEffect(() => {
     renderWatermarkLayer()
-    const host = containerRef.current
-    if (!host || !enabled || typeof MutationObserver === 'undefined') return
-
-    const observer = new MutationObserver((mutations) => {
-      for (const m of mutations) {
-        if (m.type === 'childList') {
-          const removed = Array.from(m.removedNodes)
-          if (watermarkRef.current && removed.includes(watermarkRef.current)) {
-            watermarkRef.current = null
-            renderWatermarkLayer()
-            break
-          }
-        } else if (m.type === 'attributes' && m.target === watermarkRef.current) {
-          renderWatermarkLayer()
-          break
-        }
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect()
+        observerRef.current = null
       }
-    })
-
-    observer.observe(host, {
-      childList: true,
-      attributes: true,
-      subtree: true,
-      attributeFilter: ['style', 'class', 'hidden'],
-    })
-
-    return () => observer.disconnect()
-  }, [enabled, renderWatermarkLayer])
+    }
+  }, [renderWatermarkLayer])
 
   return (
     <div ref={containerRef} className={cn('relative', className)}>

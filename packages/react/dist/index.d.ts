@@ -1055,6 +1055,7 @@ export declare interface DialogContextValue {
     handleClose: () => void;
     closeDisabled: boolean;
     hasHeader: boolean;
+    titleId: string;
 }
 
 export declare function DialogDescription({ className, children, ...props }: default_2.HTMLAttributes<HTMLParagraphElement>): default_2.JSX.Element;
@@ -1120,7 +1121,7 @@ export declare interface DialogProps {
  */
 export declare type DialogSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl';
 
-export declare function DialogTitle({ className, children, ...props }: default_2.HTMLAttributes<HTMLHeadingElement>): default_2.JSX.Element;
+export declare function DialogTitle({ className, children, id, ...props }: default_2.HTMLAttributes<HTMLHeadingElement>): default_2.JSX.Element;
 
 /** 字典驱动下拉框（通过 AbcProvider.dictAdapter 解耦具体业务接口） */
 export declare const DictSelect: default_2.FC<DictSelectProps>;
@@ -3249,6 +3250,7 @@ export declare function useTableSettings(storageKey?: string, initialDensity?: A
 /**
  * Retina 高清 Canvas 防篡改水印容器
  * 内置 MutationObserver 守护：当水印节点在控制台被删除或 style 属性被恶意隐藏时自动重建恢复
+ * 严格防自激闭环：更新前主动切断监听、仅监听直接子节点与自身属性，杜绝微任务死循环
  */
 export declare const Watermark: default_2.FC<WatermarkProps>;
 

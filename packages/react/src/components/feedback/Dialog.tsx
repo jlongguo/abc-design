@@ -11,6 +11,7 @@ export interface DialogContextValue {
   handleClose: () => void
   closeDisabled: boolean
   hasHeader: boolean
+  titleId: string
 }
 
 export const DialogContext = createContext<DialogContextValue | null>(null)
@@ -44,6 +45,8 @@ export interface DialogProps {
   closable?: boolean
   /** 是否禁用关闭按钮（如表单提交中） */
   closeDisabled?: boolean
+  /** 关闭按钮无障碍文案，默认 '关闭' */
+  closeLabel?: string
   /** 标题内容 */
   title?: React.ReactNode
   /** 副标题或辅助描述 */
@@ -108,6 +111,7 @@ export const Dialog: React.FC<DialogProps> = ({
   onOpenChange,
   closable = true,
   closeDisabled = false,
+  closeLabel = '关闭',
   title,
   description,
   children,
@@ -283,8 +287,7 @@ export const Dialog: React.FC<DialogProps> = ({
     <dialog
       ref={dialogRef}
       data-motion={resolvedMotion}
-      aria-labelledby={title ? titleId : undefined}
-      aria-label={!title ? '对话框' : undefined}
+      aria-labelledby={titleId}
       aria-describedby={description ? descId : undefined}
       style={{
         display: isOpen ? 'flex' : 'none',
@@ -344,7 +347,7 @@ export const Dialog: React.FC<DialogProps> = ({
           className
         )}
       >
-        <DialogContext.Provider value={{ isOpen, handleClose, closeDisabled, hasHeader }}>
+        <DialogContext.Provider value={{ isOpen, handleClose, closeDisabled, hasHeader, titleId }}>
           {(title !== undefined || fullscreenable) && (
             <div
               onMouseDown={handleHeaderMouseDown}
@@ -387,8 +390,8 @@ export const Dialog: React.FC<DialogProps> = ({
                 {closable && (
                   <button
                     type="button"
-                    aria-label="关闭"
-                    title="关闭弹窗"
+                    aria-label={closeLabel}
+                    title={closeLabel}
                     disabled={closeDisabled}
                     onClick={(e) => {
                       e.stopPropagation()
@@ -497,9 +500,10 @@ export function DialogFooter({ className, children, ...props }: React.HTMLAttrib
   )
 }
 
-export function DialogTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+export function DialogTitle({ className, children, id, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+  const ctx = useDialog()
   return (
-    <h2 data-slot="dialog-title" className={cn('text-base font-semibold leading-none tracking-tight text-[var(--abc-fg)]', className)} {...props}>
+    <h2 id={id ?? ctx?.titleId} data-slot="dialog-title" className={cn('text-base font-semibold leading-none tracking-tight text-[var(--abc-fg)]', className)} {...props}>
       {children}
     </h2>
   )
