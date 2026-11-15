@@ -5,6 +5,9 @@ import {
   filterAndSortClientRows,
   readQueryFromUrlSearch,
   writeQueryToUrlSearch,
+  type AbcCheckedStrategy,
+  type AbcTreeFieldNames,
+  type AbcTreeSimpleModeConfig,
 } from '@abc-design/core'
 import {
   AlignJustify,
@@ -29,13 +32,15 @@ import {
 } from 'lucide-react'
 import Button, { type ButtonVariant } from '../components/button/Button'
 import { Pagination, type PaginationProps } from '../components/display/FeedbackStates'
-import { Dropdown, Tooltip } from '../components/display/Overlays'
+import { Dropdown, Popover, Tooltip } from '../components/display/Overlays'
 import { abcConfirm } from '../components/feedback/Confirm'
 import type { DialogSize } from '../components/feedback/Dialog'
+import { Switch } from '../components/form/Controls'
 import { DatePicker, DateRangePicker } from '../components/form/DatePicker'
 import FormField from '../components/form/FormField'
 import { Input, InputNumber } from '../components/form/Input'
 import { Select, type SelectOption } from '../components/form/Select'
+import { TreeSelect } from '../components/form/TreeSelect'
 import Icon from '../components/icon/Icon'
 import { Card } from '../components/surface/Card'
 import TableCore, {
@@ -85,6 +90,7 @@ export interface ProTableFieldSchema {
     | 'text'
     | 'number'
     | 'select'
+    | 'treeSelect'
     | 'textarea'
     | 'switch'
     | 'date'
@@ -95,6 +101,15 @@ export interface ProTableFieldSchema {
     | 'image'
     | 'color'
   options?: SelectOption[]
+  treeData?: Record<string, any>[]
+  treeCheckable?: boolean
+  treeCheckStrictly?: boolean
+  showCheckedStrategy?: AbcCheckedStrategy
+  selectableLeafOnly?: boolean
+  fieldNames?: AbcTreeFieldNames
+  treeDataSimpleMode?: boolean | AbcTreeSimpleModeConfig
+  maxTagCount?: number | 'responsive'
+  treeDefaultExpandAll?: boolean
   /** 下拉选择器是否启用多选模式 */
   multiple?: boolean
   placeholder?: string
@@ -113,11 +128,20 @@ export interface ProTableFieldSchema {
 export interface ProSearchFieldConfig {
   key: string
   label: string
-  type?: 'text' | 'input' | 'number' | 'select' | 'date' | 'datetimePicker' | 'dateRange'
+  type?: 'text' | 'input' | 'number' | 'select' | 'treeSelect' | 'date' | 'datetimePicker' | 'dateRange'
   /** 关联表格列 key（用于表头筛选状态联动与高亮） */
   columnKey?: string
   placeholder?: string
   options?: SelectOption[]
+  treeData?: Record<string, any>[]
+  treeCheckable?: boolean
+  treeCheckStrictly?: boolean
+  showCheckedStrategy?: AbcCheckedStrategy
+  selectableLeafOnly?: boolean
+  fieldNames?: AbcTreeFieldNames
+  treeDataSimpleMode?: boolean | AbcTreeSimpleModeConfig
+  maxTagCount?: number | 'responsive'
+  treeDefaultExpandAll?: boolean
   searchable?: boolean
   multiple?: boolean
   span?: number
@@ -278,6 +302,8 @@ export interface ProTableProps<
   /** 受控表头内联筛选模式（不传则组件内部自管理） */
   headerFilterMode?: boolean
   onHeaderFilterModeChange?: (enabled: boolean) => void
+  /** 是否在工具栏右侧显示表头筛选模式切换按钮（外部受控 headerFilterMode 时默认隐藏以避免重复） */
+  showHeaderFilterToggle?: boolean
   /** 是否启用当前数据本地前端筛选模式 */
   clientFilter?: boolean
   /** 是否在工具栏展示“前端筛选 / 接口筛选”实时切换开关 */
@@ -363,6 +389,8 @@ export interface ProTableProps<
   columnSettingsEnabled?: boolean
   /** 表格纵向最大高度（开启后表头吸顶内滚） */
   maxHeight?: number | string
+  /** 是否根据当前视口剩余高度自动锁定表格内部纵向滚动区（使表头吸顶、底部分页常驻视口内） */
+  autoFitHeight?: boolean
   /** 细粒度 CRUD 权限码绑定（ProTable 风格） */
   permissions?: {
     create?: string
@@ -435,6 +463,8 @@ export interface ProTableProps<
   /** 单行或批量删除回调（无 api 时的轻量直连模式） */
   onDeleteRecords?: (keys: Array<string | number>) => void | Promise<void>
 }
+
+const EMPTY_SERVER_FILTERS: Record<string, any> = {}
 
 export type ProCrudTableProps<
   T extends Record<string, any> = any,
@@ -519,6 +549,7 @@ export function ProTable<
   onSearchReset,
   headerFilterMode: controlledHeaderFilterMode,
   onHeaderFilterModeChange,
+  showHeaderFilterToggle: propShowHeaderFilterToggle,
   clientFilter: initialClientFilter,
   showClientFilterSwitch,
   defaultSearchCollapsed = true,
@@ -560,6 +591,7 @@ export function ProTable<
   sortable,
   columnSettingsEnabled = true,
   maxHeight,
+  autoFitHeight = false,
   permissions,
   permission,
   hasPermission: customHasPermission,
@@ -631,6 +663,7 @@ export function ProTable<
     setColumnOrder,
     setSearchFieldVisible,
     setDensity,
+    setFilterHighlightColor,
     resetSettings,
   } = useTableSettings(columnSettingsEnabled ? storageKey : undefined, 'default', defaultHiddenKeys)
 
@@ -684,10 +717,17 @@ export function ProTable<
   const [remoteRows, setRemoteRows] = useState<T[]>([])
   const [remoteTotal, setRemoteTotal] = useState(0)
 
+  const containerRef = useRef<HTMLDivElement>(null)
+  const searchCardMeasureRef = useRef<HTMLDivElement>(null)
+  const tableScrollMeasureRef = useRef<HTMLDivElement>(null)
+  const paginationWrapRef = useRef<HTMLDivElement>(null)
+  const [computedScrollY, setComputedScrollY] = useState<number | undefined>(undefined)
+
   const [internalSelectedKeys, setInternalSelectedKeys] = useState<Array<string | number>>([])
   const selectedKeys = controlledSelectedRowKeys ?? internalSelectedKeys
   const [cachedSelectedRows, setCachedSelectedRows] = useState<T[]>([])
   const [isFullScreen, setIsFullScreen] = useState(false)
+  const [autoRefreshPopoverOpen, setAutoRefreshPopoverOpen] = useState(false)
 
   // 树形/子表异步懒加载缓存状态
   const [childrenData, setChildrenData] = useState<Record<string | number, T[]>>({})
@@ -701,7 +741,7 @@ export function ProTable<
     autoRefreshConfig?.defaultEnabled ?? false
   )
   const [autoRefreshInterval, setAutoRefreshInterval] = useState(
-    refetchInterval ?? autoRefreshConfig?.defaultInterval ?? 10000
+    refetchInterval ?? autoRefreshConfig?.defaultInterval ?? (apiProp ? 5000 : 10000)
   )
 
   // 异步请求竞态序列号防卫，杜绝慢响应覆盖最新筛选结果
@@ -711,8 +751,8 @@ export function ProTable<
   const [viewingRecord, setViewingRecord] = useState<T | null>(null)
   const [viewLoading, setViewLoading] = useState(false)
 
-  // 聚合声明式搜索字段（兼容 fields + columns.search/searchable + searchFields）
-  const allSearchFields = useMemo<ProSearchFieldConfig[]>(() => {
+  // 聚合声明式搜索字段（兼容 fields + columns.search/searchable + searchFields + 列设置动态勾选加入筛选）
+  const baseSearchFields = useMemo<ProSearchFieldConfig[]>(() => {
     const merged = new Map<string, ProSearchFieldConfig>()
 
     fields
@@ -725,6 +765,15 @@ export function ProTable<
           type: (f.type as ProSearchFieldConfig['type']) ?? 'text',
           placeholder: f.placeholder,
           options: f.options,
+          treeData: f.treeData,
+          treeCheckable: f.treeCheckable,
+          treeCheckStrictly: f.treeCheckStrictly,
+          showCheckedStrategy: f.showCheckedStrategy,
+          selectableLeafOnly: f.selectableLeafOnly,
+          fieldNames: f.fieldNames,
+          treeDataSimpleMode: f.treeDataSimpleMode,
+          maxTagCount: f.maxTagCount,
+          treeDefaultExpandAll: f.treeDefaultExpandAll,
           multiple: f.multiple,
           span: f.span,
           __fromFieldSchema: true,
@@ -756,6 +805,15 @@ export function ProTable<
         type: resolvedType,
         placeholder: searchCfg.placeholder,
         options: selectOptions,
+        treeData: searchCfg.treeData,
+        treeCheckable: searchCfg.treeCheckable,
+        treeCheckStrictly: searchCfg.treeCheckStrictly,
+        showCheckedStrategy: searchCfg.showCheckedStrategy,
+        selectableLeafOnly: searchCfg.selectableLeafOnly,
+        fieldNames: searchCfg.fieldNames,
+        treeDataSimpleMode: searchCfg.treeDataSimpleMode,
+        maxTagCount: searchCfg.maxTagCount,
+        treeDefaultExpandAll: searchCfg.treeDefaultExpandAll,
         searchable: searchCfg.searchable,
         multiple: searchCfg.multiple,
         span: searchCfg.span,
@@ -779,9 +837,49 @@ export function ProTable<
   }, [fields, columns, propSearchFields])
 
   const searchableFieldNames = useMemo(
-    () => new Set(allSearchFields.map((f) => f.key)),
-    [allSearchFields]
+    () => new Set(baseSearchFields.map((f) => f.key)),
+    [baseSearchFields]
   )
+
+  const allSearchFields = useMemo<ProSearchFieldConfig[]>(() => {
+    const merged = new Map<string, ProSearchFieldConfig>()
+    baseSearchFields.forEach((f) => merged.set(f.key, f))
+
+    // 支持用户在列设置中将任意普通列动态开启为筛选条件
+    columns.forEach((col) => {
+      if (
+        col.hideInTable ||
+        col.key === '__abc_actions__' ||
+        col.key === '__actions__' ||
+        col.key === '__drag_handle__'
+      ) {
+        return
+      }
+      const fieldKey = Array.isArray(col.dataIndex)
+        ? col.dataIndex.join('.')
+        : String(col.dataIndex ?? col.key)
+      if (merged.has(fieldKey)) return
+      if (settings.searchVisible[fieldKey] === true || settings.searchVisible[col.key] === true) {
+        const typeCfg = typeof col.type === 'object' ? col.type : undefined
+        const rawOptions = typeCfg?.options ?? col.options
+        const selectOptions = rawOptions?.map((opt) => ({
+          label: opt.label,
+          value: typeof opt.value === 'boolean' ? String(opt.value) : opt.value,
+        }))
+        merged.set(fieldKey, {
+          key: fieldKey,
+          columnKey: col.key,
+          label: col.title,
+          type: selectOptions && selectOptions.length > 0 ? 'select' : 'input',
+          options: selectOptions,
+          order: col.order,
+          __fromFieldSchema: false,
+        })
+      }
+    })
+
+    return Array.from(merged.values()).sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+  }, [baseSearchFields, columns, settings.searchVisible])
 
   const visibleSearchFields = useMemo(
     () =>
@@ -801,12 +899,36 @@ export function ProTable<
     [visibleSearchFields, columns]
   )
 
+  const searchCollapseMeta = useMemo(() => {
+    let usedSpan = 0
+    const firstRow: ProSearchFieldConfig[] = []
+    for (const f of visibleSearchFields) {
+      const sp = f.span === 2 || f.type === 'dateRange' ? 2 : 1
+      if (usedSpan + sp <= 3) {
+        usedSpan += sp
+        firstRow.push(f)
+      } else {
+        break
+      }
+    }
+    const hasExtra = Boolean(renderSearchExtra)
+    const extraFitsFirstRow = hasExtra && usedSpan < 3
+    const hiddenCount =
+      visibleSearchFields.length - firstRow.length + (hasExtra && !extraFitsFirstRow ? 1 : 0)
+    return {
+      firstRow,
+      extraFitsFirstRow,
+      canCollapse: hiddenCount > 0,
+      hiddenCount,
+    }
+  }, [visibleSearchFields, renderSearchExtra])
+
   const displayedSearchFields = useMemo(() => {
-    if (!searchFieldsCollapsed || visibleSearchFields.length <= 3) {
+    if (!searchFieldsCollapsed || !searchCollapseMeta.canCollapse) {
       return visibleSearchFields
     }
-    return visibleSearchFields.slice(0, 3)
-  }, [visibleSearchFields, searchFieldsCollapsed])
+    return searchCollapseMeta.firstRow
+  }, [visibleSearchFields, searchFieldsCollapsed, searchCollapseMeta])
 
   // 聚合声明式表单字段（兼容 fields + columns.form + formFields）
   const resolvedFormFields = useMemo<ProCrudFormField<T>[]>(() => {
@@ -821,6 +943,15 @@ export function ProTable<
           label: f.label,
           type: (f.type as ProCrudFieldType) ?? 'text',
           options: f.options,
+          treeData: f.treeData,
+          treeCheckable: f.treeCheckable,
+          treeCheckStrictly: f.treeCheckStrictly,
+          showCheckedStrategy: f.showCheckedStrategy,
+          selectableLeafOnly: f.selectableLeafOnly,
+          fieldNames: f.fieldNames,
+          treeDataSimpleMode: f.treeDataSimpleMode,
+          maxTagCount: f.maxTagCount,
+          treeDefaultExpandAll: f.treeDefaultExpandAll,
           multiple: f.multiple,
           placeholder: f.placeholder,
           helperText: f.helperText,
@@ -953,11 +1084,43 @@ export function ProTable<
     window.history.replaceState(null, '', nextUrl)
   }, [syncToUrl, allSearchFields, columns, appliedFilters, current, pageSize, defaultPageSize])
 
-  // 全屏模式下按 Esc 退出全屏（仅在无打开弹窗时生效）
+  const toggleFullScreen = useCallback(() => {
+    if (typeof document === 'undefined') {
+      setIsFullScreen((v) => !v)
+      return
+    }
+    const next = !isFullScreen
+    if (next && containerRef.current && typeof containerRef.current.requestFullscreen === 'function') {
+      containerRef.current.requestFullscreen().catch(() => {
+        // 浏览器策略拦截原生全屏时平滑降级为 CSS 视口全屏
+      })
+    } else if (!next && document.fullscreenElement && typeof document.exitFullscreen === 'function') {
+      document.exitFullscreen().catch(() => {
+        // 忽略退出原生全屏异常
+      })
+    }
+    setIsFullScreen(next)
+  }, [isFullScreen])
+
+  // 监听浏览器原生全屏变化与 Esc 退出全屏（仅在无打开弹窗时生效）
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const onFsChange = () => {
+      if (!document.fullscreenElement && isFullScreen) {
+        setIsFullScreen(false)
+      }
+    }
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => document.removeEventListener('fullscreenchange', onFsChange)
+  }, [isFullScreen])
+
   useEffect(() => {
     if (!isFullScreen) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !modalOpen && !viewingRecord) {
+        if (typeof document !== 'undefined' && document.fullscreenElement && typeof document.exitFullscreen === 'function') {
+          document.exitFullscreen().catch(() => {})
+        }
         setIsFullScreen(false)
       }
     }
@@ -965,12 +1128,66 @@ export function ProTable<
     return () => document.removeEventListener('keydown', onKey)
   }, [isFullScreen, modalOpen, viewingRecord])
 
+  // 视口自适应纵向滚动高度锁定（表头吸顶、底部分页常驻）
+  useEffect(() => {
+    if (!autoFitHeight || maxHeight !== undefined || typeof window === 'undefined') {
+      setComputedScrollY(undefined)
+      return
+    }
+    let rafId = 0
+    const measure = () => {
+      const scrollEl = tableScrollMeasureRef.current
+      if (!scrollEl) return
+      const rect = scrollEl.getBoundingClientRect()
+      // jsdom 等无真实排版环境跳过测量，避免污染单元测试样式
+      if (rect.top === 0 && rect.height === 0 && scrollEl.clientWidth === 0) return
+      const paginationHeight =
+        !hidePagination && pagination !== false
+          ? (paginationWrapRef.current?.offsetHeight ?? 52)
+          : 0
+      const available = window.innerHeight - rect.top - paginationHeight - 16
+      setComputedScrollY(Math.max(Math.floor(available), 240))
+    }
+    const scheduleMeasure = () => {
+      window.cancelAnimationFrame(rafId)
+      rafId = window.requestAnimationFrame(measure)
+    }
+    scheduleMeasure()
+    window.addEventListener('resize', scheduleMeasure)
+    let observer: ResizeObserver | undefined
+    if (typeof ResizeObserver !== 'undefined' && searchCardMeasureRef.current) {
+      observer = new ResizeObserver(scheduleMeasure)
+      observer.observe(searchCardMeasureRef.current)
+    }
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      window.removeEventListener('resize', scheduleMeasure)
+      observer?.disconnect()
+    }
+  }, [
+    autoFitHeight,
+    maxHeight,
+    isFullScreen,
+    headerFilterMode,
+    searchPanelExpanded,
+    searchFieldsCollapsed,
+    extraFilterCollapsed,
+    hidePagination,
+    pagination,
+  ])
+
   const resolveRowKey = useCallback(
     (record: T, idx = 0): string | number => {
       if (typeof rowKey === 'function') return rowKey(record)
       return (record?.[rowKey as keyof T] as string | number) ?? idx
     },
     [rowKey]
+  )
+
+  // 前端本地筛选模式下屏蔽筛选条件变化引发的远程重复请求；切回服务端模式时自动同步最新条件重新拉取
+  const effectiveServerFilters = useMemo(
+    () => (isClientFilter ? EMPTY_SERVER_FILTERS : appliedFilters),
+    [isClientFilter, appliedFilters]
   )
 
   const fetchServerData = useCallback(async () => {
@@ -982,7 +1199,7 @@ export function ProTable<
         const res = await request({
           current,
           pageSize,
-          filters: isClientFilter ? {} : cleanQueryObject(appliedFilters),
+          filters: cleanQueryObject(effectiveServerFilters),
           sortField: sortState.direction ? sortState.key : undefined,
           sortOrder: sortState.direction,
         })
@@ -997,7 +1214,7 @@ export function ProTable<
       if (!activeApi?.list) return
       const query = cleanQueryObject({
         ...(defaultQuery as Record<string, any>),
-        ...(isClientFilter ? {} : appliedFilters),
+        ...effectiveServerFilters,
         pageNum: current,
         pageSize,
         ...(sortState.direction
@@ -1037,8 +1254,7 @@ export function ProTable<
     defaultQuery,
     current,
     pageSize,
-    isClientFilter,
-    appliedFilters,
+    effectiveServerFilters,
     sortState,
     toast,
   ])
@@ -1146,20 +1362,23 @@ export function ProTable<
       .filter((c) => !c.hideInTable && !settings.hiddenKeys.includes(c.key))
       .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
       .map((col) => {
+        const typeCfg = typeof col.type === 'object' && col.type !== null ? col.type : undefined
         const searchOpts =
           typeof col.search === 'object' && col.search !== null && Array.isArray((col.search as any).options)
             ? (col.search as any).options.filter((o: any) => o.value !== '')
             : undefined
+        const derivedFromSearch = Boolean(!col.options && !typeCfg?.options && searchOpts)
         return {
           ...col,
           options: col.options ?? searchOpts,
+          ...(derivedFromSearch ? { __autoOptionsFromSearch: true } : {}),
           sorter:
             col.sorter !== undefined
               ? col.sorter
               : apiProp && col.sortable === undefined
                 ? true
                 : col.sorter,
-        }
+        } as AbcColumn<T>
       })
 
     if (settings.columnOrder.length === 0) return base
@@ -1642,12 +1861,18 @@ export function ProTable<
     actionButtons.length > 0
 
   const defaultActionColWidth =
-    actionColumnWidth ??
-    (actionButtons.length > 0
-      ? Math.max(actionColumnWidth ?? 140, 200)
-      : effectiveViewable || rowActions.length > 0
-        ? 184
-        : 136)
+    actionColumnWidth !== undefined
+      ? actionButtons.length > 0
+        ? Math.max(actionColumnWidth, 220)
+        : actionColumnWidth
+      : actionButtons.length > 0 || apiProp
+        ? 220
+        : effectiveViewable || rowActions.length > 0
+          ? 184
+          : 136
+
+  const actionColAlign: 'left' | 'right' =
+    actionButtons.length > 0 || Boolean(apiProp) ? 'left' : 'right'
 
   const finalColumns = useMemo<AbcColumn<T>[]>(() => {
     const cols: AbcColumn<T>[] = [...visibleColumns]
@@ -1673,7 +1898,7 @@ export function ProTable<
       title: '操作',
       fixed: 'right',
       width: defaultActionColWidth,
-      align: 'right',
+      align: actionColAlign,
       sortable: false,
       sorter: false,
       render: (_, record, idx) => {
@@ -1793,7 +2018,14 @@ export function ProTable<
           })
         }
 
-        return <ProRowActionsOverflow actions={resolved} maxInline={effectiveMaxInlineActions} />
+        return (
+          <ProRowActionsOverflow
+            actions={resolved}
+            maxInline={effectiveMaxInlineActions}
+            autoFit={maxInlineActions === undefined}
+            align={actionColAlign}
+          />
+        )
       },
     })
 
@@ -1803,6 +2035,7 @@ export function ProTable<
     sortable?.enabled,
     hasAnyRowAction,
     defaultActionColWidth,
+    actionColAlign,
     effectiveViewable,
     apiProp,
     actionButtons,
@@ -1810,6 +2043,7 @@ export function ProTable<
     canOpenDelete,
     rowActions,
     effectiveMaxInlineActions,
+    maxInlineActions,
     checkPermission,
     openViewModal,
     openEditModal,
@@ -1977,6 +2211,32 @@ export function ProTable<
         />
       )
     }
+    if (f.type === 'treeSelect') {
+      const isMultiTree = Boolean(f.multiple || f.treeCheckable)
+      return (
+        <TreeSelect
+          aria-label={f.label}
+          allowClear={f.clearable !== false}
+          searchable={f.searchable ?? true}
+          multiple={f.multiple}
+          treeCheckable={f.treeCheckable}
+          treeCheckStrictly={f.treeCheckStrictly}
+          showCheckedStrategy={f.showCheckedStrategy}
+          selectableLeafOnly={f.selectableLeafOnly}
+          fieldNames={f.fieldNames}
+          treeDataSimpleMode={f.treeDataSimpleMode}
+          maxTagCount={f.maxTagCount}
+          treeDefaultExpandAll={f.treeDefaultExpandAll}
+          treeData={f.treeData ?? []}
+          placeholder={
+            f.placeholder ?? (f.__fromFieldSchema ? `全部${f.label}` : `请选择${f.label}`)
+          }
+          value={val ?? (isMultiTree ? [] : '')}
+          onChange={(nextVal) => setVal(nextVal)}
+          className={extraCls?.select}
+        />
+      )
+    }
     if (f.type === 'date' || f.type === 'datetimePicker') {
       return (
         <DatePicker
@@ -2020,7 +2280,9 @@ export function ProTable<
     showClientFilterSwitch ?? Boolean(apiProp && allSearchFields.length > 0)
 
   const currentIntervalLabel =
-    AUTO_REFRESH_INTERVALS.find((o) => o.key === autoRefreshInterval)?.label ?? '10秒'
+    AUTO_REFRESH_INTERVALS.find((o) => o.key === autoRefreshInterval)?.label ?? '5秒'
+  const showHeaderFilterToggle =
+    propShowHeaderFilterToggle ?? controlledHeaderFilterMode === undefined
 
   const showTopPageHeader = Boolean(
     subTitle || headerExtra || renderExtra || (apiProp && title)
@@ -2050,6 +2312,7 @@ export function ProTable<
 
   return (
     <div
+      ref={containerRef}
       data-motion={resolvedMotion}
       className={cn(
         'relative space-y-3',
@@ -2128,107 +2391,114 @@ export function ProTable<
       {searchVariant === 'card' &&
         (visibleSearchFields.length > 0 || Boolean(renderSearchExtra)) &&
         !headerFilterMode && (
-          <Card padding="none">
-            <div className="flex items-center justify-between border-b border-[var(--abc-border)]/70 px-4 py-2.5">
-              <div className="flex items-center gap-2">
-                <Filter className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
-                <span className="text-xs font-semibold text-[var(--abc-fg)]">筛选检索</span>
-                {activeFilterCount > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--abc-primary-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--abc-primary)]">
-                    已生效 {activeFilterCount} 项
-                    <button
-                      type="button"
-                      aria-label="一键清空已生效筛选"
-                      onClick={resetAllFilters}
-                      className="ml-0.5 hover:underline cursor-pointer"
-                    >
-                      清空
-                    </button>
-                  </span>
-                )}
-              </div>
-
-              <button
-                type="button"
-                aria-expanded={searchPanelExpanded}
-                onClick={() => setSearchPanelExpanded((v) => !v)}
-                className="inline-flex items-center gap-1 rounded-[var(--abc-radius-xs)] px-2 py-0.5 text-xs text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
-              >
-                <span>{searchPanelExpanded ? '收起面板' : '展开面板'}</span>
-                {searchPanelExpanded ? (
-                  <ChevronUp className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronDown className="h-3.5 w-3.5" />
-                )}
-              </button>
-            </div>
-
-            <div className="abc-collapse-grid" data-open={searchPanelExpanded}>
-              <div className="abc-collapse-inner">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    submitSearch()
-                  }}
-                  className="grid grid-cols-1 items-end gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4"
-                >
-                  {displayedSearchFields.map((f) => (
-                    <FormField
-                      key={f.key}
-                      label={f.label}
-                      className={
-                        f.span === 2 || f.type === 'dateRange' ? 'sm:col-span-2' : undefined
-                      }
-                    >
-                      {renderSearchControl(f)}
-                    </FormField>
-                  ))}
-
-                  {renderSearchExtra?.({
-                    query: searchInputs,
-                    onQueryChange: updateSearchInput,
-                    isSearchVisible: (colKey) => settings.searchVisible[colKey] !== false,
-                  })}
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      icon={<Search className="h-3.5 w-3.5" />}
-                    >
-                      搜索
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      icon={<RotateCcw className="h-3.5 w-3.5" />}
-                      onClick={resetAllFilters}
-                    >
-                      重置
-                    </Button>
-                    {visibleSearchFields.length > 3 && (
+          <div ref={searchCardMeasureRef}>
+            <Card padding="none">
+              <div className="flex items-center justify-between border-b border-[var(--abc-border)]/70 px-4 py-2.5">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
+                  <span className="text-xs font-semibold text-[var(--abc-fg)]">筛选条件</span>
+                  {activeFilterCount > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--abc-primary-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--abc-primary)]">
+                      已生效 {activeFilterCount} 项
                       <button
                         type="button"
-                        onClick={() => setSearchFieldsCollapsed((v) => !v)}
-                        className="inline-flex items-center gap-0.5 px-1.5 py-1 text-xs font-medium text-[var(--abc-primary)] hover:underline cursor-pointer"
+                        aria-label="一键清空已生效筛选"
+                        onClick={resetAllFilters}
+                        className="ml-0.5 hover:underline cursor-pointer"
                       >
-                        <span>
-                          {searchFieldsCollapsed
-                            ? `展开 (${visibleSearchFields.length - 3})`
-                            : '收起'}
-                        </span>
-                        {searchFieldsCollapsed ? (
-                          <ChevronDown className="h-3.5 w-3.5" />
-                        ) : (
-                          <ChevronUp className="h-3.5 w-3.5" />
-                        )}
+                        清空
                       </button>
-                    )}
-                  </div>
-                </form>
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  aria-expanded={searchPanelExpanded}
+                  onClick={() => setSearchPanelExpanded((v) => !v)}
+                  className="inline-flex items-center gap-0.5 rounded-[var(--abc-radius-xs)] px-2 py-0.5 text-xs font-medium text-[var(--abc-primary)] hover:bg-[var(--abc-bg-subtle)] cursor-pointer select-none"
+                >
+                  <span>{searchPanelExpanded ? '收起' : '展开'}</span>
+                  {searchPanelExpanded ? (
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
+                </button>
               </div>
-            </div>
-          </Card>
+
+              <div className="abc-collapse-grid" data-open={searchPanelExpanded}>
+                <div className="abc-collapse-inner">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      submitSearch()
+                    }}
+                    className="grid grid-cols-1 items-end gap-3.5 p-4 sm:grid-cols-2 lg:grid-cols-4"
+                  >
+                    {displayedSearchFields.map((f) => (
+                      <FormField
+                        key={f.key}
+                        label={f.label}
+                        className={
+                          f.span === 2 || f.type === 'dateRange' ? 'sm:col-span-2' : undefined
+                        }
+                      >
+                        {renderSearchControl(f)}
+                      </FormField>
+                    ))}
+
+                    {(!searchFieldsCollapsed ||
+                      !searchCollapseMeta.canCollapse ||
+                      searchCollapseMeta.extraFitsFirstRow) &&
+                      renderSearchExtra?.({
+                        query: searchInputs,
+                        onQueryChange: updateSearchInput,
+                        isSearchVisible: (colKey) => settings.searchVisible[colKey] !== false,
+                      })}
+
+                    <div className="flex flex-wrap items-center gap-2 lg:col-start-4 lg:justify-end">
+                      <Button
+                        size="sm"
+                        type="submit"
+                        variant="primary"
+                        icon={<Search className="h-3.5 w-3.5" />}
+                      >
+                        搜索
+                      </Button>
+                      <Button
+                        size="sm"
+                        type="button"
+                        variant="secondary"
+                        icon={<RotateCcw className="h-3.5 w-3.5" />}
+                        onClick={resetAllFilters}
+                      >
+                        重置
+                      </Button>
+                      {searchCollapseMeta.canCollapse && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchFieldsCollapsed((v) => !v)}
+                          className="inline-flex items-center gap-0.5 px-1.5 py-1 text-xs font-medium whitespace-nowrap text-[var(--abc-primary)] hover:underline cursor-pointer select-none"
+                        >
+                          <span>
+                            {searchFieldsCollapsed
+                              ? `展开 (${searchCollapseMeta.hiddenCount})`
+                              : '收起'}
+                          </span>
+                          {searchFieldsCollapsed ? (
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          ) : (
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </Card>
+          </div>
         )}
 
       {/* 表格主卡片与工具栏 */}
@@ -2249,7 +2519,7 @@ export function ProTable<
                 onClick={() => submitSearch()}
                 icon={<Search className="h-3.5 w-3.5" />}
               >
-                搜索
+                查询
               </Button>
             </div>
           </div>
@@ -2263,6 +2533,7 @@ export function ProTable<
             {canOpenAdd && (
               <Button
                 variant="primary"
+                size="sm"
                 icon={<Plus className="h-3.5 w-3.5" />}
                 onClick={() => void openCreateModal()}
               >
@@ -2272,6 +2543,7 @@ export function ProTable<
             {showBatchDelete && canBatchDelete && (onDeleteRecords || resolvedApi?.delete) && (
               <Button
                 variant="danger"
+                size="sm"
                 disabled={selectedKeys.length === 0}
                 icon={<Trash2 className="h-3.5 w-3.5" />}
                 onClick={() => void handleBatchDelete(selectedKeys)}
@@ -2282,6 +2554,7 @@ export function ProTable<
             {showExport && effectiveExportable && (
               <Button
                 variant="secondary"
+                size="sm"
                 loading={exporting}
                 icon={<Download className="h-3.5 w-3.5" />}
                 onClick={() => void handleExportAction()}
@@ -2292,6 +2565,7 @@ export function ProTable<
             {showImport && (
               <Button
                 variant="secondary"
+                size="sm"
                 icon={<Upload className="h-3.5 w-3.5" />}
                 onClick={() => void onImport?.()}
               >
@@ -2304,6 +2578,7 @@ export function ProTable<
                 <Button
                   key={btn.key}
                   variant={btn.variant ?? btn.type ?? 'secondary'}
+                  size="sm"
                   icon={btn.icon}
                   onClick={btn.onClick}
                 >
@@ -2330,10 +2605,22 @@ export function ProTable<
                 重置
               </Button>
             )}
+            {selectionEnabled && selectedKeys.length > 0 && (
+              <div className="inline-flex items-center gap-2 rounded-full bg-[var(--abc-primary-soft)] px-3 py-1 text-xs font-medium text-[var(--abc-primary)]">
+                <span>已选择 {selectedKeys.length} 项</span>
+                <button
+                  type="button"
+                  onClick={() => updateSelectedState([], [])}
+                  className="hover:underline cursor-pointer"
+                >
+                  取消
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
-            {isClientFilter && (
+            {isClientFilter && allSearchFields.length === 0 && (
               <Input
                 size="xs"
                 allowClear
@@ -2346,6 +2633,90 @@ export function ProTable<
                 }}
                 wrapperClassName="w-52"
               />
+            )}
+
+            {/* 自动定时轮询气泡面板（带开关与间隔切换） */}
+            {showAutoRefreshControl && hasRemoteSource && (
+              <div className="inline-flex h-7 items-center rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)]">
+                <Tooltip
+                  content={
+                    autoRefreshEnabled
+                      ? `自动刷新运行中：每 ${currentIntervalLabel} 轮询（点击暂停）`
+                      : '点击开启自动刷新'
+                  }
+                >
+                  <button
+                    type="button"
+                    aria-label="切换定时自动刷新"
+                    onClick={() => setAutoRefreshEnabled((v) => !v)}
+                    className={cn(
+                      'inline-flex h-full items-center gap-1 rounded-l-[var(--abc-radius-sm)] px-2 text-[11px] transition-colors cursor-pointer',
+                      autoRefreshEnabled
+                        ? 'bg-[var(--abc-primary-soft)] font-medium text-[var(--abc-primary)]'
+                        : 'text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
+                    )}
+                  >
+                    <Clock
+                      className={cn('h-3.5 w-3.5', autoRefreshEnabled && 'animate-pulse')}
+                    />
+                    {autoRefreshEnabled && <span>{currentIntervalLabel}</span>}
+                  </button>
+                </Tooltip>
+
+                <Popover
+                  open={autoRefreshPopoverOpen}
+                  onOpenChange={setAutoRefreshPopoverOpen}
+                  placement="bottomRight"
+                  panelClassName="w-44 p-2.5"
+                  content={
+                    <div className="space-y-2 text-xs text-[var(--abc-fg)]">
+                      <div className="flex items-center justify-between border-b border-[var(--abc-border)] pb-2">
+                        <span className="font-semibold">自动刷新</span>
+                        <Switch
+                          size="xs"
+                          checked={autoRefreshEnabled}
+                          onChange={(checked) => setAutoRefreshEnabled(checked)}
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="px-1.5 py-0.5 text-[10px] text-[var(--abc-fg-muted)]">
+                          刷新间隔
+                        </div>
+                        {AUTO_REFRESH_INTERVALS.map((opt) => (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            onClick={() => {
+                              setAutoRefreshInterval(opt.key)
+                              setAutoRefreshEnabled(true)
+                              setAutoRefreshPopoverOpen(false)
+                            }}
+                            className={cn(
+                              'flex w-full items-center justify-between rounded-[var(--abc-radius-xs)] px-2 py-1 text-left text-xs transition-colors cursor-pointer',
+                              autoRefreshInterval === opt.key
+                                ? 'bg-[var(--abc-primary-soft)] font-medium text-[var(--abc-primary)]'
+                                : 'text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)]'
+                            )}
+                          >
+                            <span>{opt.label}</span>
+                            {autoRefreshInterval === opt.key && (
+                              <Check className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  }
+                >
+                  <button
+                    type="button"
+                    aria-label="选择轮询频率"
+                    className="inline-flex h-full w-5 items-center justify-center rounded-r-[var(--abc-radius-sm)] border-l border-[var(--abc-border)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+                  >
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                </Popover>
+              </div>
             )}
 
             {effectiveShowClientFilterSwitch && (
@@ -2381,78 +2752,23 @@ export function ProTable<
               </Tooltip>
             )}
 
-            {/* 自动定时轮询组合键 */}
-            {showAutoRefreshControl && hasRemoteSource && (
-              <div className="inline-flex h-7 items-center rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)]">
-                <Tooltip
-                  content={
-                    autoRefreshEnabled
-                      ? `定时轮询运行中：每 ${currentIntervalLabel} 自动刷新（点击暂停）`
-                      : '点击开启自动定时轮询刷新'
-                  }
+            {showHeaderFilterToggle && (
+              <Tooltip content={headerFilterMode ? '关闭表头内联筛选' : '开启表头内联筛选'}>
+                <button
+                  type="button"
+                  aria-label="切换表头内联筛选"
+                  onClick={() => updateHeaderFilterMode(!headerFilterMode)}
+                  className={cn(
+                    'inline-flex h-7 w-7 items-center justify-center rounded-[var(--abc-radius-sm)] border transition-colors cursor-pointer',
+                    headerFilterMode
+                      ? 'border-[var(--abc-primary)] bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]'
+                      : 'border-[var(--abc-border)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
+                  )}
                 >
-                  <button
-                    type="button"
-                    aria-label="切换定时自动刷新"
-                    onClick={() => setAutoRefreshEnabled((v) => !v)}
-                    className={cn(
-                      'inline-flex h-full items-center gap-1 rounded-l-[var(--abc-radius-sm)] px-2 text-[11px] transition-colors cursor-pointer',
-                      autoRefreshEnabled
-                        ? 'bg-[var(--abc-primary-soft)] font-medium text-[var(--abc-primary)]'
-                        : 'text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
-                    )}
-                  >
-                    <Clock
-                      className={cn('h-3.5 w-3.5', autoRefreshEnabled && 'animate-pulse')}
-                    />
-                    {autoRefreshEnabled && <span>{currentIntervalLabel}</span>}
-                  </button>
-                </Tooltip>
-
-                <Dropdown
-                  placement="bottomRight"
-                  items={AUTO_REFRESH_INTERVALS.map((opt) => ({
-                    key: String(opt.key),
-                    label: (
-                      <span className="flex items-center justify-between gap-3">
-                        <span>每 {opt.label} 刷新</span>
-                        {autoRefreshInterval === opt.key && (
-                          <Check className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
-                        )}
-                      </span>
-                    ),
-                    onClick: () => {
-                      setAutoRefreshInterval(opt.key)
-                      setAutoRefreshEnabled(true)
-                    },
-                  }))}
-                >
-                  <button
-                    type="button"
-                    aria-label="选择轮询频率"
-                    className="inline-flex h-full w-5 items-center justify-center rounded-r-[var(--abc-radius-sm)] border-l border-[var(--abc-border)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
-                  >
-                    <ChevronDown className="h-3 w-3" />
-                  </button>
-                </Dropdown>
-              </div>
+                  <ListFilter className="h-3.5 w-3.5" />
+                </button>
+              </Tooltip>
             )}
-
-            <Tooltip content={headerFilterMode ? '关闭表头内联筛选行' : '开启表头内联筛选行'}>
-              <button
-                type="button"
-                aria-label="切换表头内联筛选"
-                onClick={() => updateHeaderFilterMode(!headerFilterMode)}
-                className={cn(
-                  'inline-flex h-7 w-7 items-center justify-center rounded-[var(--abc-radius-sm)] border transition-colors cursor-pointer',
-                  headerFilterMode
-                    ? 'border-[var(--abc-primary)] bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]'
-                    : 'border-[var(--abc-border)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
-                )}
-              >
-                <ListFilter className="h-3.5 w-3.5" />
-              </button>
-            </Tooltip>
 
             {effectiveExportable && !showExport && (
               <Tooltip content="导出当前数据 (CSV)">
@@ -2488,7 +2804,7 @@ export function ProTable<
                   key: 'comfortable',
                   label: (
                     <span className="flex items-center justify-between gap-4">
-                      <span>宽松密度</span>
+                      <span>宽松</span>
                       {settings.density === 'comfortable' && (
                         <Check className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
                       )}
@@ -2500,7 +2816,7 @@ export function ProTable<
                   key: 'default',
                   label: (
                     <span className="flex items-center justify-between gap-4">
-                      <span>标准密度</span>
+                      <span>默认</span>
                       {settings.density === 'default' && (
                         <Check className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
                       )}
@@ -2512,7 +2828,7 @@ export function ProTable<
                   key: 'compact',
                   label: (
                     <span className="flex items-center justify-between gap-4">
-                      <span>紧凑密度</span>
+                      <span>紧凑</span>
                       {settings.density === 'compact' && (
                         <Check className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
                       )}
@@ -2538,7 +2854,7 @@ export function ProTable<
               <button
                 type="button"
                 aria-label={isFullScreen ? '退出全屏' : '全屏展示'}
-                onClick={() => setIsFullScreen((v) => !v)}
+                onClick={toggleFullScreen}
                 className={cn(
                   'inline-flex h-7 w-7 items-center justify-center rounded-[var(--abc-radius-sm)] border transition-colors cursor-pointer',
                   isFullScreen
@@ -2575,85 +2891,106 @@ export function ProTable<
           </div>
         </div>
 
-        <TableCore<T>
-          columns={finalColumns}
-          data={displayRows}
-          rowKey={rowKey}
-          loading={loading}
-          density={settings.density}
-          motion={resolvedMotion}
-          selectedKeys={selectionEnabled ? selectedKeys : undefined}
-          onSelectionChange={
-            selectionEnabled
-              ? (keys, rows) => {
-                  updateSelectedState(keys, rows)
-                }
-              : undefined
-          }
-          sortState={sortState}
-          onSortChange={(key, direction) => {
-            setSortState({ key, direction })
-            setCurrent(1)
-          }}
-          headerFilterMode={headerFilterMode}
-          headerFilters={appliedFilters}
-          onHeaderFilterChange={(k, val) => {
-            setCurrent(1)
-            updateSearchInput(k, val)
-            setAppliedFilters((prev) => ({ ...prev, [k]: val }))
-          }}
-          headerFilterRender={
-            !headerFilterMode
-              ? (col) => {
-                  const filterKey = Array.isArray(col.dataIndex)
-                    ? col.dataIndex.join('.')
-                    : String(col.dataIndex ?? col.key)
-                  const matchedSearch = allSearchFields.find(
-                    (sf) => sf.columnKey === col.key || sf.key === filterKey
-                  )
-                  const filterOpts = col.filterOptions ?? matchedSearch?.options
-                  const filterType =
-                    col.filterType ?? (filterOpts && filterOpts.length > 0 ? 'select' : 'text')
-                  return (
-                    <HeaderColumnFilterPopover
-                      title={col.title}
-                      filterType={filterType}
-                      filterOptions={filterOpts}
-                      value={appliedFilters[filterKey]}
-                      onApply={(nextVal) => {
-                        setCurrent(1)
-                        updateSearchInput(filterKey, nextVal)
-                        setAppliedFilters((prev) => ({ ...prev, [filterKey]: nextVal }))
-                      }}
-                    />
-                  )
-                }
-              : undefined
-          }
-          activeFilterKeys={activeFilterKeys}
-          activeFilterLabels={activeFilterLabels}
-          columnWidths={settings.columnWidths}
-          onColumnResize={setColumnWidth}
-          columnFixed={settings.columnFixed}
-          onColumnPin={setColumnFixed}
-          onColumnHide={columnSettingsEnabled ? toggleColumnVisible : undefined}
-          onResetColumns={columnSettingsEnabled ? resetSettings : undefined}
-          onColumnReorder={columnSettingsEnabled ? setColumnOrder : undefined}
-          treeData={treeData}
-          expandable={resolvedExpandable}
-          rowDraggable={Boolean(sortable?.enabled)}
-          onRowDragEnd={sortable?.enabled ? handleRowReorder : undefined}
-          activeRowKey={selectedRowKey}
-          onRowClick={onRowClick}
-          onRow={onRow}
-          onRowView={(record, linkTarget) => void openViewModal(record, linkTarget)}
-          onEmptyReset={activeFilterCount > 0 ? resetAllFilters : undefined}
-          maxHeight={maxHeight}
-          className="rounded-none border-0"
-        />
+        <div ref={tableScrollMeasureRef}>
+          <TableCore<T>
+            columns={finalColumns}
+            allColumns={columns}
+            hiddenColumnKeys={settings.hiddenKeys}
+            onToggleColumnVisible={columnSettingsEnabled ? toggleColumnVisible : undefined}
+            data={displayRows}
+            rowKey={rowKey}
+            loading={loading}
+            density={settings.density}
+            motion={resolvedMotion}
+            selectedKeys={selectionEnabled ? selectedKeys : undefined}
+            onSelectionChange={
+              selectionEnabled
+                ? (keys, rows) => {
+                    updateSelectedState(keys, rows)
+                  }
+                : undefined
+            }
+            sortState={sortState}
+            onSortChange={(key, direction) => {
+              setSortState({ key, direction })
+              setCurrent(1)
+            }}
+            headerFilterMode={headerFilterMode}
+            headerFilters={appliedFilters}
+            onHeaderFilterChange={(k, val) => {
+              setCurrent(1)
+              updateSearchInput(k, val)
+              setAppliedFilters((prev) => ({ ...prev, [k]: val }))
+            }}
+            headerFilterRender={(col) => {
+              const filterKey = Array.isArray(col.dataIndex)
+                ? col.dataIndex.join('.')
+                : String(col.dataIndex ?? col.key)
+              const matchedSearch = visibleSearchFields.find(
+                (sf) => sf.columnKey === col.key || sf.key === filterKey
+              )
+              if (headerFilterMode) {
+                if (!matchedSearch && !col.filterable) return null
+              } else {
+                if (!col.filterable) return null
+              }
+              const filterOpts = col.filterOptions ?? matchedSearch?.options
+              const filterType =
+                matchedSearch?.type ??
+                col.filterType ??
+                (filterOpts && filterOpts.length > 0 ? 'select' : 'text')
+              const targetKey = matchedSearch?.key ?? filterKey
+              const isHighlighted = activeFilterKeys.includes(col.key)
+              return (
+                <HeaderColumnFilterPopover
+                  title={col.title}
+                  filterType={filterType}
+                  filterOptions={filterOpts}
+                  treeData={matchedSearch?.treeData}
+                  multiple={matchedSearch?.multiple}
+                  searchable={matchedSearch?.searchable}
+                  placeholder={matchedSearch?.placeholder}
+                  format={matchedSearch?.format}
+                  highlighted={isHighlighted}
+                  iconType={headerFilterMode ? 'search' : 'filter'}
+                  value={appliedFilters[targetKey]}
+                  onApply={(nextVal) => {
+                    setCurrent(1)
+                    updateSearchInput(targetKey, nextVal)
+                    setAppliedFilters((prev) => ({ ...prev, [targetKey]: nextVal }))
+                  }}
+                />
+              )
+            }}
+            activeFilterKeys={activeFilterKeys}
+            activeFilterLabels={activeFilterLabels}
+            filterHighlightColor={settings.filterHighlightColor}
+            onFilterHighlightColorChange={
+              columnSettingsEnabled ? setFilterHighlightColor : undefined
+            }
+            columnWidths={settings.columnWidths}
+            onColumnResize={setColumnWidth}
+            columnFixed={settings.columnFixed}
+            onColumnPin={setColumnFixed}
+            onColumnHide={columnSettingsEnabled ? toggleColumnVisible : undefined}
+            onResetColumns={columnSettingsEnabled ? resetSettings : undefined}
+            onColumnReorder={columnSettingsEnabled ? setColumnOrder : undefined}
+            treeData={treeData}
+            expandable={resolvedExpandable}
+            rowDraggable={Boolean(sortable?.enabled)}
+            onRowDragEnd={sortable?.enabled ? handleRowReorder : undefined}
+            activeRowKey={selectedRowKey}
+            onRowClick={onRowClick}
+            onRow={onRow}
+            onRowView={(record, linkTarget) => void openViewModal(record, linkTarget)}
+            onEmptyReset={activeFilterCount > 0 ? resetAllFilters : undefined}
+            maxHeight={maxHeight ?? computedScrollY}
+            className="rounded-none border-0"
+          />
+        </div>
 
         {!hidePagination && pagination !== false && (
-          <div className="border-t border-[var(--abc-border)] px-4 py-3">
+          <div ref={paginationWrapRef} className="border-t border-[var(--abc-border)] px-4 py-3">
             {renderPagination ? (
               renderPagination({
                 current,

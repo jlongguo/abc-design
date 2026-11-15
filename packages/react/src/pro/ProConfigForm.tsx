@@ -8,6 +8,12 @@ import FormField from '../components/form/FormField'
 import ImageUpload from '../components/form/ImageUpload'
 import { Input, InputNumber, Textarea } from '../components/form/Input'
 import { Select, type SelectOption } from '../components/form/Select'
+import { TreeSelect } from '../components/form/TreeSelect'
+import type {
+  AbcCheckedStrategy,
+  AbcTreeFieldNames,
+  AbcTreeSimpleModeConfig,
+} from '@abc-design/core'
 import { useAbcConfig } from '../provider/AbcProvider'
 import { cn } from '../utils/cn'
 import { useAbcPermission } from './PermissionAndDict'
@@ -23,6 +29,7 @@ export type ProConfigFieldType =
   | 'textarea'
   | 'switch'
   | 'select'
+  | 'treeSelect'
   | 'image'
 
 export interface ProConfigFieldSchema {
@@ -33,6 +40,15 @@ export interface ProConfigFieldSchema {
   helperText?: string
   required?: boolean
   options?: SelectOption[]
+  treeData?: Record<string, any>[]
+  multiple?: boolean
+  treeCheckable?: boolean
+  treeCheckStrictly?: boolean
+  showCheckedStrategy?: AbcCheckedStrategy
+  selectableLeafOnly?: boolean
+  fieldNames?: AbcTreeFieldNames
+  treeDataSimpleMode?: boolean | AbcTreeSimpleModeConfig
+  maxTagCount?: number | 'responsive'
   /** image 类型：支持同时直接粘贴 URL/内联 SVG 源码并实时在左侧缩略框预览 */
   allowDirectUrlInput?: boolean
 }
@@ -159,6 +175,25 @@ export function ProConfigForm<T extends Record<string, any> = Record<string, any
                   <Select
                     options={field.options ?? []}
                     value={val ?? ''}
+                    placeholder={field.placeholder}
+                    invalid={Boolean(err)}
+                    onChange={(v) => updateField(field.name, v)}
+                  />
+                ) : type === 'treeSelect' ? (
+                  <TreeSelect
+                    aria-label={field.label}
+                    treeData={field.treeData ?? []}
+                    value={val ?? (field.multiple || field.treeCheckable ? [] : '')}
+                    multiple={field.multiple}
+                    treeCheckable={field.treeCheckable}
+                    treeCheckStrictly={field.treeCheckStrictly}
+                    showCheckedStrategy={field.showCheckedStrategy}
+                    selectableLeafOnly={field.selectableLeafOnly}
+                    fieldNames={field.fieldNames}
+                    treeDataSimpleMode={field.treeDataSimpleMode}
+                    maxTagCount={field.maxTagCount}
+                    searchable
+                    allowClear={!field.required}
                     placeholder={field.placeholder}
                     invalid={Boolean(err)}
                     onChange={(v) => updateField(field.name, v)}

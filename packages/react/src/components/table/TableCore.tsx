@@ -4,13 +4,18 @@ import type { AbcMotionPreset } from '@abc-design/tokens'
 import dayjs from 'dayjs'
 import {
   ArrowDown,
+  ArrowLeft,
+  ArrowRight,
   ArrowUp,
   ArrowUpDown,
   Check,
   ChevronRight,
+  Columns,
   EyeOff,
   GripVertical,
   HelpCircle,
+  Loader2,
+  Palette,
   Pin,
   PinOff,
   RotateCcw,
@@ -246,6 +251,14 @@ export interface TableCoreProps<T = Record<string, any>> {
   activeFilterLabels?: Record<string, string>
   /** 表头筛选激活态高亮色 */
   filterHighlightColor?: string
+  /** 右键菜单切换筛选高亮色回调 */
+  onFilterHighlightColorChange?: (color: string) => void
+  /** 全量可配置列定义（用于右键菜单级联勾选显示/隐藏列） */
+  allColumns?: AbcColumn<T>[]
+  /** 当前已隐藏的列 key 集合 */
+  hiddenColumnKeys?: string[]
+  /** 右键级联子菜单切换任意列显隐回调 */
+  onToggleColumnVisible?: (key: string) => void
   /** 个性化列宽覆盖 */
   columnWidths?: Record<string, number>
   onColumnResize?: (key: string, width: number) => void
@@ -308,16 +321,57 @@ interface FlattenedRow<T> {
 const COLOR_ALIAS_TO_TONE: Record<string, StatusTone> = {
   green: 'success',
   emerald: 'success',
+  success: 'success',
   red: 'danger',
   rose: 'danger',
+  error: 'danger',
+  danger: 'danger',
   yellow: 'warning',
   amber: 'warning',
-  orange: 'warning',
+  warning: 'warning',
+  orange: 'orange',
   blue: 'info',
-  cyan: 'info',
-  purple: 'info',
+  info: 'info',
+  primary: 'primary',
+  cyan: 'cyan',
+  purple: 'purple',
+  violet: 'purple',
+  teal: 'teal',
+  pink: 'pink',
   gray: 'neutral',
   slate: 'neutral',
+  default: 'neutral',
+  neutral: 'neutral',
+}
+
+const AUTO_OPTION_TONES: StatusTone[] = [
+  'info',
+  'success',
+  'warning',
+  'danger',
+  'purple',
+  'cyan',
+  'orange',
+  'teal',
+  'pink',
+]
+
+const FILTER_HIGHLIGHT_SWATCHES = [
+  { color: '#3b82f6', label: '经典蓝' },
+  { color: '#10b981', label: '翡翠绿' },
+  { color: '#f59e0b', label: '琥珀橙' },
+  { color: '#f43f5e', label: '珊瑚红' },
+  { color: '#8b5cf6', label: '极光紫' },
+]
+
+function parseDayjsValue(rawVal: any) {
+  if (typeof rawVal === 'number') {
+    return dayjs(rawVal < 1e11 ? rawVal * 1000 : rawVal)
+  }
+  const str = String(rawVal).trim()
+  if (/^\d{10}$/.test(str)) return dayjs(Number(str) * 1000)
+  if (/^\d{13}$/.test(str)) return dayjs(Number(str))
+  return dayjs(rawVal)
 }
 
 /**
@@ -333,15 +387,16 @@ function AbcSwitchCell<T extends Record<string, any>>({
   config: AbcColumnTypeConfig<T>
 }) {
   const { toast } = useAbcConfig()
-  const checkedVal = config.checkedValue !== undefined ? config.checkedValue : true
   const deriveChecked = (v: any) =>
-    v === checkedVal || v === 1 || v === '1' || v === true
+    config.checkedValue !== undefined
+      ? String(v) === String(config.checkedValue)
+      : v === true || v === 1 || v === '1'
   const [optimistic, setOptimistic] = useState(() => deriveChecked(value))
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     setOptimistic(deriveChecked(value))
-  }, [value, checkedVal])
+  }, [value, config.checkedValue])
 
   const handleToggle = async (next: boolean) => {
     if (!config.onChange || loading) return
@@ -376,12 +431,16 @@ function AbcSwitchCell<T extends Record<string, any>>({
   )
 }
 
-function renderBuiltInValue<T extends Record<string, any>>(
+export function renderBuiltInValue<T extends Record<string, any>>(
   rawVal: any,
   record: T,
   col: AbcColumn<T>,
   onRowView?: (record: T, linkTarget?: string) => void
 ): React.ReactNode {
+  const hasExplicitSwitchType =
+    col.type === 'switch' ||
+    (typeof col.type === 'object' && col.type !== null && col.type.type === 'switch')
+
   const typeCfg: AbcColumnTypeConfig<T> | undefined =
     typeof col.type === 'object' && col.type !== null
       ? col.type
@@ -392,7 +451,10 @@ function renderBuiltInValue<T extends Record<string, any>>(
           : undefined
 
   // 交互式行内开关即使值为 0 / false 也必须正常渲染，不可落入空值占位
-  if (typeCfg?.type === 'switch' && (typeCfg.onChange || typeCfg.checkedValue !== undefined)) {
+  if (
+    typeCfg?.type === 'switch' &&
+    (hasExplicitSwitchType || typeCfg.onChange || typeCfg.checkedValue !== undefined)
+  ) {
     return <AbcSwitchCell value={rawVal} record={record} config={typeCfg} />
   }
 
@@ -401,16 +463,32 @@ function renderBuiltInValue<T extends Record<string, any>>(
   }
 
   const effectiveOptions = typeCfg?.options ?? col.options
-  // 枚举 / 状态标签映射
+  // 枚举 / 状态标签映射（兼容大小写无关匹配与无显式配色时的 9 色板自动轮换）
   if (effectiveOptions && effectiveOptions.length > 0) {
-    const matched = effectiveOptions.find((opt) => String(opt.value) === String(rawVal))
-    if (matched) {
-      const mappedTone =
-        !matched.status && matched.color ? COLOR_ALIAS_TO_TONE[matched.color] : undefined
-      const rawCustomColor =
-        matched.color && !COLOR_ALIAS_TO_TONE[matched.color] ? matched.color : undefined
+    const rawStr = String(rawVal)
+    let matchedIdx = effectiveOptions.findIndex((opt) => String(opt.value) === rawStr)
+    if (matchedIdx < 0) {
+      const lower = rawStr.toLowerCase()
+      matchedIdx = effectiveOptions.findIndex((opt) => String(opt.value).toLowerCase() === lower)
+    }
+    if (matchedIdx >= 0) {
+      const matched = effectiveOptions[matchedIdx]
+      const statusKey = matched.status ? String(matched.status).toLowerCase() : ''
+      const colorKey = matched.color ? String(matched.color).toLowerCase() : ''
+      const resolvedTone: StatusTone | undefined =
+        (statusKey ? COLOR_ALIAS_TO_TONE[statusKey] : undefined) ??
+        (colorKey ? COLOR_ALIAS_TO_TONE[colorKey] : undefined) ??
+        (!matched.status && !matched.color
+          ? AUTO_OPTION_TONES[matchedIdx % AUTO_OPTION_TONES.length]
+          : undefined)
+      const showDot = (col as any).__autoOptionsFromSearch ? false : true
       return (
-        <StatusTag status={matched.status ?? mappedTone} color={rawCustomColor} dot>
+        <StatusTag
+          tone={resolvedTone}
+          status={matched.status}
+          color={matched.color}
+          dot={showDot}
+        >
           {matched.label}
         </StatusTag>
       )
@@ -441,7 +519,7 @@ function renderBuiltInValue<T extends Record<string, any>>(
       break
     }
     case 'date': {
-      const parsed = dayjs(rawVal)
+      const parsed = parseDayjsValue(rawVal)
       const fmt = typeCfg?.format || 'YYYY-MM-DD'
       formatted = (
         <span className="font-mono text-[var(--abc-fg-muted)] tabular-nums">
@@ -451,7 +529,7 @@ function renderBuiltInValue<T extends Record<string, any>>(
       break
     }
     case 'datetime': {
-      const parsed = dayjs(rawVal)
+      const parsed = parseDayjsValue(rawVal)
       const fmt = typeCfg?.format || 'YYYY-MM-DD HH:mm:ss'
       formatted = (
         <span className="font-mono text-[var(--abc-fg-muted)] tabular-nums">
@@ -566,6 +644,10 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
   activeFilterKeys,
   activeFilterLabels,
   filterHighlightColor,
+  onFilterHighlightColorChange,
+  allColumns,
+  hiddenColumnKeys = [],
+  onToggleColumnVisible,
   columnWidths = {},
   onColumnResize,
   resizable,
@@ -611,6 +693,8 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
   const prevColRectsRef = useRef<Map<string, number> | null>(null)
   const [localWidths, setLocalWidths] = useState<Record<string, number>>({})
   const [wrapperWidth, setWrapperWidth] = useState(0)
+  const [scrollEdge, setScrollEdge] = useState({ left: false, right: false })
+  const [visibilitySubmenuOpen, setVisibilitySubmenuOpen] = useState(false)
   const [contextMenu, setContextMenu] = useState<{
     col: AbcColumn<T>
     x: number
@@ -628,6 +712,14 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
     onColumnResize?.(key, nextWidth)
   }
 
+  const updateScrollEdge = () => {
+    const el = wrapperRef.current
+    if (!el) return
+    const left = el.scrollLeft > 1
+    const right = el.scrollWidth - el.clientWidth - el.scrollLeft > 1
+    setScrollEdge((prev) => (prev.left === left && prev.right === right ? prev : { left, right }))
+  }
+
   useLayoutEffect(() => {
     const el = wrapperRef.current
     if (!el) return
@@ -635,6 +727,7 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
       if (el.clientWidth > 0) {
         setWrapperWidth(el.clientWidth)
       }
+      updateScrollEdge()
     }
     syncWidth()
     if (typeof ResizeObserver === 'undefined') return
@@ -645,6 +738,7 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
       } else {
         syncWidth()
       }
+      updateScrollEdge()
     })
     observer.observe(el)
     return () => observer.disconnect()
@@ -692,7 +786,7 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
   const effectiveOnSelectionChange = onSelectionChange ?? rowSelection?.onChange
   const selectable =
     Array.isArray(effectiveSelectedKeys) && typeof effectiveOnSelectionChange === 'function'
-  const hasExpandColumn = Boolean(expandable?.expandedRowRender)
+  const hasExpandColumn = Boolean(expandable)
   const childrenColumnName = expandable?.childrenColumnName || 'children'
   const indentPx = expandable?.indentSize ?? 18
 
@@ -778,11 +872,12 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
   }, [resolvedData, expandedKeys, rowKey, childrenColumnName, treeData, expandable?.rowExpandable])
 
   const colWidthMeta = useMemo(() => {
-    const prefixW = (selectable ? 40 : 0) + (hasExpandColumn ? 36 : 0)
+    const prefixW = (selectable ? 44 : 0) + (hasExpandColumn ? 40 : 0)
     const baseWidths: Record<string, number> = {}
     let sumBase = 0
     for (const col of orderedColumns) {
-      const w = effectiveColumnWidths[col.key] ?? parseNumericWidth(col.width, 150)
+      const titleFallback = Math.max(120, Array.from(col.title || '').length * 14 + 76)
+      const w = effectiveColumnWidths[col.key] ?? parseNumericWidth(col.width, titleFallback)
       baseWidths[col.key] = w
       sumBase += w
     }
@@ -794,21 +889,28 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
     if (slack > 0) {
       const isLocked = (col: AbcColumn<T>) =>
         col.key === '__abc_actions__' ||
+        col.key === '__actions__' ||
+        col.key === '__drag_handle__' ||
         col.key in effectiveColumnWidths ||
         Boolean(getEffectiveFixed(col))
 
       const flexCols = orderedColumns.filter((c) => !isLocked(c))
-      const fallbackTargets = orderedColumns.filter((c) => c.key !== '__abc_actions__')
+      const fallbackTargets = orderedColumns.filter(
+        (c) => c.key !== '__abc_actions__' && c.key !== '__actions__' && c.key !== '__drag_handle__'
+      )
       const targets = flexCols.length > 0 ? flexCols : fallbackTargets
 
       if (targets.length > 0) {
-        const each = Math.floor(slack / targets.length)
-        let rem = slack - each * targets.length
-        for (const col of targets) {
-          const extra = each + (rem > 0 ? 1 : 0)
-          if (rem > 0) rem -= 1
-          resolvedWidths[col.key] = baseWidths[col.key] + extra
-        }
+        const targetSum = targets.reduce((acc, c) => acc + baseWidths[c.key], 0) || targets.length
+        let allocated = 0
+        targets.forEach((col, idx) => {
+          const share =
+            idx === targets.length - 1
+              ? slack - allocated
+              : Math.floor((slack * baseWidths[col.key]) / targetSum)
+          allocated += share
+          resolvedWidths[col.key] = baseWidths[col.key] + Math.max(0, share)
+        })
       }
     }
 
@@ -827,7 +929,7 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
     let lastLeftKey = ''
     let firstRightKey = ''
 
-    let accLeft = (selectable ? 40 : 0) + (hasExpandColumn ? 36 : 0)
+    let accLeft = (selectable ? 44 : 0) + (hasExpandColumn ? 40 : 0)
     for (const col of orderedColumns) {
       if (getEffectiveFixed(col) === 'left') {
         leftOffsets[col.key] = accLeft
@@ -854,6 +956,10 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
       hasAnyLeftFixed: Boolean(lastLeftKey),
     }
   }, [orderedColumns, colWidthMeta, columnFixed, selectable, hasExpandColumn])
+
+  useEffect(() => {
+    updateScrollEdge()
+  }, [colWidthMeta.resolvedTableWidth, resolvedData.length])
 
   const selectablePageItems = useMemo(
     () =>
@@ -1054,16 +1160,25 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
   }, [contextMenu])
 
   const handleHeaderContextMenu = (e: React.MouseEvent, col: AbcColumn<T>) => {
-    if (col.key === '__abc_actions__') return
+    if (col.key === '__abc_actions__' || col.key === '__actions__' || col.key === '__drag_handle__') {
+      return
+    }
     const hasActions = Boolean(
-      (isColSortable(col) && onSortChange) || onColumnPin || onColumnHide || onResetColumns
+      (isColSortable(col) && onSortChange) ||
+        onColumnPin ||
+        onColumnReorder ||
+        onColumnHide ||
+        onToggleColumnVisible ||
+        onFilterHighlightColorChange ||
+        onResetColumns
     )
     if (!hasActions) return
     e.preventDefault()
+    setVisibilitySubmenuOpen(false)
     const vw = typeof window !== 'undefined' ? window.innerWidth : 1024
     const vh = typeof window !== 'undefined' ? window.innerHeight : 768
-    const menuW = 176
-    const menuH = 220
+    const menuW = 208
+    const menuH = 340
     setContextMenu({
       col,
       x: Math.max(8, Math.min(e.clientX, vw - menuW - 8)),
@@ -1071,758 +1186,1066 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
     })
   }
 
+  const movableColumns = useMemo(
+    () =>
+      orderedColumns.filter(
+        (c) => c.key !== '__abc_actions__' && c.key !== '__actions__' && c.key !== '__drag_handle__'
+      ),
+    [orderedColumns]
+  )
+
+  const submenuConfigurableCols = useMemo(
+    () =>
+      (allColumns ?? movableColumns).filter(
+        (c) =>
+          !c.hideInTable &&
+          c.key !== '__abc_actions__' &&
+          c.key !== '__actions__' &&
+          c.key !== '__drag_handle__'
+      ),
+    [allColumns, movableColumns]
+  )
+
+  const handleMoveColumnStep = (colKey: string, direction: 'left' | 'right') => {
+    if (!onColumnReorder) return
+    const keys = movableColumns.map((c) => c.key)
+    const idx = keys.indexOf(colKey)
+    if (idx < 0) return
+    const targetIdx = direction === 'left' ? idx - 1 : idx + 1
+    if (targetIdx < 0 || targetIdx >= keys.length) return
+    const next = [...keys]
+    ;[next[idx], next[targetIdx]] = [next[targetIdx], next[idx]]
+    onColumnReorder(next)
+    setContextMenu(null)
+  }
+
   const totalColSpan =
     orderedColumns.length + (selectable ? 1 : 0) + (hasExpandColumn ? 1 : 0)
 
   const portalTarget = contextMenu ? getOverlayPortalContainer(wrapperRef.current) : null
+  const hasInlineHeaderFilterRow = Boolean(
+    headerFilterMode && orderedColumns.some((col) => col.filterable)
+  )
 
   return (
-    <div
-      ref={wrapperRef}
-      tabIndex={0}
-      role="region"
-      aria-label={ariaLabel}
-      data-motion={resolvedMotion}
-      style={
-        maxHeight !== undefined
-          ? { maxHeight: typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight }
-          : undefined
-      }
-      className={cn(
-        'abc-table-wrapper overflow-auto rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)]',
-        className
+    <div className="relative">
+      {loading && flattenedRows.length > 0 && (
+        <div
+          aria-live="polite"
+          aria-busy="true"
+          className="pointer-events-auto absolute inset-0 z-30 flex items-center justify-center rounded-[var(--abc-radius-lg)] bg-[var(--abc-bg-surface)]/60 backdrop-blur-[1px] transition-opacity"
+        >
+          <Loader2 className="h-6 w-6 animate-spin text-[var(--abc-primary)]" />
+        </div>
       )}
-    >
-      <table
-        style={{
-          width: colWidthMeta.resolvedTableWidth ? `${colWidthMeta.resolvedTableWidth}px` : '100%',
-          tableLayout: 'fixed',
-        }}
-        className="w-full border-separate border-spacing-0 text-left text-xs"
+
+      <div
+        ref={wrapperRef}
+        tabIndex={0}
+        role="region"
+        aria-label={ariaLabel}
+        data-motion={resolvedMotion}
+        onScroll={updateScrollEdge}
+        style={
+          maxHeight !== undefined
+            ? { maxHeight: typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight }
+            : undefined
+        }
+        className={cn(
+          'abc-table-wrapper overflow-auto rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)]',
+          className
+        )}
       >
-        <colgroup>
-          {selectable && <col style={{ width: '40px' }} />}
-          {hasExpandColumn && <col style={{ width: '36px' }} />}
-          {orderedColumns.map((col) => (
-            <col
-              key={col.key}
-              data-col-width-key={col.key}
-              style={{ width: `${colWidthMeta.resolvedWidths[col.key]}px` }}
-            />
-          ))}
-        </colgroup>
-        <thead className="sticky top-0 z-20 bg-[var(--abc-bg-muted)]">
-          <tr>
-            {selectable && (
-              <th
-                style={stickyMeta.hasAnyLeftFixed ? { left: 0 } : undefined}
-                className={cn(
-                  'w-10 border-b border-[var(--abc-border)] bg-[var(--abc-bg-muted)] px-3 py-3 text-center',
-                  stickyMeta.hasAnyLeftFixed && 'sticky z-20'
-                )}
-              >
-                <Checkbox
-                  checked={allSelected}
-                  indeterminate={someSelected}
-                  onChange={toggleAll}
-                />
-              </th>
-            )}
-            {hasExpandColumn && (
-              <th
-                style={
-                  stickyMeta.hasAnyLeftFixed
-                    ? { left: selectable ? 40 : 0 }
-                    : undefined
-                }
-                aria-label="展开列"
-                className={cn(
-                  'w-9 border-b border-[var(--abc-border)] bg-[var(--abc-bg-muted)] px-2 py-3',
-                  stickyMeta.hasAnyLeftFixed && 'sticky z-20'
-                )}
+        <table
+          style={{
+            width: colWidthMeta.resolvedTableWidth ? `${colWidthMeta.resolvedTableWidth}px` : '100%',
+            tableLayout: 'fixed',
+          }}
+          className="w-full border-separate border-spacing-0 text-left text-xs"
+        >
+          <colgroup>
+            {selectable && <col style={{ width: '44px' }} />}
+            {hasExpandColumn && <col style={{ width: '40px' }} />}
+            {orderedColumns.map((col) => (
+              <col
+                key={col.key}
+                data-col-width-key={col.key}
+                style={{ width: `${colWidthMeta.resolvedWidths[col.key]}px` }}
               />
-            )}
-            {orderedColumns.map((col) => {
-              const colW = colWidthMeta.resolvedWidths[col.key]
-              const fx = getEffectiveFixed(col)
-              const sortableCol = isColSortable(col)
-              const currentDir = sortState?.key === col.key ? sortState.direction : null
-              const isDraggingThis = draggingKey === col.key
-              const isFilterHighlighted = Boolean(activeFilterKeys?.includes(col.key))
-              const filterSummaryLabel = activeFilterLabels?.[col.key]
-              const stickyStyle: React.CSSProperties = {
-                width: colW ? `${colW}px` : undefined,
-                ...(fx === 'left' ? { left: `${stickyMeta.leftOffsets[col.key] ?? 0}px` } : {}),
-                ...(fx === 'right' ? { right: `${stickyMeta.rightOffsets[col.key] ?? 0}px` } : {}),
-                ...(isFilterHighlighted
-                  ? {
-                      backgroundColor: filterHighlightColor || 'var(--abc-primary)',
-                      color: '#ffffff',
-                    }
-                  : {}),
-              }
-
-              const commitReorderAt = (targetColKey: string) => {
-                if (!draggingKey || !onColumnReorder) return
-                const currentKeys =
-                  liveDragOrder && liveDragOrder.length > 0
-                    ? liveDragOrder
-                    : orderedColumns
-                        .filter((c) => c.key !== '__abc_actions__')
-                        .map((c) => c.key)
-                const fromIdx = currentKeys.indexOf(draggingKey)
-                const toIdx = currentKeys.indexOf(targetColKey)
-                if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return
-
-                if (wrapperRef.current) {
-                  const map = new Map<string, number>()
-                  wrapperRef.current
-                    .querySelectorAll<HTMLElement>('[data-col-key]')
-                    .forEach((el) => {
-                      const k = el.dataset.colKey
-                      if (k) map.set(k, el.getBoundingClientRect().left)
-                    })
-                  prevColRectsRef.current = map
-                }
-
-                const reordered = [...currentKeys]
-                const [moved] = reordered.splice(fromIdx, 1)
-                reordered.splice(toIdx, 0, moved)
-                hasLiveSwappedRef.current = true
-                setLiveDragOrder(reordered)
-                onColumnReorder(reordered)
-              }
-
-              return (
+            ))}
+          </colgroup>
+          <thead className="sticky top-0 z-20 bg-[var(--abc-bg-muted)]">
+            <tr>
+              {selectable && (
                 <th
-                  key={col.key}
-                  data-col-key={col.key}
-                  data-dragging={isDraggingThis ? 'true' : undefined}
-                  draggable={Boolean(onColumnReorder && !fx && col.key !== '__abc_actions__')}
-                  onContextMenu={(e) => handleHeaderContextMenu(e, col)}
-                  onDragStart={(e) => {
-                    const initialKeys = orderedColumns
-                      .filter((c) => c.key !== '__abc_actions__')
-                      .map((c) => c.key)
-                    preDragOrderRef.current = initialKeys
-                    hasLiveSwappedRef.current = false
-                    setDraggingKey(col.key)
-                    setLiveDragOrder(initialKeys)
-                    if (e.dataTransfer) {
-                      e.dataTransfer.effectAllowed = 'move'
-                    }
-                  }}
-                  onDragOver={(e) => {
-                    if (
-                      !draggingKey ||
-                      draggingKey === col.key ||
-                      fx ||
-                      col.key === '__abc_actions__' ||
-                      !onColumnReorder
-                    ) {
-                      return
-                    }
-                    e.preventDefault()
-
-                    const currentKeys =
-                      liveDragOrder && liveDragOrder.length > 0
-                        ? liveDragOrder
-                        : orderedColumns
-                            .filter((c) => c.key !== '__abc_actions__')
-                            .map((c) => c.key)
-                    const fromIdx = currentKeys.indexOf(draggingKey)
-                    const toIdx = currentKeys.indexOf(col.key)
-                    if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return
-
-                    // 宽度不等列之间加入 35%/65% 越界防抖阈值，避免边界高频往返抖动；jsdom (width=0) 直接放行
-                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                    if (rect.width > 0) {
-                      if (fromIdx < toIdx && e.clientX < rect.left + rect.width * 0.35) return
-                      if (fromIdx > toIdx && e.clientX > rect.left + rect.width * 0.65) return
-                    }
-                    commitReorderAt(col.key)
-                  }}
-                  onDrop={() => {
-                    if (draggingKey && draggingKey !== col.key && !hasLiveSwappedRef.current && !fx && col.key !== '__abc_actions__') {
-                      commitReorderAt(col.key)
-                    }
-                    setDraggingKey(null)
-                    setLiveDragOrder(null)
-                    preDragOrderRef.current = null
-                    hasLiveSwappedRef.current = false
-                  }}
-                  onDragEnd={() => {
-                    setDraggingKey(null)
-                    setLiveDragOrder(null)
-                    preDragOrderRef.current = null
-                    hasLiveSwappedRef.current = false
-                  }}
-                  style={stickyStyle}
+                  style={{ left: 0 }}
                   className={cn(
-                    'group relative border-b border-[var(--abc-border)] bg-[var(--abc-bg-muted)] font-semibold whitespace-nowrap text-[var(--abc-fg-secondary)] select-none transition-colors duration-[var(--abc-motion-fast)]',
-                    DENSITY_CELL_PY[density],
-                    col.align === 'center' && 'text-center',
-                    col.align === 'right' && 'text-right',
-                    fx === 'left' && 'sticky z-20',
-                    fx === 'right' && 'sticky z-20',
-                    isDraggingThis &&
-                      'bg-[var(--abc-primary-soft)] text-[var(--abc-primary)] shadow-[inset_0_2px_0_0_var(--abc-primary)]',
-                    col.key === stickyMeta.lastLeftKey &&
-                      'shadow-[3px_0_6px_-3px_rgba(15,23,42,0.12)]',
-                    col.key === stickyMeta.firstRightKey &&
-                      'shadow-[-3px_0_6px_-3px_rgba(15,23,42,0.12)]'
+                    'sticky z-30 w-11 border-b border-[var(--abc-border)] bg-[var(--abc-bg-muted)] px-2.5 py-3 text-center',
+                    !stickyMeta.hasAnyLeftFixed &&
+                      scrollEdge.left &&
+                      'shadow-[4px_0_8px_-4px_rgba(15,23,42,0.16)]'
                   )}
                 >
-                  <div
-                    className={cn(
-                      'inline-flex items-center gap-1',
-                      col.align === 'right' && 'justify-end',
-                      col.align === 'center' && 'justify-center'
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1',
-                        sortableCol &&
-                          (isFilterHighlighted
-                            ? 'cursor-pointer opacity-95 hover:opacity-100'
-                            : 'cursor-pointer hover:text-[var(--abc-primary)]')
-                      )}
-                      onClick={() => handleSortClick(col)}
-                    >
-                      {onColumnReorder && !fx && col.key !== '__abc_actions__' && (
-                        <GripVertical className="h-3 w-3 cursor-grab text-[var(--abc-fg-placeholder)] opacity-0 transition-opacity group-hover:opacity-100" />
-                      )}
-                      <span title={filterSummaryLabel ? col.title : undefined}>
-                        {filterSummaryLabel || col.title}
-                      </span>
-                      {col.tooltip && (
-                        <Tooltip content={col.tooltip}>
-                          <span
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex text-[var(--abc-fg-muted)] hover:text-[var(--abc-fg)]"
-                          >
-                            <HelpCircle className="h-3 w-3" />
-                          </span>
-                        </Tooltip>
-                      )}
-                      {sortableCol && (
-                        <span
-                          className={cn(
-                            'inline-flex',
-                            isFilterHighlighted ? 'text-white' : 'text-[var(--abc-fg-muted)]'
-                          )}
-                        >
-                          {currentDir === 'asc' ? (
-                            <ArrowUp
-                              className={cn(
-                                'h-3 w-3',
-                                isFilterHighlighted ? 'text-white' : 'text-[var(--abc-primary)]'
-                              )}
-                            />
-                          ) : currentDir === 'desc' ? (
-                            <ArrowDown
-                              className={cn(
-                                'h-3 w-3',
-                                isFilterHighlighted ? 'text-white' : 'text-[var(--abc-primary)]'
-                              )}
-                            />
-                          ) : (
-                            <ArrowUpDown className="h-3 w-3 opacity-50" />
-                          )}
-                        </span>
-                      )}
-                    </span>
-
-                    {headerFilterRender && col.filterable && (
-                      <span
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center"
-                      >
-                        {headerFilterRender(col)}
-                      </span>
-                    )}
-                  </div>
-
-                  {isResizable &&
-                    (fx === 'right' ? (
-                      <span
-                        role="separator"
-                        aria-orientation="vertical"
-                        aria-label={`拖拽调节 ${col.title} 列宽`}
-                        onMouseDown={(e) => startResizeColumn(e, col, 'left')}
-                        className="absolute top-0 bottom-0 left-0 z-10 w-2 cursor-col-resize select-none hover:bg-[var(--abc-primary)]/60 active:bg-[var(--abc-primary)]"
-                      />
-                    ) : (
-                      <span
-                        role="separator"
-                        aria-orientation="vertical"
-                        aria-label={`拖拽调节 ${col.title} 列宽`}
-                        onMouseDown={(e) => startResizeColumn(e, col, 'right')}
-                        className="absolute top-0 right-0 bottom-0 z-10 w-2 cursor-col-resize select-none hover:bg-[var(--abc-primary)]/60 active:bg-[var(--abc-primary)]"
-                      />
-                    ))}
+                  <Checkbox
+                    checked={allSelected}
+                    indeterminate={someSelected}
+                    onChange={toggleAll}
+                  />
                 </th>
-              )
-            })}
-          </tr>
-
-          {/* 表头内联筛选行 */}
-          {headerFilterMode && (
-            <tr className="bg-[var(--abc-bg-surface)]">
-              {selectable && <th className="border-b border-[var(--abc-border)] px-3 py-1.5" />}
-              {hasExpandColumn && (
-                <th className="border-b border-[var(--abc-border)] px-2 py-1.5" />
               )}
-              {orderedColumns.map((col) => {
+              {hasExpandColumn && (
+                <th
+                  style={
+                    stickyMeta.hasAnyLeftFixed
+                      ? { left: selectable ? 44 : 0 }
+                      : undefined
+                  }
+                  aria-label="展开列"
+                  className={cn(
+                    'w-10 border-b border-[var(--abc-border)] bg-[var(--abc-bg-muted)] px-2 py-3',
+                    stickyMeta.hasAnyLeftFixed && 'sticky z-20'
+                  )}
+                />
+              )}
+              {orderedColumns.map((col, colIndex) => {
+                const colW = colWidthMeta.resolvedWidths[col.key]
                 const fx = getEffectiveFixed(col)
+                const sortableCol = isColSortable(col)
+                const currentDir = sortState?.key === col.key ? sortState.direction : null
+                const isDraggingThis = draggingKey === col.key
+                const isFilterHighlighted = Boolean(activeFilterKeys?.includes(col.key))
+                const filterSummaryLabel = activeFilterLabels?.[col.key]
+                const nextCol = orderedColumns[colIndex + 1]
+                const nextFx = nextCol ? getEffectiveFixed(nextCol) : undefined
+                const showRightDivider = Boolean(nextCol && nextFx !== 'right')
+                const showLeftDivider = col.key === stickyMeta.firstRightKey
+                const headerFilterNode =
+                  headerFilterRender && (col.filterable || headerFilterMode)
+                    ? headerFilterRender(col)
+                    : null
+                const stickyStyle: React.CSSProperties = {
+                  width: colW ? `${colW}px` : undefined,
+                  ...(fx === 'left' ? { left: `${stickyMeta.leftOffsets[col.key] ?? 0}px` } : {}),
+                  ...(fx === 'right' ? { right: `${stickyMeta.rightOffsets[col.key] ?? 0}px` } : {}),
+                  ...(isFilterHighlighted
+                    ? {
+                        backgroundColor: filterHighlightColor || '#3b82f6',
+                        color: '#ffffff',
+                      }
+                    : {}),
+                }
+
+                const commitReorderAt = (targetColKey: string) => {
+                  if (!draggingKey || !onColumnReorder) return
+                  const currentKeys =
+                    liveDragOrder && liveDragOrder.length > 0
+                      ? liveDragOrder
+                      : orderedColumns
+                          .filter((c) => c.key !== '__abc_actions__' && c.key !== '__actions__')
+                          .map((c) => c.key)
+                  const fromIdx = currentKeys.indexOf(draggingKey)
+                  const toIdx = currentKeys.indexOf(targetColKey)
+                  if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return
+
+                  if (wrapperRef.current) {
+                    const map = new Map<string, number>()
+                    wrapperRef.current
+                      .querySelectorAll<HTMLElement>('[data-col-key]')
+                      .forEach((el) => {
+                        const k = el.dataset.colKey
+                        if (k) map.set(k, el.getBoundingClientRect().left)
+                      })
+                    prevColRectsRef.current = map
+                  }
+
+                  const reordered = [...currentKeys]
+                  const [moved] = reordered.splice(fromIdx, 1)
+                  reordered.splice(toIdx, 0, moved)
+                  hasLiveSwappedRef.current = true
+                  setLiveDragOrder(reordered)
+                  onColumnReorder(reordered)
+                }
+
                 return (
                   <th
-                    key={`${col.key}_filter`}
-                    style={{
-                      ...(fx === 'left'
-                        ? { left: `${stickyMeta.leftOffsets[col.key] ?? 0}px` }
-                        : {}),
-                      ...(fx === 'right'
-                        ? { right: `${stickyMeta.rightOffsets[col.key] ?? 0}px` }
-                        : {}),
-                    }}
-                    className={cn(
-                      'border-b border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-3 py-1.5 font-normal',
-                      fx === 'left' && 'sticky z-20',
-                      fx === 'right' && 'sticky z-20'
-                    )}
-                  >
-                    {col.filterable ? (
-                      col.filterType === 'select' && col.filterOptions ? (
-                        <Select
-                          size="xs"
-                          allowClear
-                          placeholder="全部"
-                          options={col.filterOptions}
-                          value={headerFilters[col.key] ?? ''}
-                          onChange={(val) => onHeaderFilterChange?.(col.key, val)}
-                        />
-                      ) : (
-                        <Input
-                          size="xs"
-                          allowClear
-                          placeholder={`筛选${col.title}`}
-                          value={headerFilters[col.key] ?? ''}
-                          onChange={(e) => onHeaderFilterChange?.(col.key, e.target.value)}
-                        />
-                      )
-                    ) : null}
-                  </th>
-                )
-              })}
-            </tr>
-          )}
-        </thead>
-
-        <tbody>
-          {loading ? (
-            Array.from({ length: 5 }).map((_, rowIdx) => (
-              <tr key={`sk_${rowIdx}`}>
-                {selectable && (
-                  <td className="border-b border-[var(--abc-border)] px-3 py-3 text-center">
-                    <Skeleton width={16} height={16} />
-                  </td>
-                )}
-                {hasExpandColumn && (
-                  <td className="border-b border-[var(--abc-border)] px-2 py-3" />
-                )}
-                {orderedColumns.map((col) => (
-                  <td
                     key={col.key}
-                    className={cn('border-b border-[var(--abc-border)]', DENSITY_CELL_PY[density])}
-                  >
-                    <Skeleton variant="text" className="w-4/5" />
-                  </td>
-                ))}
-              </tr>
-            ))
-          ) : flattenedRows.length === 0 ? (
-            <tr>
-              <td colSpan={totalColSpan}>
-                <EmptyState title={emptyText} onReset={onEmptyReset} />
-              </td>
-            </tr>
-          ) : (
-            flattenedRows.map(({ record, key, rowIdx, depth, hasTreeChildren }) => {
-              const isSelected = Boolean(selectable && effectiveSelectedKeys.includes(key))
-              const checkboxDisabled = Boolean(
-                rowSelection?.getCheckboxProps?.(record)?.disabled
-              )
-              const isRowActive =
-                activeRowKey !== undefined &&
-                activeRowKey !== null &&
-                String(activeRowKey) === String(key)
-              const isExpanded = expandedKeys.includes(key)
-              const canPanelExpand =
-                hasExpandColumn &&
-                (!expandable?.rowExpandable || expandable.rowExpandable(record))
-              const customRowProps = onRow?.(record, rowIdx) ?? {}
-
-              return (
-                <React.Fragment key={String(key)}>
-                  <tr
-                    {...customRowProps}
-                    draggable={isRowDraggable || customRowProps.draggable}
+                    data-col-key={col.key}
+                    data-dragging={isDraggingThis ? 'true' : undefined}
+                    draggable={Boolean(
+                      onColumnReorder &&
+                        !fx &&
+                        col.key !== '__abc_actions__' &&
+                        col.key !== '__actions__' &&
+                        col.key !== '__drag_handle__'
+                    )}
+                    onContextMenu={(e) => handleHeaderContextMenu(e, col)}
                     onDragStart={(e) => {
-                      customRowProps.onDragStart?.(e)
-                      if (!isRowDraggable) return
+                      const initialKeys = orderedColumns
+                        .filter((c) => c.key !== '__abc_actions__' && c.key !== '__actions__')
+                        .map((c) => c.key)
+                      preDragOrderRef.current = initialKeys
+                      hasLiveSwappedRef.current = false
+                      setDraggingKey(col.key)
+                      setLiveDragOrder(initialKeys)
                       if (e.dataTransfer) {
-                        e.dataTransfer.setData('text/plain', String(key))
                         e.dataTransfer.effectAllowed = 'move'
                       }
                     }}
                     onDragOver={(e) => {
-                      customRowProps.onDragOver?.(e)
-                      if (!isRowDraggable) return
-                      e.preventDefault()
-                    }}
-                    onDrop={(e) => {
-                      customRowProps.onDrop?.(e)
-                      if (!isRowDraggable || !emitRowDragEnd) return
-                      e.preventDefault()
-                      const activeId = e.dataTransfer?.getData('text/plain')
-                      if (activeId && activeId !== String(key)) {
-                        emitRowDragEnd(activeId, key)
-                      }
-                    }}
-                    data-state={isRowActive ? 'selected' : isSelected ? 'selected' : undefined}
-                    tabIndex={onRowClick ? 0 : customRowProps.tabIndex}
-                    onClick={(e) => {
-                      customRowProps.onClick?.(e)
-                      if (!onRowClick) return
-                      const target = e.target as HTMLElement | null
                       if (
-                        target &&
-                        target.closest(
-                          'button, a, input, select, textarea, [role="button"], [role="checkbox"], [role="menuitem"], details'
-                        )
+                        !draggingKey ||
+                        draggingKey === col.key ||
+                        fx ||
+                        col.key === '__abc_actions__' ||
+                        col.key === '__actions__' ||
+                        !onColumnReorder
                       ) {
                         return
                       }
-                      onRowClick(record, e)
-                    }}
-                    onKeyDown={(e) => {
-                      customRowProps.onKeyDown?.(e)
-                      if (!onRowClick) return
-                      if (e.target !== e.currentTarget) return
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        onRowClick(record, e as any)
+                      e.preventDefault()
+
+                      const currentKeys =
+                        liveDragOrder && liveDragOrder.length > 0
+                          ? liveDragOrder
+                          : orderedColumns
+                              .filter((c) => c.key !== '__abc_actions__' && c.key !== '__actions__')
+                              .map((c) => c.key)
+                      const fromIdx = currentKeys.indexOf(draggingKey)
+                      const toIdx = currentKeys.indexOf(col.key)
+                      if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return
+
+                      // 宽度不等列之间加入 35%/65% 越界防抖阈值，避免边界高频往返抖动；jsdom (width=0) 直接放行
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                      if (rect.width > 0) {
+                        if (fromIdx < toIdx && e.clientX < rect.left + rect.width * 0.35) return
+                        if (fromIdx > toIdx && e.clientX > rect.left + rect.width * 0.65) return
                       }
+                      commitReorderAt(col.key)
                     }}
+                    onDrop={() => {
+                      if (
+                        draggingKey &&
+                        draggingKey !== col.key &&
+                        !hasLiveSwappedRef.current &&
+                        !fx &&
+                        col.key !== '__abc_actions__' &&
+                        col.key !== '__actions__'
+                      ) {
+                        commitReorderAt(col.key)
+                      }
+                      setDraggingKey(null)
+                      setLiveDragOrder(null)
+                      preDragOrderRef.current = null
+                      hasLiveSwappedRef.current = false
+                    }}
+                    onDragEnd={() => {
+                      setDraggingKey(null)
+                      setLiveDragOrder(null)
+                      preDragOrderRef.current = null
+                      hasLiveSwappedRef.current = false
+                    }}
+                    style={stickyStyle}
                     className={cn(
-                      'group transition-colors duration-150',
-                      isRowDraggable && 'cursor-grab active:cursor-grabbing',
-                      treeData && depth === 1 && 'bg-[var(--abc-primary-soft)]/25',
-                      treeData && depth >= 2 && 'bg-[var(--abc-warning-soft)]/25',
-                      onRowClick &&
-                        'cursor-pointer focus-visible:bg-[var(--abc-bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--abc-primary)]',
-                      isSelected || isRowActive
-                        ? 'bg-[var(--abc-primary-soft)]/60'
-                        : 'hover:bg-[var(--abc-bg-muted)]/85',
-                      customRowProps.className
+                      'group relative border-b border-[var(--abc-border)] bg-[var(--abc-bg-muted)] font-semibold whitespace-nowrap text-[var(--abc-fg-secondary)] select-none transition-colors duration-[var(--abc-motion-fast)]',
+                      fx === 'right' ? 'overflow-visible' : 'overflow-hidden',
+                      DENSITY_CELL_PY[density],
+                      col.align === 'center' && 'text-center',
+                      col.align === 'right' && 'text-right',
+                      fx === 'left' && 'sticky z-30',
+                      fx === 'right' && 'sticky z-30',
+                      isDraggingThis &&
+                        'bg-[var(--abc-primary-soft)] text-[var(--abc-primary)] shadow-[inset_0_2px_0_0_var(--abc-primary)]',
+                      col.key === stickyMeta.lastLeftKey &&
+                        scrollEdge.left &&
+                        'shadow-[3px_0_6px_-2px_rgba(15,23,42,0.14)]',
+                      col.key === stickyMeta.firstRightKey &&
+                        scrollEdge.right &&
+                        'shadow-[-3px_0_6px_-2px_rgba(15,23,42,0.14)]'
                     )}
                   >
-                    {selectable && (
-                      <td
-                        style={stickyMeta.hasAnyLeftFixed ? { left: 0 } : undefined}
-                        className={cn(
-                          'border-b border-[var(--abc-border)] px-3 py-2.5 text-center',
-                          stickyMeta.hasAnyLeftFixed &&
-                            'sticky z-10 bg-[var(--abc-bg-surface)] group-hover:bg-[var(--abc-bg-muted)]'
-                        )}
-                      >
-                        <Checkbox
-                          checked={isSelected}
-                          disabled={checkboxDisabled}
-                          onChange={() => toggleOne(key)}
-                        />
-                      </td>
+                    {showLeftDivider && (
+                      <span className="pointer-events-none absolute top-1/2 left-0 z-10 h-4 w-px -translate-y-1/2 bg-[var(--abc-border-strong)]/65" />
+                    )}
+                    {showRightDivider && (
+                      <span className="pointer-events-none absolute top-1/2 right-0 z-10 h-4 w-px -translate-y-1/2 bg-[var(--abc-border-strong)]/65" />
                     )}
 
-                    {hasExpandColumn && (
-                      <td
-                        style={
-                          stickyMeta.hasAnyLeftFixed
-                            ? { left: selectable ? 40 : 0 }
-                            : undefined
-                        }
+                    <div
+                      className={cn(
+                        'flex min-w-0 items-center gap-1',
+                        col.align === 'right' && 'justify-end',
+                        col.align === 'center' && 'justify-center'
+                      )}
+                    >
+                      <span
                         className={cn(
-                          'border-b border-[var(--abc-border)] px-2 py-2.5 text-center',
-                          stickyMeta.hasAnyLeftFixed &&
-                            'sticky z-10 bg-[var(--abc-bg-surface)] group-hover:bg-[var(--abc-bg-muted)]'
+                          'inline-flex min-w-0 items-center gap-1',
+                          sortableCol &&
+                            (isFilterHighlighted
+                              ? 'cursor-pointer opacity-95 hover:opacity-100'
+                              : 'cursor-pointer hover:text-[var(--abc-primary)]')
                         )}
+                        onClick={() => handleSortClick(col)}
                       >
-                        {canPanelExpand && (
-                          <button
-                            type="button"
-                            aria-label={isExpanded ? '收起详情行' : '展开详情行'}
-                            aria-expanded={isExpanded}
-                            onClick={() => toggleExpandRow(key, record)}
-                            className="inline-flex h-5 w-5 items-center justify-center rounded-[var(--abc-radius-xs)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
-                          >
-                            <ChevronRight
+                        {onColumnReorder &&
+                          !fx &&
+                          col.key !== '__abc_actions__' &&
+                          col.key !== '__actions__' &&
+                          col.key !== '__drag_handle__' && (
+                            <GripVertical
                               className={cn(
-                                'h-3.5 w-3.5 transition-transform duration-150',
-                                isExpanded && 'rotate-90 text-[var(--abc-primary)]'
+                                'h-3 w-3 shrink-0 -ml-0.5 cursor-grab opacity-0 transition-opacity group-hover:opacity-100',
+                                isFilterHighlighted
+                                  ? 'text-white/80'
+                                  : 'text-[var(--abc-fg-placeholder)]'
                               )}
                             />
-                          </button>
+                          )}
+                        <span
+                          className="min-w-0 truncate whitespace-nowrap"
+                          title={filterSummaryLabel ? col.title : undefined}
+                        >
+                          {filterSummaryLabel || col.title}
+                        </span>
+                        {col.tooltip && (
+                          <Tooltip content={col.tooltip}>
+                            <span
+                              onClick={(e) => e.stopPropagation()}
+                              className={cn(
+                                'inline-flex shrink-0',
+                                isFilterHighlighted
+                                  ? 'text-white/85 hover:text-white'
+                                  : 'text-[var(--abc-fg-muted)] hover:text-[var(--abc-fg)]'
+                              )}
+                            >
+                              <HelpCircle className="h-3 w-3" />
+                            </span>
+                          </Tooltip>
                         )}
-                      </td>
-                    )}
+                        {sortableCol && (
+                          <span
+                            className={cn(
+                              'inline-flex shrink-0',
+                              isFilterHighlighted ? 'text-white' : 'text-[var(--abc-fg-muted)]'
+                            )}
+                          >
+                            {currentDir === 'asc' ? (
+                              <ArrowUp
+                                className={cn(
+                                  'h-3 w-3',
+                                  isFilterHighlighted ? 'text-white' : 'text-[var(--abc-primary)]'
+                                )}
+                              />
+                            ) : currentDir === 'desc' ? (
+                              <ArrowDown
+                                className={cn(
+                                  'h-3 w-3',
+                                  isFilterHighlighted ? 'text-white' : 'text-[var(--abc-primary)]'
+                                )}
+                              />
+                            ) : (
+                              <ArrowUpDown className="h-3 w-3 opacity-55" />
+                            )}
+                          </span>
+                        )}
+                      </span>
 
-                    {orderedColumns.map((col, colIdx) => {
-                      const fieldPath = (col.dataIndex ?? col.key) as string | string[]
-                      const rawVal = getNestedValue(record, fieldPath)
-                      const fx = getEffectiveFixed(col)
-                      const cellContent = col.render
-                        ? col.render(rawVal, record, treeData ? depth : rowIdx, {
-                            depth,
-                            rowIndex: rowIdx,
-                            isExpanded,
-                          })
-                        : renderBuiltInValue(rawVal, record, col, onRowView)
+                      {headerFilterNode && (
+                        <span
+                          data-header-filter=""
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex shrink-0 items-center"
+                        >
+                          {headerFilterNode}
+                        </span>
+                      )}
+                    </div>
 
-                      const showTreeIndent = colIdx === 0 && (depth > 0 || hasTreeChildren)
+                    {isResizable &&
+                      (fx === 'right' ? (
+                        <span
+                          role="separator"
+                          aria-orientation="vertical"
+                          aria-label={`拖拽调节 ${col.title} 列宽`}
+                          onMouseDown={(e) => startResizeColumn(e, col, 'left')}
+                          className="absolute top-0 bottom-0 -left-1 z-30 w-2.5 cursor-col-resize select-none hover:bg-[var(--abc-primary)]/60 active:bg-[var(--abc-primary)]"
+                        />
+                      ) : (
+                        <span
+                          role="separator"
+                          aria-orientation="vertical"
+                          aria-label={`拖拽调节 ${col.title} 列宽`}
+                          onMouseDown={(e) => startResizeColumn(e, col, 'right')}
+                          className="absolute top-0 right-0 bottom-0 z-20 w-2 cursor-col-resize select-none hover:bg-[var(--abc-primary)]/60 active:bg-[var(--abc-primary)]"
+                        />
+                      ))}
+                  </th>
+                )
+              })}
+            </tr>
 
-                      return (
+            {/* 表头内联筛选行（仅在列声明了显式 filterable 时渲染） */}
+            {hasInlineHeaderFilterRow && (
+              <tr className="bg-[var(--abc-bg-surface)]">
+                {selectable && <th className="border-b border-[var(--abc-border)] px-2.5 py-1.5" />}
+                {hasExpandColumn && (
+                  <th className="border-b border-[var(--abc-border)] px-2 py-1.5" />
+                )}
+                {orderedColumns.map((col) => {
+                  const fx = getEffectiveFixed(col)
+                  return (
+                    <th
+                      key={`${col.key}_filter`}
+                      style={{
+                        ...(fx === 'left'
+                          ? { left: `${stickyMeta.leftOffsets[col.key] ?? 0}px` }
+                          : {}),
+                        ...(fx === 'right'
+                          ? { right: `${stickyMeta.rightOffsets[col.key] ?? 0}px` }
+                          : {}),
+                      }}
+                      className={cn(
+                        'border-b border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-3 py-1.5 font-normal',
+                        fx === 'left' && 'sticky z-20',
+                        fx === 'right' && 'sticky z-20'
+                      )}
+                    >
+                      {col.filterable ? (
+                        col.filterType === 'select' && col.filterOptions ? (
+                          <Select
+                            size="xs"
+                            allowClear
+                            placeholder="全部"
+                            options={col.filterOptions}
+                            value={headerFilters[col.key] ?? ''}
+                            onChange={(val) => onHeaderFilterChange?.(col.key, val)}
+                          />
+                        ) : (
+                          <Input
+                            size="xs"
+                            allowClear
+                            placeholder={`筛选${col.title}`}
+                            value={headerFilters[col.key] ?? ''}
+                            onChange={(e) => onHeaderFilterChange?.(col.key, e.target.value)}
+                          />
+                        )
+                      ) : null}
+                    </th>
+                  )
+                })}
+              </tr>
+            )}
+          </thead>
+
+          <tbody>
+            {loading && flattenedRows.length === 0 ? (
+              Array.from({ length: 5 }).map((_, rowIdx) => (
+                <tr key={`sk_${rowIdx}`}>
+                  {selectable && (
+                    <td className="border-b border-[var(--abc-border)] px-2.5 py-3 text-center">
+                      <Skeleton width={16} height={16} />
+                    </td>
+                  )}
+                  {hasExpandColumn && (
+                    <td className="border-b border-[var(--abc-border)] px-2 py-3" />
+                  )}
+                  {orderedColumns.map((col) => (
+                    <td
+                      key={col.key}
+                      className={cn('border-b border-[var(--abc-border)]', DENSITY_CELL_PY[density])}
+                    >
+                      <Skeleton variant="text" className="w-4/5" />
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : flattenedRows.length === 0 ? (
+              <tr>
+                <td colSpan={totalColSpan}>
+                  <EmptyState title={emptyText} onReset={onEmptyReset} />
+                </td>
+              </tr>
+            ) : (
+              flattenedRows.map(({ record, key, rowIdx, depth, hasTreeChildren }) => {
+                const isSelected = Boolean(selectable && effectiveSelectedKeys.includes(key))
+                const checkboxDisabled = Boolean(
+                  rowSelection?.getCheckboxProps?.(record)?.disabled
+                )
+                const isRowActive =
+                  activeRowKey !== undefined &&
+                  activeRowKey !== null &&
+                  String(activeRowKey) === String(key)
+                const isExpanded = expandedKeys.includes(key)
+                const canExpandRow = hasExpandColumn
+                  ? treeData
+                    ? hasTreeChildren
+                    : Boolean(
+                        expandable?.expandedRowRender &&
+                          (!expandable.rowExpandable || expandable.rowExpandable(record))
+                      ) || Boolean(expandable?.rowExpandable?.(record))
+                  : false
+                const customRowProps = onRow?.(record, rowIdx) ?? {}
+
+                return (
+                  <React.Fragment key={String(key)}>
+                    <tr
+                      {...customRowProps}
+                      draggable={isRowDraggable || customRowProps.draggable}
+                      onDragStart={(e) => {
+                        customRowProps.onDragStart?.(e)
+                        if (!isRowDraggable) return
+                        if (e.dataTransfer) {
+                          e.dataTransfer.setData('text/plain', String(key))
+                          e.dataTransfer.effectAllowed = 'move'
+                        }
+                      }}
+                      onDragOver={(e) => {
+                        customRowProps.onDragOver?.(e)
+                        if (!isRowDraggable) return
+                        e.preventDefault()
+                      }}
+                      onDrop={(e) => {
+                        customRowProps.onDrop?.(e)
+                        if (!isRowDraggable || !emitRowDragEnd) return
+                        e.preventDefault()
+                        const activeId = e.dataTransfer?.getData('text/plain')
+                        if (activeId && activeId !== String(key)) {
+                          emitRowDragEnd(activeId, key)
+                        }
+                      }}
+                      data-state={isRowActive ? 'selected' : isSelected ? 'selected' : undefined}
+                      tabIndex={onRowClick ? 0 : customRowProps.tabIndex}
+                      onClick={(e) => {
+                        customRowProps.onClick?.(e)
+                        if (!onRowClick) return
+                        const target = e.target as HTMLElement | null
+                        if (
+                          target &&
+                          target.closest(
+                            'button, a, input, select, textarea, [role="button"], [role="checkbox"], [role="menuitem"], details'
+                          )
+                        ) {
+                          return
+                        }
+                        onRowClick(record, e)
+                      }}
+                      onKeyDown={(e) => {
+                        customRowProps.onKeyDown?.(e)
+                        if (!onRowClick) return
+                        if (e.target !== e.currentTarget) return
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          onRowClick(record, e as any)
+                        }
+                      }}
+                      className={cn(
+                        'group transition-colors duration-150',
+                        isRowDraggable && 'cursor-grab active:cursor-grabbing',
+                        depth === 1 &&
+                          'border-l-4 border-l-blue-400 bg-blue-50/75 dark:border-l-blue-500 dark:bg-blue-950/30',
+                        depth >= 2 &&
+                          'border-l-4 border-l-amber-400 bg-amber-50/75 dark:border-l-amber-500 dark:bg-amber-950/20',
+                        onRowClick &&
+                          'cursor-pointer focus-visible:bg-[var(--abc-bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--abc-primary)]',
+                        isSelected || isRowActive
+                          ? 'bg-[var(--abc-primary-soft)]/60'
+                          : 'hover:bg-[var(--abc-bg-muted)]/85',
+                        customRowProps.className
+                      )}
+                    >
+                      {selectable && (
                         <td
-                          key={col.key}
-                          data-col-cell={col.key}
-                          style={{
-                            ...(fx === 'left'
-                              ? { left: `${stickyMeta.leftOffsets[col.key] ?? 0}px` }
-                              : {}),
-                            ...(fx === 'right'
-                              ? { right: `${stickyMeta.rightOffsets[col.key] ?? 0}px` }
-                              : {}),
-                          }}
+                          style={{ left: 0 }}
                           className={cn(
-                            'border-b border-[var(--abc-border)] text-[var(--abc-fg-secondary)] transition-colors duration-[var(--abc-motion-fast)]',
-                            DENSITY_CELL_PY[density],
-                            col.align === 'center' && 'text-center',
-                            col.align === 'right' && 'text-right',
-                            draggingKey === col.key && 'bg-[var(--abc-primary-soft)]/30',
-                            fx === 'left' &&
-                              'sticky z-10 bg-[var(--abc-bg-surface)] group-hover:bg-[var(--abc-bg-muted)]',
-                            fx === 'right' &&
-                              'sticky z-10 bg-[var(--abc-bg-surface)] group-hover:bg-[var(--abc-bg-muted)]',
-                            col.key === stickyMeta.lastLeftKey &&
-                              'shadow-[3px_0_6px_-3px_rgba(15,23,42,0.08)]',
-                            col.key === stickyMeta.firstRightKey &&
-                              'shadow-[-3px_0_6px_-3px_rgba(15,23,42,0.08)]'
+                            'sticky z-10 border-b border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-2.5 py-2.5 text-center group-hover:bg-[var(--abc-bg-muted)]',
+                            (isSelected || isRowActive) && 'bg-[var(--abc-primary-soft)]/60',
+                            !stickyMeta.hasAnyLeftFixed &&
+                              scrollEdge.left &&
+                              'shadow-[4px_0_8px_-4px_rgba(15,23,42,0.16)]'
                           )}
                         >
-                          {showTreeIndent ? (
-                            <div
-                              style={{ paddingLeft: `${depth * indentPx}px` }}
-                              className="inline-flex items-center gap-1"
+                          <Checkbox
+                            checked={isSelected}
+                            disabled={checkboxDisabled}
+                            onChange={() => toggleOne(key)}
+                          />
+                        </td>
+                      )}
+
+                      {hasExpandColumn && (
+                        <td
+                          style={
+                            stickyMeta.hasAnyLeftFixed
+                              ? { left: selectable ? 44 : 0 }
+                              : undefined
+                          }
+                          className={cn(
+                            'border-b border-[var(--abc-border)] px-2 py-2.5 text-center whitespace-nowrap',
+                            stickyMeta.hasAnyLeftFixed &&
+                              'sticky z-10 bg-[var(--abc-bg-surface)] group-hover:bg-[var(--abc-bg-muted)]'
+                          )}
+                        >
+                          {canExpandRow ? (
+                            <button
+                              type="button"
+                              aria-label={isExpanded ? '收起详情行' : '展开详情行'}
+                              aria-expanded={isExpanded}
+                              onClick={() => toggleExpandRow(key, record)}
+                              className="inline-flex h-6 w-6 items-center justify-center rounded-[var(--abc-radius-xs)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
                             >
-                              {hasTreeChildren ? (
-                                <button
-                                  type="button"
-                                  aria-label={isExpanded ? '收起子项' : '展开子项'}
-                                  aria-expanded={isExpanded}
-                                  onClick={() => toggleExpandRow(key, record)}
-                                  className="inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-[var(--abc-radius-xs)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
-                                >
-                                  <ChevronRight
-                                    className={cn(
-                                      'h-3 w-3 transition-transform duration-150',
-                                      isExpanded && 'rotate-90 text-[var(--abc-primary)]'
-                                    )}
-                                  />
-                                </button>
-                              ) : (
-                                <span className="inline-block w-4.5 shrink-0" />
-                              )}
-                              <span className="min-w-0">{cellContent}</span>
-                            </div>
+                              <ChevronRight
+                                className={cn(
+                                  'h-3.5 w-3.5 transition-transform duration-150',
+                                  isExpanded && 'rotate-90 text-[var(--abc-primary)]'
+                                )}
+                              />
+                            </button>
                           ) : (
-                            cellContent
+                            <span className="inline-block w-4" />
                           )}
                         </td>
-                      )
-                    })}
-                  </tr>
+                      )}
 
-                  {canPanelExpand && isExpanded && expandable?.expandedRowRender && (
-                    <tr className="bg-[var(--abc-bg-muted)]/45">
-                      <td
-                        colSpan={totalColSpan}
-                        className="border-b border-[var(--abc-border)] px-6 py-3.5 text-xs text-[var(--abc-fg-secondary)]"
-                      >
-                        {expandable.expandedRowRender(record, rowIdx, depth, isExpanded)}
-                      </td>
+                      {orderedColumns.map((col, colIdx) => {
+                        const fieldPath = (col.dataIndex ?? col.key) as string | string[]
+                        const rawVal = getNestedValue(record, fieldPath)
+                        const fx = getEffectiveFixed(col)
+                        const isActionCol =
+                          col.key === '__abc_actions__' || col.key === '__actions__'
+                        const cellContent = col.render
+                          ? col.render(rawVal, record, treeData ? depth : rowIdx, {
+                              depth,
+                              rowIndex: rowIdx,
+                              isExpanded,
+                            })
+                          : renderBuiltInValue(rawVal, record, col, onRowView)
+
+                        const showInlineTreeChevron =
+                          !hasExpandColumn && colIdx === 0 && (depth > 0 || hasTreeChildren)
+                        const applyExpandColIndent =
+                          hasExpandColumn && colIdx === 0 && depth > 0
+
+                        return (
+                          <td
+                            key={col.key}
+                            data-col-cell={col.key}
+                            style={{
+                              ...(fx === 'left'
+                                ? { left: `${stickyMeta.leftOffsets[col.key] ?? 0}px` }
+                                : {}),
+                              ...(fx === 'right'
+                                ? { right: `${stickyMeta.rightOffsets[col.key] ?? 0}px` }
+                                : {}),
+                              ...(applyExpandColIndent
+                                ? { paddingLeft: `${12 + depth * indentPx}px` }
+                                : {}),
+                            }}
+                            className={cn(
+                              'overflow-hidden border-b border-[var(--abc-border)] text-[var(--abc-fg-secondary)] transition-colors duration-[var(--abc-motion-fast)]',
+                              DENSITY_CELL_PY[density],
+                              col.align === 'center' && 'text-center',
+                              col.align === 'right' && 'text-right',
+                              draggingKey === col.key && 'bg-[var(--abc-primary-soft)]/30',
+                              fx === 'left' &&
+                                'sticky z-20 bg-[var(--abc-bg-surface)] group-hover:bg-[var(--abc-bg-muted)]',
+                              fx === 'right' &&
+                                'sticky z-20 bg-[var(--abc-bg-surface)] group-hover:bg-[var(--abc-bg-muted)]',
+                              (isSelected || isRowActive) &&
+                                (fx === 'left' || fx === 'right') &&
+                                'bg-[var(--abc-primary-soft)]/60',
+                              col.key === stickyMeta.lastLeftKey &&
+                                scrollEdge.left &&
+                                'shadow-[6px_0_8px_-6px_rgba(15,23,42,0.22)]',
+                              col.key === stickyMeta.firstRightKey &&
+                                scrollEdge.right &&
+                                'shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.22)]'
+                            )}
+                          >
+                            {showInlineTreeChevron ? (
+                              <div
+                                style={{ paddingLeft: `${depth * indentPx}px` }}
+                                className="inline-flex max-w-full items-center gap-1"
+                              >
+                                {hasTreeChildren ? (
+                                  <button
+                                    type="button"
+                                    aria-label={isExpanded ? '收起子项' : '展开子项'}
+                                    aria-expanded={isExpanded}
+                                    onClick={() => toggleExpandRow(key, record)}
+                                    className="inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-[var(--abc-radius-xs)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+                                  >
+                                    <ChevronRight
+                                      className={cn(
+                                        'h-3 w-3 transition-transform duration-150',
+                                        isExpanded && 'rotate-90 text-[var(--abc-primary)]'
+                                      )}
+                                    />
+                                  </button>
+                                ) : (
+                                  <span className="inline-block w-4.5 shrink-0" />
+                                )}
+                                <span className="min-w-0 truncate">{cellContent}</span>
+                              </div>
+                            ) : col.ellipsis === false ? (
+                              cellContent
+                            ) : (
+                              <div
+                                title={
+                                  isActionCol ||
+                                  rawVal === undefined ||
+                                  rawVal === null ||
+                                  typeof rawVal === 'object'
+                                    ? undefined
+                                    : String(rawVal)
+                                }
+                                className={cn(
+                                  'overflow-hidden text-ellipsis whitespace-nowrap',
+                                  isActionCol ? 'w-full min-w-0' : 'w-0 min-w-full'
+                                )}
+                              >
+                                {cellContent}
+                              </div>
+                            )}
+                          </td>
+                        )
+                      })}
                     </tr>
-                  )}
-                </React.Fragment>
-              )
-            })
-          )}
-        </tbody>
-      </table>
+
+                    {canExpandRow && isExpanded && expandable?.expandedRowRender && (
+                      <tr className="bg-[var(--abc-bg-muted)]/45">
+                        <td
+                          colSpan={totalColSpan}
+                          className="border-b border-[var(--abc-border)] px-6 py-3.5 text-xs text-[var(--abc-fg-secondary)]"
+                        >
+                          {expandable.expandedRowRender(record, rowIdx, depth, isExpanded)}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                )
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {/* 表头右键快捷控制菜单 */}
       {contextMenu &&
         portalTarget &&
-        createPortal(
-          <div
-            ref={contextMenuRef}
-            role="menu"
-            aria-label={`${contextMenu.col.title} 列操作菜单`}
-            data-abc-floating=""
-            data-motion={resolvedMotion}
-            style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
-            className={cn(
-              'fixed z-[1350] w-44 rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] p-1 text-xs shadow-[var(--abc-shadow-popover)] select-none',
-              resolvedMotion !== 'none' && 'abc-animate-popover-in'
-            )}
-          >
-            <div className="truncate border-b border-[var(--abc-border)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--abc-fg-muted)]">
-              列：{contextMenu.col.title}
-            </div>
+        (() => {
+          const fx = getEffectiveFixed(contextMenu.col)
+          const movableIdx = movableColumns.findIndex((c) => c.key === contextMenu.col.key)
+          const canMoveLeft = movableIdx > 0 && !fx
+          const canMoveRight = movableIdx >= 0 && movableIdx < movableColumns.length - 1 && !fx
+          const canHideThis = movableColumns.length > 1
+          const currentHighlight = filterHighlightColor || '#3b82f6'
 
-            {isColSortable(contextMenu.col) && onSortChange && (
-              <div className="border-b border-[var(--abc-border)] py-1">
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    onSortChange(contextMenu.col.key, 'asc')
-                    setContextMenu(null)
-                  }}
-                  className="flex w-full items-center justify-between rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <ArrowUp className="h-3.5 w-3.5" /> 升序排列
-                  </span>
-                  {sortState?.key === contextMenu.col.key && sortState.direction === 'asc' && (
-                    <Check className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
-                  )}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    onSortChange(contextMenu.col.key, 'desc')
-                    setContextMenu(null)
-                  }}
-                  className="flex w-full items-center justify-between rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <ArrowDown className="h-3.5 w-3.5" /> 降序排列
-                  </span>
-                  {sortState?.key === contextMenu.col.key && sortState.direction === 'desc' && (
-                    <Check className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
-                  )}
-                </button>
-                {sortState?.key === contextMenu.col.key && sortState.direction && (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      onSortChange(contextMenu.col.key, null)
-                      setContextMenu(null)
-                    }}
-                    className="flex w-full items-center gap-2 rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
-                  >
-                    <ArrowUpDown className="h-3.5 w-3.5" /> 清除排序
-                  </button>
-                )}
-              </div>
-            )}
-
-            {onColumnPin && (
-              <div className="border-b border-[var(--abc-border)] py-1">
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    const fx = getEffectiveFixed(contextMenu.col)
-                    onColumnPin(contextMenu.col.key, fx === 'left' ? null : 'left')
-                    setContextMenu(null)
-                  }}
-                  className="flex w-full items-center justify-between rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <Pin className="h-3.5 w-3.5 -rotate-45" /> 固定到左侧
-                  </span>
-                  {getEffectiveFixed(contextMenu.col) === 'left' && (
-                    <Check className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
-                  )}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    const fx = getEffectiveFixed(contextMenu.col)
-                    onColumnPin(contextMenu.col.key, fx === 'right' ? null : 'right')
-                    setContextMenu(null)
-                  }}
-                  className="flex w-full items-center justify-between rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <Pin className="h-3.5 w-3.5 rotate-45" /> 固定到右侧
-                  </span>
-                  {getEffectiveFixed(contextMenu.col) === 'right' && (
-                    <Check className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
-                  )}
-                </button>
-                {getEffectiveFixed(contextMenu.col) && (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      onColumnPin(contextMenu.col.key, null)
-                      setContextMenu(null)
-                    }}
-                    className="flex w-full items-center gap-2 rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
-                  >
-                    <PinOff className="h-3.5 w-3.5" /> 取消固定
-                  </button>
-                )}
-              </div>
-            )}
-
-            <div className="pt-1">
-              {onColumnHide && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    onColumnHide(contextMenu.col.key)
-                    setContextMenu(null)
-                  }}
-                  className="flex w-full items-center gap-2 rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
-                >
-                  <EyeOff className="h-3.5 w-3.5" /> 隐藏此列
-                </button>
+          return createPortal(
+            <div
+              ref={contextMenuRef}
+              role="menu"
+              aria-label={`${contextMenu.col.title} 列操作菜单`}
+              data-abc-floating=""
+              data-motion={resolvedMotion}
+              style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
+              className={cn(
+                'fixed z-[1350] w-50 rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] p-1 text-xs shadow-[var(--abc-shadow-popover)] select-none',
+                resolvedMotion !== 'none' && 'abc-animate-popover-in'
               )}
+            >
+              <div className="flex items-center justify-between gap-2 border-b border-[var(--abc-border)] px-2.5 py-1.5">
+                <span className="truncate font-semibold text-[var(--abc-fg)]">
+                  {contextMenu.col.title}
+                </span>
+                <span className="shrink-0 rounded bg-[var(--abc-bg-muted)] px-1.5 py-0.5 text-[10px] text-[var(--abc-fg-muted)]">
+                  列属性
+                </span>
+              </div>
+
+              {isColSortable(contextMenu.col) && onSortChange && (
+                <div className="border-b border-[var(--abc-border)] py-1">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onSortChange(contextMenu.col.key, 'asc')
+                      setContextMenu(null)
+                    }}
+                    className="flex w-full items-center justify-between rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <ArrowUp className="h-3.5 w-3.5" /> 升序排列
+                    </span>
+                    {sortState?.key === contextMenu.col.key && sortState.direction === 'asc' && (
+                      <Check className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onSortChange(contextMenu.col.key, 'desc')
+                      setContextMenu(null)
+                    }}
+                    className="flex w-full items-center justify-between rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <ArrowDown className="h-3.5 w-3.5" /> 降序排列
+                    </span>
+                    {sortState?.key === contextMenu.col.key && sortState.direction === 'desc' && (
+                      <Check className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
+                    )}
+                  </button>
+                  {sortState?.key === contextMenu.col.key && sortState.direction && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        onSortChange(contextMenu.col.key, null)
+                        setContextMenu(null)
+                      }}
+                      className="flex w-full items-center gap-2 rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+                    >
+                      <ArrowUpDown className="h-3.5 w-3.5" /> 清除排序
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {onColumnPin && (
+                <div className="border-b border-[var(--abc-border)] py-1">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onColumnPin(contextMenu.col.key, fx === 'left' ? null : 'left')
+                      setContextMenu(null)
+                    }}
+                    className="flex w-full items-center justify-between rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Pin className="h-3.5 w-3.5 -rotate-45" /> 固定到左侧
+                    </span>
+                    {fx === 'left' && <Check className="h-3.5 w-3.5 text-[var(--abc-primary)]" />}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onColumnPin(contextMenu.col.key, fx === 'right' ? null : 'right')
+                      setContextMenu(null)
+                    }}
+                    className="flex w-full items-center justify-between rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Pin className="h-3.5 w-3.5 rotate-45" /> 固定到右侧
+                    </span>
+                    {fx === 'right' && <Check className="h-3.5 w-3.5 text-[var(--abc-primary)]" />}
+                  </button>
+                  {fx && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        onColumnPin(contextMenu.col.key, null)
+                        setContextMenu(null)
+                      }}
+                      className="flex w-full items-center gap-2 rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+                    >
+                      <PinOff className="h-3.5 w-3.5" /> 取消固定
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {onColumnReorder && (
+                <div className="border-b border-[var(--abc-border)] py-1">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={!canMoveLeft}
+                    onClick={() => handleMoveColumnStep(contextMenu.col.key, 'left')}
+                    className={cn(
+                      'flex w-full items-center gap-2 rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left',
+                      canMoveLeft
+                        ? 'text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer'
+                        : 'text-[var(--abc-fg-placeholder)] cursor-not-allowed'
+                    )}
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" /> 向左移动
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={!canMoveRight}
+                    onClick={() => handleMoveColumnStep(contextMenu.col.key, 'right')}
+                    className={cn(
+                      'flex w-full items-center gap-2 rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left',
+                      canMoveRight
+                        ? 'text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer'
+                        : 'text-[var(--abc-fg-placeholder)] cursor-not-allowed'
+                    )}
+                  >
+                    <ArrowRight className="h-3.5 w-3.5" /> 向右移动
+                  </button>
+                </div>
+              )}
+
+              {(onColumnHide || (onToggleColumnVisible && submenuConfigurableCols.length > 0)) && (
+                <div className="border-b border-[var(--abc-border)] py-1">
+                  {onColumnHide && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={!canHideThis}
+                      onClick={() => {
+                        if (!canHideThis) return
+                        onColumnHide(contextMenu.col.key)
+                        setContextMenu(null)
+                      }}
+                      className={cn(
+                        'flex w-full items-center gap-2 rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left',
+                        canHideThis
+                          ? 'text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer'
+                          : 'text-[var(--abc-fg-placeholder)] cursor-not-allowed'
+                      )}
+                    >
+                      <EyeOff className="h-3.5 w-3.5" /> 隐藏当前列
+                    </button>
+                  )}
+
+                  {onToggleColumnVisible && submenuConfigurableCols.length > 0 && (
+                    <div
+                      className="relative"
+                      onMouseEnter={() => setVisibilitySubmenuOpen(true)}
+                      onMouseLeave={() => setVisibilitySubmenuOpen(false)}
+                    >
+                      <button
+                        type="button"
+                        role="menuitem"
+                        aria-haspopup="menu"
+                        aria-expanded={visibilitySubmenuOpen}
+                        onClick={() => setVisibilitySubmenuOpen((v) => !v)}
+                        className="flex w-full items-center justify-between rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <Columns className="h-3.5 w-3.5" /> 显示 / 隐藏列
+                        </span>
+                        <ChevronRight className="h-3.5 w-3.5 text-[var(--abc-fg-muted)]" />
+                      </button>
+
+                      {visibilitySubmenuOpen && (
+                        <div
+                          role="menu"
+                          aria-label="显示与隐藏列清单"
+                          style={{
+                            left:
+                              typeof window !== 'undefined' &&
+                              contextMenu.x + 208 + 196 > window.innerWidth
+                                ? undefined
+                                : '100%',
+                            right:
+                              typeof window !== 'undefined' &&
+                              contextMenu.x + 208 + 196 > window.innerWidth
+                                ? '100%'
+                                : undefined,
+                            top: -4,
+                          }}
+                          className="absolute z-[1360] mx-1 max-h-64 w-46 overflow-y-auto rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] p-1 shadow-[var(--abc-shadow-popover)]"
+                        >
+                          <div className="px-2 py-1 text-[10px] font-medium text-[var(--abc-fg-muted)]">
+                            勾选以显示列
+                          </div>
+                          {submenuConfigurableCols.map((c) => {
+                            const isVisible = !hiddenColumnKeys.includes(c.key)
+                            const isLastVisible = isVisible && movableColumns.length <= 1
+                            return (
+                              <button
+                                key={c.key}
+                                type="button"
+                                role="menuitemcheckbox"
+                                aria-checked={isVisible}
+                                disabled={isLastVisible}
+                                onClick={() => {
+                                  if (!isLastVisible) onToggleColumnVisible(c.key)
+                                }}
+                                className={cn(
+                                  'flex w-full items-center justify-between gap-2 rounded-[var(--abc-radius-sm)] px-2 py-1.5 text-left',
+                                  isLastVisible
+                                    ? 'text-[var(--abc-fg-placeholder)] cursor-not-allowed'
+                                    : 'text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer'
+                                )}
+                              >
+                                <span className="truncate">{c.title}</span>
+                                <span
+                                  className={cn(
+                                    'inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors',
+                                    isVisible
+                                      ? 'border-[var(--abc-primary)] bg-[var(--abc-primary)] text-white'
+                                      : 'border-[var(--abc-border-strong)] bg-transparent'
+                                  )}
+                                >
+                                  {isVisible && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {onFilterHighlightColorChange && (
+                <div className="border-b border-[var(--abc-border)] px-2.5 py-2">
+                  <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-[var(--abc-fg-muted)]">
+                    <Palette className="h-3 w-3" />
+                    <span>筛选高亮颜色</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {FILTER_HIGHLIGHT_SWATCHES.map((item) => {
+                      const active = currentHighlight === item.color
+                      return (
+                        <button
+                          key={item.color}
+                          type="button"
+                          title={item.label}
+                          aria-label={`筛选高亮颜色 ${item.label}`}
+                          onClick={() => onFilterHighlightColorChange(item.color)}
+                          style={{ backgroundColor: item.color }}
+                          className={cn(
+                            'h-4 w-4 rounded-full transition-transform cursor-pointer',
+                            active
+                              ? 'scale-110 ring-2 ring-slate-900 ring-offset-1 dark:ring-white dark:ring-offset-slate-900'
+                              : 'opacity-80 hover:scale-110 hover:opacity-100'
+                          )}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               {onResetColumns && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    onResetColumns()
-                    setContextMenu(null)
-                  }}
-                  className="flex w-full items-center gap-2 rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" /> 重置列配置
-                </button>
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onResetColumns()
+                      setContextMenu(null)
+                    }}
+                    className="flex w-full items-center gap-2 rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" /> 重置列配置
+                  </button>
+                </div>
               )}
-            </div>
-          </div>,
-          portalTarget
-        )}
+            </div>,
+            portalTarget
+          )
+        })()}
     </div>
   )
 }

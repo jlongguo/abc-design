@@ -8,10 +8,14 @@ export interface AbcTablePersistedSettings {
   columnWidths: Record<string, number>
   /** 用户自定义列左右固定覆盖（null 表示显式取消列默认固定，未设置则沿用列定义） */
   columnFixed: Record<string, 'left' | 'right' | null>
-  /** 用户自定义顶部检索字段显隐（false 表示从筛选栏隐藏） */
+  /** 用户自定义顶部检索字段显隐（false 表示从筛选栏隐藏，true 表示强制加入筛选栏） */
   searchVisible: Record<string, boolean>
+  /** 表头筛选激活态高亮色 */
+  filterHighlightColor: string
   density: AbcTableDensity
 }
+
+const DEFAULT_FILTER_HIGHLIGHT_COLOR = '#3b82f6'
 
 const DEFAULT_SETTINGS: AbcTablePersistedSettings = {
   hiddenKeys: [],
@@ -19,11 +23,12 @@ const DEFAULT_SETTINGS: AbcTablePersistedSettings = {
   columnWidths: {},
   columnFixed: {},
   searchVisible: {},
+  filterHighlightColor: DEFAULT_FILTER_HIGHLIGHT_COLOR,
   density: 'default',
 }
 
 /**
- * 数据表格个性化配置（列显隐、列宽、列序、左右固定冻结、筛选项显隐、行密度）本地持久化 Hook
+ * 数据表格个性化配置（列显隐、列宽、列序、左右固定冻结、筛选项显隐、筛选高亮色、行密度）本地持久化 Hook
  */
 export function useTableSettings(
   storageKey?: string,
@@ -31,6 +36,7 @@ export function useTableSettings(
   defaultHiddenKeys: string[] = []
 ) {
   const fullKey = storageKey ? `abc_table_${storageKey}` : ''
+  const legacyKey = storageKey ? `table_settings_${storageKey}` : ''
 
   const [settings, setSettings] = useState<AbcTablePersistedSettings>(() => {
     const fallback: AbcTablePersistedSettings = {
@@ -41,24 +47,62 @@ export function useTableSettings(
     if (!fullKey || typeof window === 'undefined') return fallback
     try {
       const raw = window.localStorage.getItem(fullKey)
-      if (!raw) return fallback
-      const parsed = JSON.parse(raw) as Partial<AbcTablePersistedSettings>
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<AbcTablePersistedSettings>
+        return {
+          hiddenKeys: Array.isArray(parsed.hiddenKeys) ? parsed.hiddenKeys : defaultHiddenKeys,
+          columnOrder: Array.isArray(parsed.columnOrder) ? parsed.columnOrder : [],
+          columnWidths:
+            parsed.columnWidths && typeof parsed.columnWidths === 'object'
+              ? parsed.columnWidths
+              : {},
+          columnFixed:
+            parsed.columnFixed && typeof parsed.columnFixed === 'object'
+              ? parsed.columnFixed
+              : {},
+          searchVisible:
+            parsed.searchVisible && typeof parsed.searchVisible === 'object'
+              ? parsed.searchVisible
+              : {},
+          filterHighlightColor:
+            typeof parsed.filterHighlightColor === 'string' && parsed.filterHighlightColor
+              ? parsed.filterHighlightColor
+              : DEFAULT_FILTER_HIGHLIGHT_COLOR,
+          density: parsed.density ?? initialDensity,
+        }
+      }
+
+      // 兼容平滑读取旧版 table_settings_${storageKey} 本地缓存结构
+      const legacyRaw = legacyKey ? window.localStorage.getItem(legacyKey) : null
+      if (!legacyRaw) return fallback
+      const legacy = JSON.parse(legacyRaw) as Record<string, any>
+      const hiddenSet = new Set<string>(defaultHiddenKeys)
+      if (legacy.columnVisible && typeof legacy.columnVisible === 'object') {
+        Object.entries(legacy.columnVisible).forEach(([k, v]) => {
+          if (v === false) hiddenSet.add(k)
+          else if (v === true) hiddenSet.delete(k)
+        })
+      }
       return {
-        hiddenKeys: Array.isArray(parsed.hiddenKeys) ? parsed.hiddenKeys : defaultHiddenKeys,
-        columnOrder: Array.isArray(parsed.columnOrder) ? parsed.columnOrder : [],
+        hiddenKeys: Array.from(hiddenSet),
+        columnOrder: Array.isArray(legacy.columnOrder) ? legacy.columnOrder : [],
         columnWidths:
-          parsed.columnWidths && typeof parsed.columnWidths === 'object'
-            ? parsed.columnWidths
+          legacy.columnWidths && typeof legacy.columnWidths === 'object'
+            ? legacy.columnWidths
             : {},
         columnFixed:
-          parsed.columnFixed && typeof parsed.columnFixed === 'object'
-            ? parsed.columnFixed
+          legacy.columnFixed && typeof legacy.columnFixed === 'object'
+            ? legacy.columnFixed
             : {},
         searchVisible:
-          parsed.searchVisible && typeof parsed.searchVisible === 'object'
-            ? parsed.searchVisible
+          legacy.searchVisible && typeof legacy.searchVisible === 'object'
+            ? legacy.searchVisible
             : {},
-        density: parsed.density ?? initialDensity,
+        filterHighlightColor:
+          typeof legacy.filterHighlightColor === 'string' && legacy.filterHighlightColor
+            ? legacy.filterHighlightColor
+            : DEFAULT_FILTER_HIGHLIGHT_COLOR,
+        density: legacy.density ?? initialDensity,
       }
     } catch {
       return fallback
@@ -130,9 +174,20 @@ export function useTableSettings(
     setSettings((prev) => ({ ...prev, density }))
   }, [])
 
+  const setFilterHighlightColor = useCallback((color: string) => {
+    setSettings((prev) => ({ ...prev, filterHighlightColor: color }))
+  }, [])
+
   const resetSettings = useCallback(() => {
+    if (legacyKey && typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem(legacyKey)
+      } catch {
+        // 忽略存储访问异常
+      }
+    }
     setSettings({ ...DEFAULT_SETTINGS, hiddenKeys: defaultHiddenKeys, density: initialDensity })
-  }, [initialDensity, defaultHiddenKeys])
+  }, [initialDensity, defaultHiddenKeys, legacyKey])
 
   return {
     settings,
@@ -143,6 +198,7 @@ export function useTableSettings(
     setColumnOrder,
     setSearchFieldVisible,
     setDensity,
+    setFilterHighlightColor,
     resetSettings,
   }
 }

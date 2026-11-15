@@ -29,11 +29,15 @@ import {
   Textarea,
   ThemeSwitcher,
   Tree,
+  TreeSelect,
+  TreeSelectField,
   useAbcConfig,
   useColorScheme,
+  type AbcCheckedStrategy,
   type AbcMotionPreset,
   type AbcSize,
   type AbcTreeNode,
+  type AbcTreeSelectNode,
   type ButtonSize,
   type ButtonVariant,
 } from '@abc-design/react'
@@ -59,6 +63,18 @@ const ORG_TREE: AbcTreeNode[] = [
     ],
   },
 ]
+
+const FLAT_SIMPLE_ORG = [
+  { deptId: 'hq', parentId: null, deptName: '集团总部', deptCode: 'HQ' },
+  { deptId: 'cloud', parentId: 'hq', deptName: '云原生基础架构部', deptCode: 'CLOUD' },
+  { deptId: 'edge', parentId: 'cloud', deptName: '边缘沙箱网关组', deptCode: 'EDGE' },
+  { deptId: 'sec', parentId: 'hq', deptName: '安全与合规委员会', deptCode: 'SEC' },
+]
+
+const LARGE_VIRTUAL_TREE: AbcTreeNode[] = Array.from({ length: 3000 }, (_, i) => ({
+  key: `vnode-${i + 1}`,
+  title: `高规模节点 #${String(i + 1).padStart(4, '0')} (${i % 3 === 0 ? '华东集群' : i % 3 === 1 ? '华北集群' : '新加坡节点'})`,
+}))
 
 export const GeneralAndFormDocsPage: React.FC = () => {
   // Button Knobs
@@ -103,6 +119,38 @@ export const GeneralAndFormDocsPage: React.FC = () => {
     'sys:user',
     'sys:role',
   ])
+
+  // TreeSelect 演练状态
+  const [treeSelectSingle, setTreeSelectSingle] = useState<string | number>('sys:user')
+  const [leafOnlyMode, setLeafOnlyMode] = useState(true)
+  const [checkedStrategy, setCheckedStrategy] = useState<AbcCheckedStrategy>(TreeSelect.SHOW_PARENT)
+  const [strictCheckMode, setStrictCheckMode] = useState(false)
+  const [treeSelectMulti, setTreeSelectMulti] = useState<Array<string | number>>(['sys'])
+  const [simpleOrgVal, setSimpleOrgVal] = useState<string | number>('EDGE')
+  const [lazyTreeData, setLazyTreeData] = useState<AbcTreeNode[]>([
+    { key: 'cn', title: '中国大区（点击展开异步加载节点）', isLeaf: false },
+    { key: 'sg', title: '新加坡可用区（点击展开异步加载节点）', isLeaf: false },
+    { key: 'global', title: '全局兜底节点（静态叶子）', isLeaf: true },
+  ])
+  const [lazyRegionVal, setLazyRegionVal] = useState<string | number>('')
+  const [virtualVal, setVirtualVal] = useState<string | number>('vnode-1')
+
+  const handleLoadLazyRegion = async (node: AbcTreeSelectNode) => {
+    await new Promise((r) => setTimeout(r, 320))
+    setLazyTreeData((prev) =>
+      prev.map((item) =>
+        item.key === node.key
+          ? {
+              ...item,
+              children: [
+                { key: `${node.key}-zone-a`, title: `${node.key.toString().toUpperCase()} 可用区 A`, isLeaf: true },
+                { key: `${node.key}-zone-b`, title: `${node.key.toString().toUpperCase()} 可用区 B`, isLeaf: true },
+              ],
+            }
+          : item
+      )
+    )
+  }
 
   // Advanced Controls
   const [dateVal, setDateVal] = useState('2026-11-14')
@@ -683,6 +731,151 @@ export function IconDemo() {
               <pre className="mt-2 font-mono text-[11px] text-[var(--abc-primary)]">
                 {JSON.stringify(checkedMenuKeys, null, 2)}
               </pre>
+            </div>
+          </div>
+        </ComponentDocPreview>
+
+        {/* 5.5 TreeSelect */}
+        <ComponentDocPreview
+          title="TreeSelect 树形下拉与级联选择器"
+          pkg="@abc-design/react"
+          description="零外部依赖的企业级树形下拉选择器：原生融合单选限叶子、父子复选级联/独立 (SHOW_PARENT / SHOW_CHILD / SHOW_ALL)、maxTagCount 胶囊折叠、扁平 id/pId 构树、自定义 fieldNames、拼音检索、异步 loadData 及 3,000 节点窗口虚拟滚动。"
+          code={`import { TreeSelect } from '@abc-design/react'
+
+<TreeSelect
+  treeData={ORG_TREE}
+  treeCheckable
+  searchable
+  showCheckedStrategy={TreeSelect.SHOW_PARENT}
+  maxTagCount={2}
+  value={value}
+  onChange={(val) => setValue(val)}
+/>`}
+          apiRows={[
+            { prop: 'treeData / fieldNames', type: 'Record<string, any>[] / AbcTreeFieldNames', required: true, description: '支持标准树节点或通过 fieldNames({ label, value, children }) 适配后端字段' },
+            { prop: 'treeDataSimpleMode', type: 'boolean | { id, pId, rootPId }', defaultValue: 'false', description: '扁平数组自动依据 id / pId 构建完整层级树' },
+            { prop: 'treeCheckable / showCheckedStrategy', type: 'boolean / SHOW_PARENT | SHOW_CHILD | SHOW_ALL', defaultValue: 'SHOW_PARENT', description: '启用复选框级联计算并按策略收敛回填值与胶囊数量' },
+            { prop: 'treeCheckStrictly / selectableLeafOnly', type: 'boolean', defaultValue: 'false', description: '父子勾选独立解耦 / 单选限制仅允许选中叶子节点' },
+            { prop: 'loadData / virtual', type: '(node) => Promise<void> / boolean', defaultValue: 'virtual: true', description: '支持异步懒加载子节点及可见行 >40 时自动启用固定行高虚拟窗口' },
+          ]}
+        >
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="space-y-3 rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-[var(--abc-fg)]">
+                    1. 单选限叶子与拼音快速定位
+                  </span>
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-[var(--abc-fg-secondary)]">
+                    <Checkbox
+                      size="xs"
+                      checked={leafOnlyMode}
+                      onChange={setLeafOnlyMode}
+                    />
+                    <span>仅选叶子节点 (selectableLeafOnly)</span>
+                  </label>
+                </div>
+                <TreeSelectField
+                  label="归属业务模块"
+                  treeData={ORG_TREE}
+                  value={treeSelectSingle}
+                  onValueChange={setTreeSelectSingle}
+                  selectableLeafOnly={leafOnlyMode}
+                  searchable
+                  allowClear
+                  treeDefaultExpandAll
+                  helperText={`当前选中节点值：${String(treeSelectSingle || '未选择')}`}
+                />
+              </div>
+
+              <div className="space-y-3 rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-[var(--abc-fg)]">
+                    2. 多选级联授权策略 (SHOW_PARENT / CHILD / ALL)
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <SegmentedControl
+                      size="xs"
+                      value={checkedStrategy}
+                      onValueChange={(v) => setCheckedStrategy(v as AbcCheckedStrategy)}
+                      options={[
+                        { value: TreeSelect.SHOW_PARENT, label: 'SHOW_PARENT' },
+                        { value: TreeSelect.SHOW_CHILD, label: 'SHOW_CHILD' },
+                        { value: TreeSelect.SHOW_ALL, label: 'SHOW_ALL' },
+                      ]}
+                    />
+                    <label className="inline-flex cursor-pointer items-center gap-1 text-[11px] text-[var(--abc-fg-secondary)]">
+                      <Checkbox
+                        size="xs"
+                        checked={strictCheckMode}
+                        onChange={setStrictCheckMode}
+                      />
+                      <span>独立勾选</span>
+                    </label>
+                  </div>
+                </div>
+                <TreeSelect
+                  label="角色权限范围（超出 2 项折叠为 +N）"
+                  treeData={ORG_TREE}
+                  treeCheckable
+                  treeCheckStrictly={strictCheckMode}
+                  showCheckedStrategy={checkedStrategy}
+                  maxTagCount={2}
+                  searchable
+                  allowClear
+                  treeDefaultExpandAll
+                  value={treeSelectMulti}
+                  onChange={(val) => setTreeSelectMulti(val)}
+                  helperText={`回传策略数组：${JSON.stringify(treeSelectMulti)}`}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="space-y-3 rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] p-4">
+                <div className="text-xs font-semibold text-[var(--abc-fg)]">
+                  3. 扁平 id/pId 自动构树 + 自定义 fieldNames
+                </div>
+                <TreeSelect
+                  label="组织架构（扁平数据直接绑定）"
+                  treeData={FLAT_SIMPLE_ORG}
+                  treeDataSimpleMode={{ id: 'deptId', pId: 'parentId', rootPId: null }}
+                  fieldNames={{ label: 'deptName', value: 'deptCode' }}
+                  searchable
+                  allowClear
+                  treeDefaultExpandAll
+                  value={simpleOrgVal}
+                  onChange={(val) => setSimpleOrgVal(val)}
+                  helperText={`自定义 fieldNames 回传 deptCode：${String(simpleOrgVal || '空')}`}
+                />
+              </div>
+
+              <div className="space-y-3 rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] p-4">
+                <div className="text-xs font-semibold text-[var(--abc-fg)]">
+                  4. 异步懒加载 loadData + 3,000 节点虚拟滚动压测
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <TreeSelect
+                    label="异步懒加载可用区"
+                    treeData={lazyTreeData}
+                    loadData={handleLoadLazyRegion}
+                    value={lazyRegionVal}
+                    onChange={(val) => setLazyRegionVal(val)}
+                    placeholder="点击大区左侧箭头加载子节点"
+                    allowClear
+                  />
+                  <TreeSelect
+                    label="3,000 节点虚拟滚动（仅渲染窗口行）"
+                    treeData={LARGE_VIRTUAL_TREE}
+                    value={virtualVal}
+                    onChange={(val) => setVirtualVal(val)}
+                    searchable
+                    virtual
+                    listHeight={240}
+                    itemHeight={30}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </ComponentDocPreview>

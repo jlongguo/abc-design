@@ -1,4 +1,5 @@
 import { AbcBrandColor } from '@abc-design/tokens';
+import { AbcCheckedStrategy } from '@abc-design/core';
 import { AbcDensity } from '@abc-design/tokens';
 import { AbcFontScale } from '@abc-design/tokens';
 import { AbcMotionPreset } from '@abc-design/tokens';
@@ -8,7 +9,10 @@ import { AbcResolvedTheme } from '@abc-design/tokens';
 import { AbcSize } from '@abc-design/tokens';
 import { AbcThemeConfig } from '@abc-design/tokens';
 import { AbcThemeMode } from '@abc-design/tokens';
+import { AbcTreeFieldNames } from '@abc-design/core';
 import { AbcTreeNode } from '@abc-design/core';
+import { AbcTreeSelectNode } from '@abc-design/core';
+import { AbcTreeSimpleModeConfig } from '@abc-design/core';
 import { AbcVisualMode } from '@abc-design/tokens';
 import { ClassValue } from 'clsx';
 import { default as default_2 } from 'react';
@@ -354,8 +358,10 @@ export declare interface AbcTablePersistedSettings {
     columnWidths: Record<string, number>;
     /** 用户自定义列左右固定覆盖（null 表示显式取消列默认固定，未设置则沿用列定义） */
     columnFixed: Record<string, 'left' | 'right' | null>;
-    /** 用户自定义顶部检索字段显隐（false 表示从筛选栏隐藏） */
+    /** 用户自定义顶部检索字段显隐（false 表示从筛选栏隐藏，true 表示强制加入筛选栏） */
     searchVisible: Record<string, boolean>;
+    /** 表头筛选激活态高亮色 */
+    filterHighlightColor: string;
     density: AbcTableDensity;
 }
 
@@ -1596,8 +1602,18 @@ export declare const HeaderColumnFilterPopover: default_2.FC<HeaderColumnFilterP
 
 export declare interface HeaderColumnFilterPopoverProps {
     title: string;
-    filterType?: 'text' | 'select';
+    filterType?: 'text' | 'input' | 'number' | 'select' | 'treeSelect' | 'date' | 'datetimePicker' | 'dateRange';
     filterOptions?: SelectOption[];
+    treeData?: Record<string, any>[];
+    multiple?: boolean;
+    searchable?: boolean;
+    placeholder?: string;
+    format?: string;
+    /** 当前列是否因存在激活筛选而处于实底高亮态（自动切换触发图标为反白高对比色） */
+    highlighted?: boolean;
+    /** 触发器图标形态：'search' 用于表头筛选模式，'filter' 用于常规列过滤 */
+    iconType?: 'filter' | 'search';
+    confirmText?: string;
     value: any;
     onApply: (nextValue: any) => void;
 }
@@ -2298,11 +2314,20 @@ export declare interface ProConfigFieldSchema {
     helperText?: string;
     required?: boolean;
     options?: SelectOption[];
+    treeData?: Record<string, any>[];
+    multiple?: boolean;
+    treeCheckable?: boolean;
+    treeCheckStrictly?: boolean;
+    showCheckedStrategy?: AbcCheckedStrategy;
+    selectableLeafOnly?: boolean;
+    fieldNames?: AbcTreeFieldNames;
+    treeDataSimpleMode?: boolean | AbcTreeSimpleModeConfig;
+    maxTagCount?: number | 'responsive';
     /** image 类型：支持同时直接粘贴 URL/内联 SVG 源码并实时在左侧缩略框预览 */
     allowDirectUrlInput?: boolean;
 }
 
-export declare type ProConfigFieldType = 'text' | 'password' | 'number' | 'textarea' | 'switch' | 'select' | 'image';
+export declare type ProConfigFieldType = 'text' | 'password' | 'number' | 'textarea' | 'switch' | 'select' | 'treeSelect' | 'image';
 
 /**
  * Schema 驱动的企业级分组参数配置页组件 (ProConfigForm)
@@ -2426,7 +2451,7 @@ export declare interface ProCrudApiConfig<T = any, Q = any, F = any> {
     [key: string]: any;
 }
 
-export declare type ProCrudFieldType = 'text' | 'input' | 'password' | 'number' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'switch' | 'date' | 'datetime' | 'datetimePicker' | 'dateRange' | 'image' | 'color' | 'icon' | 'tags' | 'custom';
+export declare type ProCrudFieldType = 'text' | 'input' | 'password' | 'number' | 'textarea' | 'select' | 'treeSelect' | 'radio' | 'checkbox' | 'switch' | 'date' | 'datetime' | 'datetimePicker' | 'dateRange' | 'image' | 'color' | 'icon' | 'tags' | 'custom';
 
 export declare interface ProCrudFormField<T extends Record<string, any> = any> {
     /** 字段键名（与 name 互为别名） */
@@ -2464,6 +2489,17 @@ export declare interface ProCrudFormField<T extends Record<string, any> = any> {
     /** 标识该字段是否源自 ProTableFieldSchema（用于精确分派单参 disabled(editingRecord) 签名） */
     __fromFieldSchema?: boolean;
     options?: ProCrudSelectOption[] | ((form: ProFormInstance<any>, isEdit: boolean) => ProCrudSelectOption[]);
+    /** treeSelect 专属：静态或动态树形数据源 */
+    treeData?: Record<string, any>[] | ((form: ProFormInstance<any>, isEdit: boolean) => Record<string, any>[]);
+    treeCheckable?: boolean;
+    treeCheckStrictly?: boolean;
+    showCheckedStrategy?: AbcCheckedStrategy;
+    selectableLeafOnly?: boolean;
+    fieldNames?: AbcTreeFieldNames;
+    treeDataSimpleMode?: boolean | AbcTreeSimpleModeConfig;
+    maxTagCount?: number | 'responsive';
+    treeDefaultExpandAll?: boolean;
+    loadData?: (node: AbcTreeSelectNode) => Promise<void>;
     disabled?: boolean | ((isEditOrRecord: any, form?: ProFormInstance<any>) => boolean);
     hidden?: boolean | ((isEdit: boolean, form: ProFormInstance<any>) => boolean);
     validator?: (value: any, allValues: Record<string, any>) => string | undefined;
@@ -2881,6 +2917,9 @@ export declare interface ProMultiImageUploadProps {
 export declare const ProRowActionsOverflow: default_2.FC<{
     actions: ResolvedRowActionItem[];
     maxInline?: number;
+    /** 在真实浏览器列宽受限时动态测量子按钮实际宽度自适应收纳（jsdom 宽度为 0 时回退至 maxInline） */
+    autoFit?: boolean;
+    align?: 'left' | 'right';
 }>;
 
 export declare interface ProSchemaLike<T = any> {
@@ -2907,11 +2946,20 @@ export declare interface ProSchemaLike<T = any> {
 export declare interface ProSearchFieldConfig {
     key: string;
     label: string;
-    type?: 'text' | 'input' | 'number' | 'select' | 'date' | 'datetimePicker' | 'dateRange';
+    type?: 'text' | 'input' | 'number' | 'select' | 'treeSelect' | 'date' | 'datetimePicker' | 'dateRange';
     /** 关联表格列 key（用于表头筛选状态联动与高亮） */
     columnKey?: string;
     placeholder?: string;
     options?: SelectOption[];
+    treeData?: Record<string, any>[];
+    treeCheckable?: boolean;
+    treeCheckStrictly?: boolean;
+    showCheckedStrategy?: AbcCheckedStrategy;
+    selectableLeafOnly?: boolean;
+    fieldNames?: AbcTreeFieldNames;
+    treeDataSimpleMode?: boolean | AbcTreeSimpleModeConfig;
+    maxTagCount?: number | 'responsive';
+    treeDefaultExpandAll?: boolean;
     searchable?: boolean;
     multiple?: boolean;
     span?: number;
@@ -2926,7 +2974,7 @@ export declare interface ProSearchFieldConfig {
  * Schema 驱动的企业级全功能 CRUD 数据表格 (ProTable / ProCrudTable)
  * 完整统一声明式 API 引擎、响应式联动表单、列驱动搜索/详情、树表懒加载与拖拽排序
  */
-export declare function ProTable<T extends Record<string, any> = any, Q extends Record<string, any> = Record<string, any>, F extends Record<string, any> = Record<string, any>>({ storageKey: propStorageKey, tableId, title, subTitle, columns, fields, searchFields: propSearchFields, formFields: propFormFields, formSchema, defaultFormValues, dialogTitle, dialogSize, formLayout, draftConfig, dataSource, loading: propLoading, request, api: apiProp, defaultQuery, onListLoaded, rowKey, defaultPageSize, pageSizeOptions, hidePagination, pagination, renderPagination, selectedRowKey, onRowClick, onRow, searchVariant, onSearchChange, onSearchSubmit, onSearchReset, headerFilterMode: controlledHeaderFilterMode, onHeaderFilterModeChange, clientFilter: initialClientFilter, showClientFilterSwitch, defaultSearchCollapsed, autoRefresh, autoRefreshConfig, refetchInterval, exportable, showExport, onExport, showImport, onImport, syncToUrl, viewable, showView, viewTitle, viewSize, renderViewExtra, renderViewFooter, onNavigate, formContainer, formColumns, showAdd, addButtonText, showEdit, showDelete, showBatchDelete, rowActions, actionButtons, actionColumnWidth, maxInlineActions, rowSelection, showRowSelection, selectedRowKeys: controlledSelectedRowKeys, onRowSelectionChange, batchActions, renderBatchActions, treeData, expandable, sortable, columnSettingsEnabled, maxHeight, permissions, permission, hasPermission: customHasPermission, toolbarButtons, toolbarExtra, renderToolbarExtra, headerExtra, renderExtra, cardExtra, renderCardExtra, renderSearchExtra, renderFormExtra, renderCustomForm, onRefreshRef, onAddWithValuesRef, openEditRef, onAdd, onEdit, onDelete, onBeforeAdd, onBeforeEdit, onBeforeSubmit, onBeforeDelete, onBeforeBatchDelete, onAfterSave, onAfterDelete, onAfterBatchDelete, motion, onSaveRecord, onDeleteRecords, }: ProTableProps<T, Q, F>): default_2.JSX.Element;
+export declare function ProTable<T extends Record<string, any> = any, Q extends Record<string, any> = Record<string, any>, F extends Record<string, any> = Record<string, any>>({ storageKey: propStorageKey, tableId, title, subTitle, columns, fields, searchFields: propSearchFields, formFields: propFormFields, formSchema, defaultFormValues, dialogTitle, dialogSize, formLayout, draftConfig, dataSource, loading: propLoading, request, api: apiProp, defaultQuery, onListLoaded, rowKey, defaultPageSize, pageSizeOptions, hidePagination, pagination, renderPagination, selectedRowKey, onRowClick, onRow, searchVariant, onSearchChange, onSearchSubmit, onSearchReset, headerFilterMode: controlledHeaderFilterMode, onHeaderFilterModeChange, showHeaderFilterToggle: propShowHeaderFilterToggle, clientFilter: initialClientFilter, showClientFilterSwitch, defaultSearchCollapsed, autoRefresh, autoRefreshConfig, refetchInterval, exportable, showExport, onExport, showImport, onImport, syncToUrl, viewable, showView, viewTitle, viewSize, renderViewExtra, renderViewFooter, onNavigate, formContainer, formColumns, showAdd, addButtonText, showEdit, showDelete, showBatchDelete, rowActions, actionButtons, actionColumnWidth, maxInlineActions, rowSelection, showRowSelection, selectedRowKeys: controlledSelectedRowKeys, onRowSelectionChange, batchActions, renderBatchActions, treeData, expandable, sortable, columnSettingsEnabled, maxHeight, autoFitHeight, permissions, permission, hasPermission: customHasPermission, toolbarButtons, toolbarExtra, renderToolbarExtra, headerExtra, renderExtra, cardExtra, renderCardExtra, renderSearchExtra, renderFormExtra, renderCustomForm, onRefreshRef, onAddWithValuesRef, openEditRef, onAdd, onEdit, onDelete, onBeforeAdd, onBeforeEdit, onBeforeSubmit, onBeforeDelete, onBeforeBatchDelete, onAfterSave, onAfterDelete, onAfterBatchDelete, motion, onSaveRecord, onDeleteRecords, }: ProTableProps<T, Q, F>): default_2.JSX.Element;
 
 export declare type ProTableApiInput<T = any> = ((params: any) => Promise<any>) | ProTableApiOptions<T>;
 
@@ -2975,8 +3023,17 @@ export declare interface ProTableBatchAction<T = Record<string, any>> {
 export declare interface ProTableFieldSchema {
     name: string;
     label: string;
-    type?: 'text' | 'number' | 'select' | 'textarea' | 'switch' | 'date' | 'dateRange' | 'tags' | 'icon' | 'password' | 'image' | 'color';
+    type?: 'text' | 'number' | 'select' | 'treeSelect' | 'textarea' | 'switch' | 'date' | 'dateRange' | 'tags' | 'icon' | 'password' | 'image' | 'color';
     options?: SelectOption[];
+    treeData?: Record<string, any>[];
+    treeCheckable?: boolean;
+    treeCheckStrictly?: boolean;
+    showCheckedStrategy?: AbcCheckedStrategy;
+    selectableLeafOnly?: boolean;
+    fieldNames?: AbcTreeFieldNames;
+    treeDataSimpleMode?: boolean | AbcTreeSimpleModeConfig;
+    maxTagCount?: number | 'responsive';
+    treeDefaultExpandAll?: boolean;
     /** 下拉选择器是否启用多选模式 */
     multiple?: boolean;
     placeholder?: string;
@@ -3068,6 +3125,8 @@ export declare interface ProTableProps<T extends Record<string, any> = any, Q ex
     /** 受控表头内联筛选模式（不传则组件内部自管理） */
     headerFilterMode?: boolean;
     onHeaderFilterModeChange?: (enabled: boolean) => void;
+    /** 是否在工具栏右侧显示表头筛选模式切换按钮（外部受控 headerFilterMode 时默认隐藏以避免重复） */
+    showHeaderFilterToggle?: boolean;
     /** 是否启用当前数据本地前端筛选模式 */
     clientFilter?: boolean;
     /** 是否在工具栏展示“前端筛选 / 接口筛选”实时切换开关 */
@@ -3153,6 +3212,8 @@ export declare interface ProTableProps<T extends Record<string, any> = any, Q ex
     columnSettingsEnabled?: boolean;
     /** 表格纵向最大高度（开启后表头吸顶内滚） */
     maxHeight?: number | string;
+    /** 是否根据当前视口剩余高度自动锁定表格内部纵向滚动区（使表头吸顶、底部分页常驻视口内） */
+    autoFitHeight?: boolean;
     /** 细粒度 CRUD 权限码绑定（ProTable 风格） */
     permissions?: {
         create?: string;
@@ -3397,6 +3458,8 @@ export declare interface ReasonedActionDrawerProps {
 
 /** 全局注册自定义业务图标映射，供菜单路由配置按字符串名称动态解析 */
 export declare function registerAbcIcons(icons: Record<string, AbcIconComponent>): void;
+
+export declare function renderBuiltInValue<T extends Record<string, any>>(rawVal: any, record: T, col: AbcColumn<T>, onRowView?: (record: T, linkTarget?: string) => void): default_2.ReactNode;
 
 export declare type ResolvedColorScheme = 'light' | 'dark';
 
@@ -3787,7 +3850,7 @@ export declare const TableCell: React_2.ForwardRefExoticComponent<React_2.TdHTML
  * 支持多列累加粘性左/右固定列、表头右键快捷菜单、拖拽调节列宽、拖拽交换列序、
  * 排序、表头气泡/内联双模筛选、可展开子面板与树形数据、语义化 valueType 渲染及键盘可访问滚动区
  */
-export declare function TableCore<T extends Record<string, any> = Record<string, any>>({ columns, data, dataSource, rowKey, loading, density, selectedKeys, onSelectionChange, rowSelection, sortState, onSortChange, headerFilterMode, headerFilters, onHeaderFilterChange, headerFilterRender, activeFilterKeys, activeFilterLabels, filterHighlightColor, columnWidths, onColumnResize, resizable, motion, columnFixed, onColumnPin, onColumnHide, onResetColumns, onColumnReorder, expandable, treeData, rowDraggable, draggable, onRowDragEnd, onDragEnd, onRowView, activeRowKey, onRowClick, onRow, onEmptyReset, maxHeight, ariaLabel, emptyText, className, }: TableCoreProps<T>): default_2.JSX.Element;
+export declare function TableCore<T extends Record<string, any> = Record<string, any>>({ columns, data, dataSource, rowKey, loading, density, selectedKeys, onSelectionChange, rowSelection, sortState, onSortChange, headerFilterMode, headerFilters, onHeaderFilterChange, headerFilterRender, activeFilterKeys, activeFilterLabels, filterHighlightColor, onFilterHighlightColorChange, allColumns, hiddenColumnKeys, onToggleColumnVisible, columnWidths, onColumnResize, resizable, motion, columnFixed, onColumnPin, onColumnHide, onResetColumns, onColumnReorder, expandable, treeData, rowDraggable, draggable, onRowDragEnd, onDragEnd, onRowView, activeRowKey, onRowClick, onRow, onEmptyReset, maxHeight, ariaLabel, emptyText, className, }: TableCoreProps<T>): default_2.JSX.Element;
 
 export declare interface TableCoreProps<T = Record<string, any>> {
     columns: AbcColumn<T>[];
@@ -3820,6 +3883,14 @@ export declare interface TableCoreProps<T = Record<string, any>> {
     activeFilterLabels?: Record<string, string>;
     /** 表头筛选激活态高亮色 */
     filterHighlightColor?: string;
+    /** 右键菜单切换筛选高亮色回调 */
+    onFilterHighlightColorChange?: (color: string) => void;
+    /** 全量可配置列定义（用于右键菜单级联勾选显示/隐藏列） */
+    allColumns?: AbcColumn<T>[];
+    /** 当前已隐藏的列 key 集合 */
+    hiddenColumnKeys?: string[];
+    /** 右键级联子菜单切换任意列显隐回调 */
+    onToggleColumnVisible?: (key: string) => void;
     /** 个性化列宽覆盖 */
     columnWidths?: Record<string, number>;
     onColumnResize?: (key: string, width: number) => void;
@@ -4209,6 +4280,111 @@ export declare interface TreeProps {
     className?: string;
 }
 
+/** 挂载策略静态常量，方便业务按 TreeSelect.SHOW_PARENT 等标准枚举调用 */
+export declare const TreeSelect: default_2.ForwardRefExoticComponent<TreeSelectProps & default_2.RefAttributes<HTMLDivElement>> & {
+    SHOW_ALL: "SHOW_ALL";
+    SHOW_PARENT: "SHOW_PARENT";
+    SHOW_CHILD: "SHOW_CHILD";
+};
+
+export declare interface TreeSelectChangeExtra {
+    triggerNode?: AbcTreeSelectNode;
+    checked?: boolean;
+    halfCheckedKeys?: Array<string | number>;
+}
+
+/**
+ * 声明式快捷表单字段封装 (TreeSelectField)
+ * 对齐 SelectField 参数风格，支持触发器与弹层类名分离透传
+ */
+export declare function TreeSelectField({ triggerClassName, contentClassName, ...props }: TreeSelectFieldProps): default_2.JSX.Element;
+
+export declare interface TreeSelectFieldProps extends Omit<TreeSelectProps, 'className' | 'dropdownClassName'> {
+    triggerClassName?: string;
+    contentClassName?: string;
+}
+
+export declare interface TreeSelectProps extends Omit<default_2.HTMLAttributes<HTMLDivElement>, 'onChange' | 'defaultValue' | 'children'> {
+    /** 树形数据源（支持嵌套结构或配合 treeDataSimpleMode 使用扁平数组） */
+    treeData?: ReadonlyArray<Record<string, any>>;
+    /** 自定义节点字段名映射 */
+    fieldNames?: AbcTreeFieldNames;
+    /** 开启扁平 id/pId 自动构树模式 */
+    treeDataSimpleMode?: boolean | AbcTreeSimpleModeConfig;
+    /** 异步懒加载子节点回调 */
+    loadData?: (node: AbcTreeSelectNode) => Promise<void>;
+    /** 受控已加载节点 key（配合 loadData） */
+    treeLoadedKeys?: Array<string | number>;
+    /** 受控选中值：单选为标量，多选/复选为数组 */
+    value?: TreeSelectValue;
+    /** 非受控默认值 */
+    defaultValue?: TreeSelectValue;
+    /** 值变更回调 */
+    onChange?: (value: any, labelList: default_2.ReactNode[], extra: TreeSelectChangeExtra) => void;
+    /** 简化的值变更回调（单选返回标量，多选返回数组） */
+    onValueChange?: (value: any) => void;
+    /** 是否多选（无复选框时的多选模式） */
+    multiple?: boolean;
+    /** 是否显示节点复选框（自动开启多选） */
+    treeCheckable?: boolean;
+    /** 开启后父子节点勾选状态完全独立，不做级联推算 */
+    treeCheckStrictly?: boolean;
+    /** 复选模式下回填与展示标签的收敛策略 */
+    showCheckedStrategy?: AbcCheckedStrategy;
+    /** 仅允许选中末级叶子节点（点击父节点仅切换展开） */
+    selectableLeafOnly?: boolean;
+    /** 多选标签展示上限，超出自动折叠为 +N 胶囊 */
+    maxTagCount?: number | 'responsive';
+    /** 是否默认展开所有父节点 */
+    treeDefaultExpandAll?: boolean;
+    /** 默认展开的节点 key 列表 */
+    treeDefaultExpandedKeys?: Array<string | number>;
+    /** 受控展开节点 key 列表 */
+    treeExpandedKeys?: Array<string | number>;
+    /** 展开状态变化回调 */
+    onTreeExpand?: (expandedKeys: Array<string | number>) => void;
+    /** 是否在下拉头部展示展开/收起快捷栏 */
+    showToolbar?: boolean;
+    /** 是否开启内置搜索过滤（支持拼音首字母） */
+    searchable?: boolean;
+    /** searchable 语义别名 */
+    showSearch?: boolean;
+    /** 受控搜索关键词 */
+    searchValue?: string;
+    /** 搜索输入变更回调 */
+    onSearch?: (keyword: string) => void;
+    /** 搜索框占位文本 */
+    searchPlaceholder?: string;
+    /** 搜索匹配字段（标题 / 值 / 双匹配） */
+    treeNodeFilterProp?: 'title' | 'value' | 'both';
+    /** 是否启用大数据量固定行高虚拟滚动（可见行超过 40 行时自动生效） */
+    virtual?: boolean;
+    /** 下拉树滚动区域最大高度（像素，默认 280） */
+    listHeight?: number;
+    /** 单行节点高度（像素，虚拟滚动时用于窗口位置计算，默认 30） */
+    itemHeight?: number;
+    label?: default_2.ReactNode;
+    error?: default_2.ReactNode;
+    invalid?: boolean;
+    helperText?: default_2.ReactNode;
+    required?: boolean;
+    placeholder?: string;
+    allowClear?: boolean;
+    clearable?: boolean;
+    disabled?: boolean;
+    name?: string;
+    size?: ControlSize | 'ghost';
+    motion?: AbcMotionPreset;
+    wrapperClassName?: string;
+    dropdownClassName?: string;
+    matchWidth?: boolean;
+    portalContainer?: HTMLElement | null;
+    container?: HTMLElement | null;
+    emptyText?: string;
+}
+
+export declare type TreeSelectValue = string | number | Array<string | number> | null | undefined;
+
 /** 读取 ABC Design 上下文（若未包裹 AbcProvider，提供安全兜底实例以保证单组件独立渲染与单测可用） */
 export declare function useAbcConfig(): AbcContextValue;
 
@@ -4366,7 +4542,7 @@ export declare interface UseProTableOptions<T = any> extends ProTableApiOptions<
 export declare const useTableApi: typeof useProTableApi;
 
 /**
- * 数据表格个性化配置（列显隐、列宽、列序、左右固定冻结、筛选项显隐、行密度）本地持久化 Hook
+ * 数据表格个性化配置（列显隐、列宽、列序、左右固定冻结、筛选项显隐、筛选高亮色、行密度）本地持久化 Hook
  */
 export declare function useTableSettings(storageKey?: string, initialDensity?: AbcTableDensity, defaultHiddenKeys?: string[]): {
     settings: AbcTablePersistedSettings;
@@ -4377,6 +4553,7 @@ export declare function useTableSettings(storageKey?: string, initialDensity?: A
     setColumnOrder: (order: string[]) => void;
     setSearchFieldVisible: (key: string, visible: boolean) => void;
     setDensity: (density: AbcTableDensity) => void;
+    setFilterHighlightColor: (color: string) => void;
     resetSettings: () => void;
 };
 

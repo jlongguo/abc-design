@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useRef, useState } from 'react'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import Button from '../components/button/Button'
 import { ImagePreview } from '../components/display/ImagePreview'
-import { StatusTag, type StatusTone } from '../components/display/StatusTag'
 import Dialog, { type DialogSize } from '../components/feedback/Dialog'
 import Drawer, { type DrawerSize } from '../components/feedback/Drawer'
 import { TagInput } from '../components/form/AdvancedControls'
@@ -12,9 +11,16 @@ import { FormField } from '../components/form/FormField'
 import { ImageUpload } from '../components/form/ImageUpload'
 import { Input, InputNumber, Textarea } from '../components/form/Input'
 import { Select, type SelectOption } from '../components/form/Select'
+import { TreeSelect } from '../components/form/TreeSelect'
+import type {
+  AbcCheckedStrategy,
+  AbcTreeFieldNames,
+  AbcTreeSelectNode,
+  AbcTreeSimpleModeConfig,
+} from '@abc-design/core'
 import Icon from '../components/icon/Icon'
 import { IconPicker } from '../components/icon/IconPicker'
-import { getNestedValue, type AbcColumn } from '../components/table/TableCore'
+import { getNestedValue, renderBuiltInValue, type AbcColumn } from '../components/table/TableCore'
 import { useAbcConfig } from '../provider/AbcProvider'
 import { cn } from '../utils/cn'
 
@@ -117,6 +123,7 @@ export type ProCrudFieldType =
   | 'number'
   | 'textarea'
   | 'select'
+  | 'treeSelect'
   | 'radio'
   | 'checkbox'
   | 'switch'
@@ -174,6 +181,19 @@ export interface ProCrudFormField<T extends Record<string, any> = any> {
   options?:
     | ProCrudSelectOption[]
     | ((form: ProFormInstance<any>, isEdit: boolean) => ProCrudSelectOption[])
+  /** treeSelect 专属：静态或动态树形数据源 */
+  treeData?:
+    | Record<string, any>[]
+    | ((form: ProFormInstance<any>, isEdit: boolean) => Record<string, any>[])
+  treeCheckable?: boolean
+  treeCheckStrictly?: boolean
+  showCheckedStrategy?: AbcCheckedStrategy
+  selectableLeafOnly?: boolean
+  fieldNames?: AbcTreeFieldNames
+  treeDataSimpleMode?: boolean | AbcTreeSimpleModeConfig
+  maxTagCount?: number | 'responsive'
+  treeDefaultExpandAll?: boolean
+  loadData?: (node: AbcTreeSelectNode) => Promise<void>
   disabled?:
     | boolean
     | ((isEditOrRecord: any, form?: ProFormInstance<any>) => boolean)
@@ -785,6 +805,34 @@ export function ProCrudFormFieldControl<T extends Record<string, any> = Record<s
       )
     }
 
+    case 'treeSelect': {
+      const resolvedTreeData =
+        typeof field.treeData === 'function' ? field.treeData(form, isEdit) : field.treeData ?? []
+      const isMultiTree = Boolean(field.multiple || field.treeCheckable)
+      return (
+        <TreeSelect
+          aria-label={field.label}
+          value={currentVal ?? (isMultiTree ? [] : '')}
+          disabled={isDisabled}
+          searchable={field.searchable ?? true}
+          multiple={field.multiple}
+          treeCheckable={field.treeCheckable}
+          treeCheckStrictly={field.treeCheckStrictly}
+          showCheckedStrategy={field.showCheckedStrategy}
+          selectableLeafOnly={field.selectableLeafOnly}
+          fieldNames={field.fieldNames}
+          treeDataSimpleMode={field.treeDataSimpleMode}
+          maxTagCount={field.maxTagCount}
+          treeDefaultExpandAll={field.treeDefaultExpandAll}
+          loadData={field.loadData}
+          treeData={resolvedTreeData}
+          placeholder={field.placeholder || `请选择${field.label}`}
+          allowClear={field.clearable !== false}
+          onChange={(nextVal) => emitChange(nextVal)}
+        />
+      )
+    }
+
     case 'switch':
       return (
         <span className="inline-flex items-center gap-2 py-1">
@@ -1299,21 +1347,6 @@ export function ProCrudFormModal<T extends Record<string, any> = Record<string, 
 
 /* ==================== 7. ProCrudViewModal 只读详情查看弹窗 ==================== */
 
-const VIEW_COLOR_TO_TONE: Record<string, StatusTone> = {
-  green: 'success',
-  emerald: 'success',
-  red: 'danger',
-  rose: 'danger',
-  yellow: 'warning',
-  amber: 'warning',
-  orange: 'warning',
-  blue: 'info',
-  cyan: 'info',
-  purple: 'info',
-  gray: 'neutral',
-  slate: 'neutral',
-}
-
 export interface ProCrudViewModalProps<T extends Record<string, any> = Record<string, any>> {
   open: boolean
   onClose: () => void
@@ -1396,31 +1429,29 @@ export function ProCrudViewModal<T extends Record<string, any> = Record<string, 
               }
               const val = getNestedValue(record, (col.dataIndex ?? col.key) as string | string[])
               const typeCfg = typeof col.type === 'object' ? col.type : undefined
-              const opts = typeCfg?.options ?? col.options
-              const matchedOpt =
-                opts && val !== undefined && val !== null && val !== ''
-                  ? opts.find((o) => String(o.value) === String(val))
+              const searchOpts =
+                typeof col.search === 'object' &&
+                col.search !== null &&
+                Array.isArray((col.search as any).options)
+                  ? (col.search as any).options.filter((o: any) => o.value !== '')
                   : undefined
+              const enrichedCol =
+                !col.options && !typeCfg?.options && searchOpts
+                  ? ({ ...col, options: searchOpts, __autoOptionsFromSearch: true } as AbcColumn<T>)
+                  : col
 
               let renderedValue: React.ReactNode
               if (col.viewRender) {
                 renderedValue = col.viewRender(val, record)
               } else if (col.render) {
                 renderedValue = col.render(val, record, 0)
-              } else if (matchedOpt) {
-                const tone = matchedOpt.color ? VIEW_COLOR_TO_TONE[matchedOpt.color] : undefined
-                renderedValue = (
-                  <StatusTag status={matchedOpt.status ?? tone} dot>
-                    {matchedOpt.label}
-                  </StatusTag>
-                )
               } else if (
                 (col.type === 'image' || typeCfg?.type === 'image' || col.valueType === 'image') &&
                 val
               ) {
                 renderedValue = <ImagePreview src={String(val)} width={56} height={56} />
               } else {
-                renderedValue = val === undefined || val === null || val === '' ? '-' : String(val)
+                renderedValue = renderBuiltInValue(val, record, enrichedCol)
               }
 
               return (

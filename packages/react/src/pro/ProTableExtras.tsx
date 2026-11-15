@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AbcMotionPreset } from '@abc-design/tokens'
 import {
+  Check,
   ChevronDown,
   ChevronUp,
   Filter,
@@ -17,8 +18,9 @@ import Button, { type ButtonVariant } from '../components/button/Button'
 import { Dropdown, Popover, Tooltip } from '../components/display/Overlays'
 import { Checkbox } from '../components/form/Controls'
 import { DatePicker, DateRangePicker } from '../components/form/DatePicker'
-import { Input } from '../components/form/Input'
+import { Input, InputNumber } from '../components/form/Input'
 import { Select, type SelectOption } from '../components/form/Select'
+import { TreeSelect } from '../components/form/TreeSelect'
 import { getNestedValue, type AbcColumn } from '../components/table/TableCore'
 import { useAbcMotion } from '../hooks'
 import type { AbcTablePersistedSettings } from '../hooks/useTableSettings'
@@ -93,31 +95,231 @@ export function downloadTableCsv<T extends Record<string, any>>(
 
 export interface HeaderColumnFilterPopoverProps {
   title: string
-  filterType?: 'text' | 'select'
+  filterType?:
+    | 'text'
+    | 'input'
+    | 'number'
+    | 'select'
+    | 'treeSelect'
+    | 'date'
+    | 'datetimePicker'
+    | 'dateRange'
   filterOptions?: SelectOption[]
+  treeData?: Record<string, any>[]
+  multiple?: boolean
+  searchable?: boolean
+  placeholder?: string
+  format?: string
+  /** 当前列是否因存在激活筛选而处于实底高亮态（自动切换触发图标为反白高对比色） */
+  highlighted?: boolean
+  /** 触发器图标形态：'search' 用于表头筛选模式，'filter' 用于常规列过滤 */
+  iconType?: 'filter' | 'search'
+  confirmText?: string
   value: any
   onApply: (nextValue: any) => void
+}
+
+function isHeaderFilterValueActive(val: any): boolean {
+  if (val === undefined || val === null || val === '') return false
+  if (Array.isArray(val)) return val.length > 0
+  if (typeof val === 'object' && ('start' in val || 'end' in val)) {
+    return Boolean(val.start || val.end)
+  }
+  return String(val).trim() !== ''
 }
 
 export const HeaderColumnFilterPopover: React.FC<HeaderColumnFilterPopoverProps> = ({
   title,
   filterType = 'text',
   filterOptions,
+  treeData,
+  multiple = false,
+  searchable = false,
+  placeholder,
+  format,
+  highlighted = false,
+  iconType = 'filter',
+  confirmText,
   value,
   onApply,
 }) => {
   const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState<any>(value ?? '')
+  const emptyFallback = multiple ? [] : filterType === 'dateRange' ? {} : ''
+  const [draft, setDraft] = useState<any>(value ?? emptyFallback)
+  const [optionKeyword, setOptionKeyword] = useState('')
 
   useEffect(() => {
-    if (open) setDraft(value ?? '')
-  }, [open, value])
+    if (open) {
+      setDraft(value ?? (multiple ? [] : filterType === 'dateRange' ? {} : ''))
+      setOptionKeyword('')
+    }
+  }, [open, value, multiple, filterType])
 
-  const isActive = value !== undefined && value !== null && String(value).trim() !== ''
+  const isActive = isHeaderFilterValueActive(value)
 
   const applyAndClose = (nextVal: any) => {
     onApply(nextVal)
     setOpen(false)
+  }
+
+  const filteredChecklistOptions = useMemo(() => {
+    const list = (filterOptions ?? []).filter((opt) => opt.value !== '')
+    const q = optionKeyword.trim().toLowerCase()
+    if (!q) return list
+    return list.filter(
+      (opt) =>
+        String(opt.label ?? '')
+          .toLowerCase()
+          .includes(q) ||
+        String(opt.value ?? '')
+          .toLowerCase()
+          .includes(q)
+    )
+  }, [filterOptions, optionKeyword])
+
+  const renderControl = () => {
+    if (filterType === 'select' && filterOptions) {
+      if (multiple) {
+        const selectedArr: string[] = Array.isArray(draft) ? draft.map(String) : []
+        const showSearch = searchable || filteredChecklistOptions.length > 6 || Boolean(optionKeyword)
+        return (
+          <div className="space-y-1.5">
+            {showSearch && (
+              <Input
+                size="xs"
+                allowClear
+                placeholder="搜索选项..."
+                value={optionKeyword}
+                onChange={(e) => setOptionKeyword(e.target.value)}
+              />
+            )}
+            <div className="max-h-48 space-y-0.5 overflow-y-auto rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-muted)]/40 p-1">
+              {filteredChecklistOptions.length === 0 ? (
+                <div className="py-3 text-center text-[11px] text-[var(--abc-fg-muted)]">
+                  无匹配选项
+                </div>
+              ) : (
+                filteredChecklistOptions.map((opt) => {
+                  const valStr = String(opt.value)
+                  const checked = selectedArr.includes(valStr)
+                  return (
+                    <button
+                      key={valStr}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        const next = checked
+                          ? selectedArr.filter((v) => v !== valStr)
+                          : [...selectedArr, valStr]
+                        setDraft(next)
+                      }}
+                      className={cn(
+                        'flex w-full items-center justify-between gap-2 rounded-[var(--abc-radius-xs)] px-2 py-1.5 text-left text-xs transition-colors cursor-pointer',
+                        checked
+                          ? 'bg-[var(--abc-primary-soft)] font-medium text-[var(--abc-primary)]'
+                          : 'text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)]'
+                      )}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      <span
+                        className={cn(
+                          'inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] border',
+                          checked
+                            ? 'border-[var(--abc-primary)] bg-[var(--abc-primary)] text-white'
+                            : 'border-[var(--abc-border-strong)] bg-transparent'
+                        )}
+                      >
+                        {checked && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                      </span>
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        )
+      }
+
+      return (
+        <Select
+          size="xs"
+          allowClear
+          searchable={searchable}
+          placeholder={placeholder || `选择${title}`}
+          options={filterOptions}
+          value={draft ?? ''}
+          onChange={(val: any) => {
+            const nextVal = val && typeof val === 'object' && 'target' in val ? val.target.value : val
+            setDraft(nextVal)
+          }}
+        />
+      )
+    }
+
+    if (filterType === 'treeSelect') {
+      return (
+        <TreeSelect
+          size="xs"
+          allowClear
+          searchable={searchable}
+          multiple={multiple}
+          treeData={treeData ?? []}
+          placeholder={placeholder || `选择${title}`}
+          value={draft ?? (multiple ? [] : '')}
+          onChange={(val) => setDraft(val)}
+        />
+      )
+    }
+
+    if (filterType === 'date' || filterType === 'datetimePicker') {
+      return (
+        <DatePicker
+          size="xs"
+          value={draft ?? ''}
+          format={format}
+          placeholder={placeholder || `选择${title}`}
+          onChange={(val) => setDraft(val)}
+        />
+      )
+    }
+
+    if (filterType === 'dateRange') {
+      return (
+        <DateRangePicker
+          size="xs"
+          value={draft && typeof draft === 'object' ? draft : null}
+          format={format}
+          onChange={(range) => setDraft(range)}
+        />
+      )
+    }
+
+    if (filterType === 'number') {
+      return (
+        <InputNumber
+          size="xs"
+          value={draft === '' ? null : draft}
+          placeholder={placeholder || `输入${title}`}
+          onChange={(val) => setDraft(val ?? '')}
+        />
+      )
+    }
+
+    return (
+      <Input
+        size="xs"
+        allowClear
+        placeholder={placeholder || `输入${title}关键字`}
+        value={draft ?? ''}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            applyAndClose(draft)
+          }
+        }}
+      />
+    )
   }
 
   return (
@@ -125,50 +327,29 @@ export const HeaderColumnFilterPopover: React.FC<HeaderColumnFilterPopoverProps>
       open={open}
       onOpenChange={setOpen}
       placement="bottomRight"
-      panelClassName="w-60 p-3"
+      panelClassName="w-64 p-3"
       content={
         <div
+          data-header-filter=""
           onClick={(e) => e.stopPropagation()}
           className="space-y-2.5 text-xs font-normal text-[var(--abc-fg)]"
         >
           <div className="font-semibold text-[var(--abc-fg-secondary)]">筛选：{title}</div>
-          {filterType === 'select' && filterOptions ? (
-            <Select
-              size="xs"
-              allowClear
-              placeholder={`选择${title}`}
-              options={filterOptions}
-              value={draft ?? ''}
-              onChange={(val) => setDraft(val)}
-            />
-          ) : (
-            <Input
-              size="xs"
-              allowClear
-              placeholder={`输入${title}关键字`}
-              value={draft ?? ''}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  applyAndClose(draft)
-                }
-              }}
-            />
-          )}
+          {renderControl()}
           <div className="flex items-center justify-end gap-1.5 pt-0.5">
             <Button
               variant="secondary"
               size="xs"
               onClick={() => {
-                setDraft('')
-                applyAndClose('')
+                const cleared = multiple ? [] : filterType === 'dateRange' ? {} : ''
+                setDraft(cleared)
+                applyAndClose(cleared)
               }}
             >
               重置
             </Button>
             <Button variant="primary" size="xs" onClick={() => applyAndClose(draft)}>
-              筛选
+              {confirmText ?? (iconType === 'search' ? '查询' : '筛选')}
             </Button>
           </div>
         </div>
@@ -176,16 +357,23 @@ export const HeaderColumnFilterPopover: React.FC<HeaderColumnFilterPopoverProps>
     >
       <button
         type="button"
+        data-header-filter=""
         aria-label={`筛选 ${title}`}
-        title={`按${title}筛选`}
+        title={`筛选 ${title}`}
         className={cn(
-          'inline-flex h-5 w-5 items-center justify-center rounded-[var(--abc-radius-xs)] transition-colors cursor-pointer',
-          isActive
-            ? 'bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]'
-            : 'text-[var(--abc-fg-placeholder)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
+          'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--abc-radius-xs)] transition-colors cursor-pointer',
+          highlighted
+            ? 'text-white/95 hover:bg-white/20 hover:text-white'
+            : isActive
+              ? 'bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]'
+              : 'text-[var(--abc-fg-placeholder)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
         )}
       >
-        <Filter className="h-3 w-3" />
+        {iconType === 'search' ? (
+          <Search className="h-3.5 w-3.5" />
+        ) : (
+          <Filter className="h-3 w-3" />
+        )}
       </button>
     </Popover>
   )
@@ -408,9 +596,17 @@ export function ProColumnSettingsPopover<T = Record<string, any>>({
               filteredCols.map((col) => {
                 const isVisible = !settings.hiddenKeys.includes(col.key)
                 const fx = getEffectiveFixed(col)
-                const fieldName = String(col.dataIndex ?? col.key)
-                const hasSearchField = searchableFieldNames.has(fieldName)
-                const isSearchShown = settings.searchVisible[fieldName] !== false
+                const fieldName = Array.isArray(col.dataIndex)
+                  ? col.dataIndex.join('.')
+                  : String(col.dataIndex ?? col.key)
+                const defaultSearchable =
+                  searchableFieldNames.has(fieldName) || searchableFieldNames.has(col.key)
+                const isSearchShown =
+                  settings.searchVisible[fieldName] !== undefined
+                    ? Boolean(settings.searchVisible[fieldName])
+                    : settings.searchVisible[col.key] !== undefined
+                      ? Boolean(settings.searchVisible[col.key])
+                      : defaultSearchable
                 const currentWidth =
                   settings.columnWidths[col.key] ??
                   (typeof col.width === 'number' ? col.width : '')
@@ -518,22 +714,20 @@ export function ProColumnSettingsPopover<T = Record<string, any>>({
                         className="h-6 w-13 rounded-[var(--abc-radius-xs)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-1 text-center font-mono text-[11px] text-[var(--abc-fg)] focus:border-[var(--abc-primary)] focus:outline-none"
                       />
 
-                      {hasSearchField && (
-                        <button
-                          type="button"
-                          title={isSearchShown ? '在筛选栏显示（点击隐藏）' : '已在筛选栏隐藏（点击显示）'}
-                          aria-label={`切换 ${col.title} 筛选项显示`}
-                          onClick={() => onSetSearchVisible(fieldName, !isSearchShown)}
-                          className={cn(
-                            'inline-flex h-6 w-6 items-center justify-center rounded-[var(--abc-radius-xs)] transition-colors cursor-pointer',
-                            isSearchShown
-                              ? 'bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]'
-                              : 'text-[var(--abc-fg-placeholder)] hover:bg-[var(--abc-bg-subtle)]'
-                          )}
-                        >
-                          <Filter className="h-3 w-3" />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        title={isSearchShown ? '从筛选条件中移除' : '加入筛选条件'}
+                        aria-label={`切换 ${col.title} 筛选项显示`}
+                        onClick={() => onSetSearchVisible(fieldName, !isSearchShown)}
+                        className={cn(
+                          'inline-flex h-6 w-6 items-center justify-center rounded-[var(--abc-radius-xs)] transition-colors cursor-pointer',
+                          isSearchShown
+                            ? 'bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]'
+                            : 'text-[var(--abc-fg-placeholder)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
+                        )}
+                      >
+                        <Search className="h-3 w-3" />
+                      </button>
 
                       <button
                         type="button"
@@ -646,7 +840,67 @@ export interface ResolvedRowActionItem {
 export const ProRowActionsOverflow: React.FC<{
   actions: ResolvedRowActionItem[]
   maxInline?: number
-}> = ({ actions, maxInline = 3 }) => {
+  /** 在真实浏览器列宽受限时动态测量子按钮实际宽度自适应收纳（jsdom 宽度为 0 时回退至 maxInline） */
+  autoFit?: boolean
+  align?: 'left' | 'right'
+}> = ({ actions, maxInline = 3, autoFit = true, align = 'right' }) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const measureRef = useRef<HTMLDivElement>(null)
+  const [measuredVisibleCount, setMeasuredVisibleCount] = useState<number | null>(null)
+
+  const actionKeysSig = actions.map((a) => a.key).join('|')
+
+  useLayoutEffect(() => {
+    if (!autoFit || actions.length <= 1) {
+      setMeasuredVisibleCount(null)
+      return
+    }
+    const containerEl = containerRef.current
+    const measureEl = measureRef.current
+    if (!containerEl || !measureEl) return
+
+    const recalculate = () => {
+      const availableWidth = containerEl.clientWidth
+      // 无布局引擎的测试环境（clientWidth === 0）回退到固定 maxInline 逻辑
+      if (availableWidth <= 0) {
+        setMeasuredVisibleCount(null)
+        return
+      }
+      const children = Array.from(measureEl.children) as HTMLElement[]
+      if (children.length === 0) return
+
+      const gap = 4
+      const moreBtnWidth = 30
+      const widths = children.map((el) => el.offsetWidth)
+      const totalWidth =
+        widths.reduce((acc, w) => acc + w, 0) + Math.max(0, widths.length - 1) * gap
+
+      if (totalWidth <= availableWidth) {
+        setMeasuredVisibleCount(Math.min(actions.length, maxInline))
+        return
+      }
+
+      let used = 0
+      let fitCount = 0
+      for (let i = 0; i < widths.length; i++) {
+        const nextUsed = (i > 0 ? used + gap : 0) + widths[i]
+        if (nextUsed + gap + moreBtnWidth <= availableWidth) {
+          used = nextUsed
+          fitCount = i + 1
+        } else {
+          break
+        }
+      }
+      setMeasuredVisibleCount(Math.min(fitCount, Math.max(1, maxInline - 1)))
+    }
+
+    recalculate()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => recalculate())
+    observer.observe(containerEl)
+    return () => observer.disconnect()
+  }, [autoFit, actionKeysSig, actions.length, maxInline])
+
   if (actions.length === 0) return <span className="text-[var(--abc-fg-placeholder)]">-</span>
 
   const renderInlineBtn = (act: ResolvedRowActionItem) => (
@@ -667,40 +921,53 @@ export const ProRowActionsOverflow: React.FC<{
     </Button>
   )
 
-  if (actions.length <= maxInline) {
-    return (
-      <div className="inline-flex items-center justify-end gap-1">
-        {actions.map(renderInlineBtn)}
-      </div>
-    )
-  }
-
-  const inlineList = actions.slice(0, Math.max(1, maxInline - 1))
-  const overflowList = actions.slice(Math.max(1, maxInline - 1))
+  const defaultInlineCount =
+    actions.length <= maxInline ? actions.length : Math.max(1, maxInline - 1)
+  const effectiveVisibleCount = measuredVisibleCount ?? defaultInlineCount
+  const inlineList = actions.slice(0, effectiveVisibleCount)
+  const overflowList = actions.slice(effectiveVisibleCount)
 
   return (
-    <div className="inline-flex items-center justify-end gap-1">
+    <div
+      ref={containerRef}
+      className={cn(
+        'relative flex w-full min-w-0 items-center gap-1 whitespace-nowrap',
+        align === 'right' ? 'justify-end' : 'justify-start'
+      )}
+    >
+      {autoFit && actions.length > 1 && (
+        <div
+          ref={measureRef}
+          aria-hidden="true"
+          className="pointer-events-none invisible fixed -top-[9999px] -left-[9999px] flex items-center gap-1 whitespace-nowrap"
+        >
+          {actions.map(renderInlineBtn)}
+        </div>
+      )}
+
       {inlineList.map(renderInlineBtn)}
 
-      <Dropdown
-        placement="bottomRight"
-        items={overflowList.map((act) => ({
-          key: act.key,
-          label: act.label ?? act.title ?? act.key,
-          icon: act.icon,
-          danger: act.danger,
-          disabled: act.disabled,
-          onClick: act.onClick,
-        }))}
-      >
-        <button
-          type="button"
-          aria-label="更多操作"
-          className="inline-flex h-6 w-6 items-center justify-center rounded-[var(--abc-radius-xs)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+      {overflowList.length > 0 && (
+        <Dropdown
+          placement="bottomRight"
+          items={overflowList.map((act) => ({
+            key: act.key,
+            label: act.label ?? act.title ?? act.key,
+            icon: act.icon,
+            danger: act.danger,
+            disabled: act.disabled,
+            onClick: act.onClick,
+          }))}
         >
-          <MoreHorizontal className="h-3.5 w-3.5" />
-        </button>
-      </Dropdown>
+          <button
+            type="button"
+            aria-label="更多操作"
+            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--abc-radius-xs)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+          >
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </button>
+        </Dropdown>
+      )}
     </div>
   )
 }
@@ -752,6 +1019,8 @@ export function ProFloatingBatchBar<T = Record<string, any>>({
         已选择 <strong className="font-mono font-bold tabular-nums">{selectedKeys.length}</strong> 项
       </span>
 
+      <span className="h-4 w-px bg-[var(--abc-border)]" />
+
       <div className="flex flex-wrap items-center gap-1.5">
         {extraContent}
         {batchActions.map((act) => (
@@ -760,6 +1029,7 @@ export function ProFloatingBatchBar<T = Record<string, any>>({
             variant={act.variant ?? act.type ?? 'secondary'}
             size="xs"
             icon={act.icon}
+            className="rounded-full"
             onClick={() => act.onClick(selectedKeys, selectedRows)}
           >
             {act.label}
@@ -771,11 +1041,14 @@ export function ProFloatingBatchBar<T = Record<string, any>>({
             variant="danger"
             size="xs"
             icon={<Trash2 className="h-3 w-3" />}
+            className="rounded-full"
             onClick={onBatchDelete}
           >
-            批量删除
+            批量删除 ({selectedKeys.length})
           </Button>
         )}
+
+        <span className="mx-0.5 h-4 w-px bg-[var(--abc-border)]" />
 
         <button
           type="button"

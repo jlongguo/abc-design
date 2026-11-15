@@ -276,7 +276,7 @@ describe('Pro CRUD 全家桶抽象与双生态兼容契约', () => {
     fireEvent.change(searchInput, { target: { value: 'Alice' } })
     fireEvent.click(screen.getAllByRole('button', { name: /搜索/ })[0])
     await waitFor(() => {
-      expect(screen.getByText('Alice')).toBeInTheDocument()
+      expect(screen.getAllByText('Alice').length).toBeGreaterThanOrEqual(1)
       expect(screen.queryByText('Bob')).not.toBeInTheDocument()
     })
 
@@ -424,5 +424,137 @@ describe('Pro CRUD 全家桶抽象与双生态兼容契约', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '清空日期范围' }))
     expect(onQueryChange).toHaveBeenCalledWith('timeRange', { start: '', end: '' })
+  })
+
+  it('6. CrudTable 1:1 复刻契约：checkedValue="0" Switch、search.options 自动标签、加载遮罩保留行、跨度折叠、表头筛选高亮与右键菜单', async () => {
+    const columns: AbcColumn<any>[] = [
+      {
+        key: 'name',
+        title: '任务名称',
+        search: { type: 'input', placeholder: '搜索任务' },
+      },
+      {
+        key: 'level',
+        title: '告警级别',
+        search: {
+          type: 'select',
+          options: [
+            { label: '核心高优', value: 'P0' },
+            { label: '常规巡检', value: 'P2' },
+          ],
+        },
+      },
+      {
+        key: 'status',
+        title: '运行状态',
+        type: {
+          type: 'switch',
+          checkedValue: '0',
+          checkedChildren: '正常',
+          unCheckedChildren: '停用',
+        },
+      },
+    ]
+
+    const rows = [
+      { id: 1, name: '网关探活', level: 'P0', status: '0' },
+      { id: 2, name: '日志归档', level: 'P2', status: '1' },
+    ]
+
+    const { container, rerender } = render(
+      <AbcProvider persist={false}>
+        <ProTable
+          tableId="parity_check_spec"
+          rowKey="id"
+          columns={columns}
+          dataSource={rows}
+          searchFields={[
+            { key: 'timeRange', label: '统计区间', type: 'dateRange' },
+            { key: 'name', columnKey: 'name', label: '任务名称', type: 'input' },
+            {
+              key: 'level',
+              columnKey: 'level',
+              label: '告警级别',
+              type: 'select',
+              options: [
+                { label: '核心高优', value: 'P0' },
+                { label: '常规巡检', value: 'P2' },
+              ],
+            },
+          ]}
+        />
+      </AbcProvider>
+    )
+
+    // 1) checkedValue="0" 时 status="0" 为开启，status="1" 为关闭（修复非零即真误判）
+    const switches = screen.getAllByRole('switch')
+    expect(switches[0]).toHaveAttribute('aria-checked', 'true')
+    expect(switches[1]).toHaveAttribute('aria-checked', 'false')
+
+    // 2) 未声明 col.type 但存在 search.options 时自动匹配渲染中文标签文案
+    expect(screen.getByText('核心高优')).toBeInTheDocument()
+    expect(screen.getByText('常规巡检')).toBeInTheDocument()
+
+    // 3) Span 感知折叠：dateRange (span=2) + name (span=1) 占满首行 3 格，第 3 项折叠为 展开 (1)
+    expect(screen.getByRole('button', { name: /展开 \(1\)/ })).toBeInTheDocument()
+
+    // 4) 有数据时二次 loading 叠加半透明遮罩而非销毁已有行
+    rerender(
+      <AbcProvider persist={false}>
+        <ProTable
+          tableId="parity_check_spec"
+          rowKey="id"
+          columns={columns}
+          dataSource={rows}
+          loading={true}
+          headerFilterMode={true}
+        />
+      </AbcProvider>
+    )
+    expect(screen.getByText('网关探活')).toBeInTheDocument()
+    expect(screen.queryByText('筛选条件')).toBeNull()
+
+    // 5) 表头筛选模式：点击任务名称列表头筛选触发器过滤数据并高亮 th 背景
+    rerender(
+      <AbcProvider persist={false}>
+        <ProTable
+          tableId="parity_check_spec"
+          rowKey="id"
+          columns={columns}
+          dataSource={rows}
+          headerFilterMode={true}
+        />
+      </AbcProvider>
+    )
+
+    const filterTriggers = container.querySelectorAll('th [data-header-filter] button')
+    expect(filterTriggers.length).toBeGreaterThanOrEqual(2)
+    fireEvent.click(filterTriggers[0])
+
+    const popoverInput = screen.getByPlaceholderText('搜索任务')
+    fireEvent.change(popoverInput, { target: { value: '网关' } })
+    fireEvent.click(screen.getByRole('button', { name: '查询' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('网关探活')).toBeInTheDocument()
+      expect(screen.queryByText('日志归档')).toBeNull()
+    })
+
+    const nameHeader = container.querySelector('th[data-col-key="name"]') as HTMLElement
+    expect(nameHeader.style.backgroundColor).toBe('rgb(59, 130, 246)')
+    expect(nameHeader).toHaveTextContent('网关')
+
+    // 6) 右键表头上下文菜单：支持切换筛选高亮色、列显隐子菜单与左右移动
+    fireEvent.contextMenu(nameHeader)
+    expect(screen.getByRole('menuitem', { name: /向右移动/ })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText('筛选高亮颜色 翡翠绿'))
+    await waitFor(() => {
+      expect(nameHeader.style.backgroundColor).toBe('rgb(16, 185, 129)')
+    })
+
+    const submenuTrigger = screen.getByRole('menuitem', { name: /显示 \/ 隐藏列/ })
+    fireEvent.click(submenuTrigger)
+    expect(screen.getByRole('menu', { name: '显示与隐藏列清单' })).toBeInTheDocument()
   })
 })
