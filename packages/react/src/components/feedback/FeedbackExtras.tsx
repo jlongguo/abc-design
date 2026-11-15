@@ -6,13 +6,11 @@ import {
   CheckCircle2,
   FileSearch,
   Info,
-  RefreshCw,
   ServerCrash,
   ShieldAlert,
   X,
 } from 'lucide-react'
 import { useAbcMotion, useAbcSize } from '../../hooks'
-import Button from '../button/Button'
 import { cn } from '../../utils/cn'
 
 /* ==================== 1. Alert 页内通告横幅 ==================== */
@@ -351,76 +349,11 @@ export const Result: React.FC<ResultProps> = ({
   )
 }
 
-/* ==================== 4. ErrorBoundary 页签与全局异常隔离容器 ==================== */
+/* ==================== 4. ErrorBoundary 页签与全局异常隔离容器（统一从 ErrorBoundary 模块透传） ==================== */
 
-export interface ErrorBoundaryProps {
-  children: React.ReactNode
-  /** 路由或页签标识变更时自动重置错误状态 */
-  resetKey?: string | number
-  /** 自定义标题（兼容 TabErrorBoundary tabTitle 用法） */
-  title?: string
-  tabTitle?: string
-  /** 自定义降级渲染节点 */
-  fallback?: React.ReactNode | ((error: Error, reset: () => void) => React.ReactNode)
-  onReset?: () => void
-}
-
-interface ErrorBoundaryState {
-  error: Error | null
-}
-
-/**
- * 页面与多页签级异常隔离边界 (ErrorBoundary / TabErrorBoundary)
- * 防止单个子模块渲染崩溃导致整个管理后台白屏，支持重试自愈与切换路由自动复位
- */
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { error: null }
-
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { error }
-  }
-
-  componentDidUpdate(prevProps: ErrorBoundaryProps): void {
-    if (this.state.error && prevProps.resetKey !== this.props.resetKey) {
-      this.setState({ error: null })
-    }
-  }
-
-  handleReset = (): void => {
-    this.setState({ error: null })
-    this.props.onReset?.()
-  }
-
-  render(): React.ReactNode {
-    const { error } = this.state
-    if (!error) return this.props.children
-
-    if (typeof this.props.fallback === 'function') {
-      return this.props.fallback(error, this.handleReset)
-    }
-    if (this.props.fallback) {
-      return this.props.fallback
-    }
-
-    const label = this.props.tabTitle || this.props.title || '当前页面模块'
-
-    return (
-      <Result
-        status="500"
-        title={`${label}加载或渲染发生异常`}
-        subTitle={error.message || '捕获到未知运行时渲染错误，其他工作区页签不受影响。'}
-        extra={
-          <Button
-            variant="primary"
-            icon={<RefreshCw className="h-3.5 w-3.5" />}
-            onClick={this.handleReset}
-          >
-            重新加载此模块
-          </Button>
-        }
-      />
-    )
-  }
-}
-
-export const TabErrorBoundary = ErrorBoundary
+export {
+  ErrorBoundary,
+  TabErrorBoundary,
+  type ErrorBoundaryProps,
+  type TabErrorBoundaryProps,
+} from './ErrorBoundary'

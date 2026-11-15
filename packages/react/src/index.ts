@@ -6,6 +6,7 @@ export * from '@abc-design/core'
 
 // 工具函数与通用 Hooks
 export * from './utils/cn'
+export * from './utils/uiClasses'
 export * from './hooks'
 
 // 全局配置与主题适配器容器
@@ -48,6 +49,7 @@ export {
   type CopyableCodeProps,
 } from './components/display/DescriptionList'
 export * from './components/display/IconBadge'
+export * from './components/display/BrandIcon'
 export * from './components/display/AttentionList'
 export * from './components/display/ThemeSwitcher'
 export * from './components/feedback/Toast'
@@ -60,6 +62,8 @@ export * from './components/feedback/Watermark'
 export * from './components/feedback/FeedbackExtras'
 export * from './components/feedback/NotificationBanner'
 export * from './components/feedback/OneTimeSecretDialog'
+export * from './components/feedback/ErrorBoundary'
+export * from './components/feedback/TopProgressBar'
 export * from './components/layout/InspectorPanel'
 export * from './components/table/TableCore'
 export * from './components/table/TablePrimitives'

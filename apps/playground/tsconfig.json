@@ -6,6 +6,7 @@
     "paths": {
       "@abc-design/charts": ["../../packages/charts/src/index.ts"],
       "@abc-design/core": ["../../packages/core/src/index.ts"],
+      "@abc-design/markdown": ["../../packages/markdown/src/index.ts"],
       "@abc-design/react": ["../../packages/react/src/index.ts"],
       "@abc-design/tokens": ["../../packages/tokens/src/index.ts"]
     }

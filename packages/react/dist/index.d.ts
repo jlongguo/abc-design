@@ -15,9 +15,15 @@ import { AbcTreeSelectNode } from '@abc-design/core';
 import { AbcTreeSimpleModeConfig } from '@abc-design/core';
 import { AbcVisualMode } from '@abc-design/tokens';
 import { ClassValue } from 'clsx';
+import { Component } from 'react';
 import { default as default_2 } from 'react';
+import { ErrorInfo } from 'react';
 import { JSX } from 'react';
+import { JSXElementConstructor } from 'react';
 import * as React_2 from 'react';
+import { ReactElement } from 'react';
+import { ReactNode } from 'react';
+import { ReactPortal } from 'react';
 
 export declare const ABC_HEADER_HEIGHT_BY_SIZE: Record<AbcSize, number>;
 
@@ -258,6 +264,8 @@ export declare interface AbcLayoutSettings {
     showBreadcrumb?: boolean;
     /** 是否在主内容区底部展示应用页脚 */
     showFooter?: boolean;
+    /** 是否在路由切换时显示顶部轻量加载进度条（默认 true） */
+    routeProgress?: boolean;
 }
 
 /** 路由无关的树形导航菜单节点协议 */
@@ -274,6 +282,16 @@ export declare interface AbcMenuItem {
 
 /** 权限校验适配器：判断当前用户是否具备指定权限码 */
 export declare type AbcPermissionAdapter = (permission: string | string[], mode?: 'any' | 'all') => boolean;
+
+/**
+ * 零外部依赖的全局顶部路由加载进度条命令式控制器
+ */
+export declare const abcProgress: {
+    start(): void;
+    done(): void;
+    set(value: number): void;
+    subscribe(fn: ProgressListener): () => void;
+};
 
 /**
  * ABC Design 顶层全局配置与主题适配器容器
@@ -398,6 +416,25 @@ export declare interface AbcToastViewportProps extends ToastContainerProps {
 }
 
 export { AbcTreeNode }
+
+export declare const abcUiClasses: {
+    readonly input: "w-full h-8.5 rounded-[var(--abc-radius-md,0.5rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-3 py-1.5 text-xs text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] hover:border-[var(--abc-border-strong)] focus:border-[var(--abc-primary)] focus:ring-2 focus:ring-[var(--abc-ring)] focus:outline-none transition-all disabled:bg-[var(--abc-bg-muted)] disabled:text-[var(--abc-fg-muted)] disabled:cursor-not-allowed";
+    readonly textarea: "w-full rounded-[var(--abc-radius-md,0.5rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] p-3 text-xs text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] hover:border-[var(--abc-border-strong)] focus:border-[var(--abc-primary)] focus:ring-2 focus:ring-[var(--abc-ring)] focus:outline-none transition-all disabled:bg-[var(--abc-bg-muted)] disabled:text-[var(--abc-fg-muted)] disabled:cursor-not-allowed";
+    readonly button: "inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md,0.5rem)] bg-[var(--abc-primary)] hover:bg-[var(--abc-primary-hover)] active:bg-[var(--abc-primary-active)] px-3.5 py-1.5 text-xs font-medium text-[var(--abc-primary-fg)] transition-all shadow-2xs active:scale-[0.99] disabled:opacity-45 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer select-none";
+    readonly secondary: "inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md,0.5rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:border-[var(--abc-border-strong)] px-3.5 py-1.5 text-xs font-medium transition-all disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer select-none";
+    readonly dangerButton: "inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md,0.5rem)] bg-[var(--abc-danger)] hover:opacity-90 active:opacity-95 px-3.5 py-1.5 text-xs font-medium text-white transition-all shadow-2xs active:scale-[0.99] disabled:opacity-45 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer select-none";
+    readonly textButton: "inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-sm,0.375rem)] bg-transparent text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-primary)] px-2.5 py-1.5 text-xs font-medium transition-all cursor-pointer select-none";
+    readonly panel: "rounded-[var(--abc-radius-lg,0.75rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] p-4 shadow-[var(--abc-shadow-card)]";
+    readonly filterCard: "rounded-[var(--abc-radius-lg,0.75rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] p-4 shadow-[var(--abc-shadow-card)]";
+    readonly tableCard: "rounded-[var(--abc-radius-lg,0.75rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] shadow-[var(--abc-shadow-card)] overflow-hidden";
+    readonly tableHead: "bg-[var(--abc-bg-muted)] border-b border-[var(--abc-border)] text-xs font-semibold text-[var(--abc-fg-secondary)]";
+    readonly tableHeaderCell: "px-4 py-3 text-xs font-semibold text-[var(--abc-fg-secondary)] whitespace-nowrap";
+    readonly tableCell: "px-4 py-3 text-xs text-[var(--abc-fg-secondary)]";
+    readonly pageHeader: "flex flex-col sm:flex-row sm:items-center justify-between gap-3";
+    readonly pageTitle: "text-base font-bold text-[var(--abc-fg)] tracking-tight";
+    readonly pageSubTitle: "text-xs text-[var(--abc-fg-muted)] mt-0.5";
+    readonly label: "block text-xs font-medium text-[var(--abc-fg-secondary)] mb-1.5";
+};
 
 /** 文件上传适配器：接收 File 并返回可访问 URL */
 export declare type AbcUploadAdapter = (file: File) => Promise<string>;
@@ -588,6 +625,46 @@ export declare interface BorderBeamProps {
     className?: string;
 }
 
+/**
+ * 多品牌 / 多租户自适应前缀图标组件 (BrandIcon / TenantIcon)
+ * 支持远程图片加载失败优雅回退矢量图标，以及基于 CSS mask-image 的 SVG 主题色动态着色。
+ */
+export declare const BrandIcon: default_2.FC<BrandIconProps>;
+
+export declare interface BrandIconPreset {
+    /** 渲染方式：常规图片（支持失败自动降级）或 CSS Mask 矢量主题着色 */
+    mode?: 'image' | 'mask';
+    /** 图片或 SVG 资源地址 */
+    src: string;
+    /** 无障碍替代文本（image 模式） */
+    alt?: string;
+    /** 图片加载失败时的降级图标节点 */
+    fallbackIcon?: default_2.ReactNode;
+    /** mask 模式下的着色类名（默认跟随主题品牌色 bg-[var(--abc-primary)]） */
+    maskClassName?: string;
+}
+
+export declare interface BrandIconProps {
+    /** 品牌或租户编码（匹配 presets 字典，大小写不敏感） */
+    code?: string;
+    /** 兼容业务侧 tenantCode 属性命名 */
+    tenantCode?: string;
+    /** 多租户/多品牌图标预设映射表 */
+    presets?: Record<string, BrandIconPreset>;
+    /** 单品牌直接指定图片 URL */
+    src?: string;
+    /** 单品牌直接指定 CSS Mask 矢量图标 URL */
+    maskSrc?: string;
+    /** mask 模式下的着色类名 */
+    maskClassName?: string;
+    /** 图片替代文字 */
+    alt?: string;
+    /** 未命中预设或图片加载失败时的兜底图标 */
+    fallbackIcon?: default_2.ReactNode;
+    /** 尺寸与自定义样式类名（默认 'w-4 h-4'） */
+    className?: string;
+}
+
 /** 品牌 Logo 与项目名展示块（支持直链图片、内联 SVG、四档尺寸联动及多租户品牌快捷编辑按钮） */
 export declare const BrandLogoBlock: default_2.FC<{
     brand: AbcBrandInfo;
@@ -632,6 +709,9 @@ export declare function buildCsvContent<T extends Record<string, any>>(columns: 
  * 完全基于 --abc-* 语义化 Token 驱动，随品牌色、密度与圆角档位实时响应
  */
 export declare const Button: default_2.ForwardRefExoticComponent<ButtonProps & default_2.RefAttributes<HTMLButtonElement>>;
+
+/** 主要按钮样式 */
+export declare const buttonClass = "inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md,0.5rem)] bg-[var(--abc-primary)] hover:bg-[var(--abc-primary-hover)] active:bg-[var(--abc-primary-active)] px-3.5 py-1.5 text-xs font-medium text-[var(--abc-primary-fg)] transition-all shadow-2xs active:scale-[0.99] disabled:opacity-45 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer select-none";
 
 export declare interface ButtonProps extends default_2.ButtonHTMLAttributes<HTMLButtonElement> {
     /** 视觉语义变体 */
@@ -1040,6 +1120,9 @@ export declare const CrudTable: typeof ProTable;
 
 /** 游标流式分页器（专用于 CDP 抓包、高频作业队列等无深总数的大数据场景） */
 export declare const CursorPagination: default_2.FC<PaginationProps>;
+
+/** 危险操作按钮样式 */
+export declare const dangerButtonClass = "inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md,0.5rem)] bg-[var(--abc-danger)] hover:opacity-90 active:opacity-95 px-3.5 py-1.5 text-xs font-medium text-white transition-all shadow-2xs active:scale-[0.99] disabled:opacity-45 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer select-none";
 
 /**
  * 企业级单日期选择器 (DatePicker)
@@ -1459,32 +1542,53 @@ export declare interface EmptyStateProps {
 }
 
 /**
- * 页面与多页签级异常隔离边界 (ErrorBoundary / TabErrorBoundary)
- * 防止单个子模块渲染崩溃导致整个管理后台白屏，支持重试自愈与切换路由自动复位
+ * 全局或容器级应用异常兜底边界 (ErrorBoundary)
  */
-export declare class ErrorBoundary extends default_2.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export declare class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     state: ErrorBoundaryState;
     static getDerivedStateFromError(error: Error): ErrorBoundaryState;
+    componentDidCatch(error: Error, errorInfo: ErrorInfo): void;
     componentDidUpdate(prevProps: ErrorBoundaryProps): void;
-    handleReset: () => void;
-    render(): default_2.ReactNode;
+    reset: () => void;
+    private handleHome;
+    render(): string | number | bigint | boolean | Iterable<ReactNode> | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | JSX.Element | null | undefined;
 }
 
 export declare interface ErrorBoundaryProps {
-    children: default_2.ReactNode;
-    /** 路由或页签标识变更时自动重置错误状态 */
+    children: ReactNode;
+    /** 展示形态：全屏兜底或局部容器兜底 */
+    variant?: 'fullscreen' | 'panel';
+    /** 路由或模块标识变更时自动复位异常状态 */
     resetKey?: string | number;
-    /** 自定义标题（兼容 TabErrorBoundary tabTitle 用法） */
     title?: string;
+    /** 兼容模块级标题配置 */
     tabTitle?: string;
-    /** 自定义降级渲染节点 */
-    fallback?: default_2.ReactNode | ((error: Error, reset: () => void) => default_2.ReactNode);
+    description?: string;
+    reloadText?: string;
+    homeText?: string;
+    /** 自定义重试回调；与 onReset 均未传时默认刷新当前浏览器页面 */
+    onReload?: () => void;
+    /** 模块内局部重置回调（传入时不触发整页 window.location.reload） */
     onReset?: () => void;
+    /** 自定义返回首页回调；未传时默认跳转至 '/' */
+    onNavigateHome?: () => void;
+    /** 是否隐藏返回首页按钮（局部模块边界默认不展示全站跳转） */
+    showHomeButton?: boolean;
+    /** 异常上报钩子 */
+    onError?: (error: Error, errorInfo: ErrorInfo) => void;
+    /** 自定义降级渲染节点或函数 */
+    fallback?: ReactNode | ((error: Error, reset: () => void, errorInfo: ErrorInfo | null) => ReactNode);
+    className?: string;
 }
 
 declare interface ErrorBoundaryState {
+    hasError: boolean;
     error: Error | null;
+    errorInfo: ErrorInfo | null;
 }
+
+/** 搜索筛选卡片样式 */
+export declare const filterCardClass = "rounded-[var(--abc-radius-lg,0.75rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] p-4 shadow-[var(--abc-shadow-card)]";
 
 /**
  * 分类胶囊单选组 (FilterPillGroup)
@@ -1748,6 +1852,9 @@ export declare interface ImageUploadProps {
  */
 export declare const Input: default_2.ForwardRefExoticComponent<InputProps & default_2.RefAttributes<HTMLInputElement>>;
 
+/** 输入框基础样式（紧凑高度，与次要/主按钮对齐） */
+export declare const inputClass = "w-full h-8.5 rounded-[var(--abc-radius-md,0.5rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-3 py-1.5 text-xs text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] hover:border-[var(--abc-border-strong)] focus:border-[var(--abc-primary)] focus:ring-2 focus:ring-[var(--abc-ring)] focus:outline-none transition-all disabled:bg-[var(--abc-bg-muted)] disabled:text-[var(--abc-fg-muted)] disabled:cursor-not-allowed";
+
 /** 步进数值输入框（等宽数字对齐） */
 export declare const InputNumber: default_2.FC<InputNumberProps>;
 
@@ -1850,8 +1957,8 @@ export declare interface KbdProps extends default_2.HTMLAttributes<HTMLElement> 
 }
 
 /**
- * 路由无关的视图 DOM 保活与滚动位置记忆容器
- * 保持缓存子节点的稳定挂载顺序，避免路由切换时销毁重建组件树
+ * 路由无关的视图 DOM 保活、实时滚动高度记忆与单页签异常隔离容器
+ * 通过 passive scroll 实时记录各路由滚动偏移并在 useLayoutEffect 同步复原，防止切页后容器高度坍缩导致 scrollTop 丢失。
  */
 export declare const KeepAliveContainer: default_2.FC<KeepAliveContainerProps>;
 
@@ -1864,12 +1971,22 @@ export declare interface KeepAliveContainerProps {
     maxCached?: number;
     /** 允许保留的活跃 key 白名单（如关闭页签后同步剔除缓存） */
     aliveKeys?: string[];
-    /** 外部滚动容器引用，用于在切换回旧页签时自动恢复之前的阅读滚动高度 */
+    /** 外部滚动容器引用，用于在切换回旧页签时精准恢复离开前的滚动高度 */
     scrollContainerRef?: default_2.RefObject<HTMLElement | null>;
-    /** 强制刷新计数器：变化时销毁重建当前 activeKey 实例 */
+    /** 当前激活页签的强制刷新计数器：变化时销毁重建对应实例 */
     refreshSeed?: number;
+    /** 按路由键索引的刷新计数器字典（与 refreshSeed 兼容） */
+    refreshKeys?: Record<string, number>;
     /** 当前激活视图容器的附加过渡动效类名 */
     activeClassName?: string;
+    /** 是否自动为每个页签独立包裹 TabErrorBoundary 异常隔离边界（默认 false） */
+    isolateError?: boolean;
+    /** 页签异常边界点击“重新加载本页”时的回调 */
+    onTabReload?: (key: string) => void;
+    /** 页签异常边界点击“关闭此页签”时的回调 */
+    onTabClose?: (key: string) => void;
+    /** 页签异常边界点击“返回仪表盘”时的回调 */
+    onNavigateHome?: () => void;
     children: default_2.ReactNode;
 }
 
@@ -1878,6 +1995,9 @@ export declare interface KeepAliveContainerProps {
  * 语义化 label 标签，保持与 FormField 完全一致的字体规范、必填星号与色值
  */
 export declare const Label: default_2.ForwardRefExoticComponent<LabelProps & default_2.RefAttributes<HTMLLabelElement>>;
+
+/** 表单字段标签统一样式 */
+export declare const labelClass = "block text-xs font-medium text-[var(--abc-fg-secondary)] mb-1.5";
 
 export declare interface LabelProps extends default_2.LabelHTMLAttributes<HTMLLabelElement> {
     size?: AbcSize;
@@ -2065,6 +2185,31 @@ export declare interface PageContainerProps {
     children: default_2.ReactNode;
 }
 
+/** 页面顶部标题栏容器样式 */
+export declare const pageHeaderClass = "flex flex-col sm:flex-row sm:items-center justify-between gap-3";
+
+/** 页面副标题说明样式 */
+export declare const pageSubTitleClass = "text-xs text-[var(--abc-fg-muted)] mt-0.5";
+
+/** 页面主标题样式 */
+export declare const pageTitleClass = "text-base font-bold text-[var(--abc-fg)] tracking-tight";
+
+/**
+ * 路由无关的页面切换过渡容器与顶部进度条联动组件 (PageTransition)
+ */
+export declare const PageTransition: default_2.FC<PageTransitionProps>;
+
+export declare interface PageTransitionProps {
+    /** 当前路由标识（如 location.pathname） */
+    activeKey?: string;
+    /** 过渡动效模式（默认继承 AbcProvider.pageTransition） */
+    transition?: AbcPageTransition;
+    /** 是否在切换 activeKey 时自动显示顶部加载进度条（默认 true） */
+    showProgress?: boolean;
+    className?: string;
+    children: default_2.ReactNode;
+}
+
 /** 企业级紧凑数据分页器（支持快速页码跳转、边界自动 Clamp、双模游标流水与零数据优雅提示） */
 export declare const Pagination: default_2.FC<PaginationProps>;
 
@@ -2112,6 +2257,9 @@ export declare interface PaginationProps extends Partial<PaginationCursorMeta> {
     className?: string;
     loading?: boolean;
 }
+
+/** 通用面板卡片样式 */
+export declare const panelClass = "rounded-[var(--abc-radius-lg,0.75rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] p-4 shadow-[var(--abc-shadow-card)]";
 
 export declare interface ParsedSelectOption {
     value: string;
@@ -2799,6 +2947,11 @@ export declare interface ProFormWatchSubscription {
  */
 export declare const Progress: default_2.FC<ProgressProps>;
 
+declare type ProgressListener = (event: {
+    action: 'start' | 'done' | 'set';
+    value?: number;
+}) => void;
+
 export declare interface ProgressProps {
     /** 0 ~ 100 进度百分比 */
     percent: number;
@@ -2862,6 +3015,10 @@ export declare interface ProLayoutProps {
     authProps?: Partial<AuthLayoutProps>;
     /** 是否显示右上角主题与布局配置触发器（默认开启） */
     showCustomizerTrigger?: boolean;
+    /** 是否自动为多页签视图包裹 TabErrorBoundary 单页签异常隔离（默认 true） */
+    isolateTabError?: boolean;
+    /** 单页签异常边界点击“返回仪表盘”时的目标路径（默认 '/'） */
+    homePath?: string;
     /** 覆写壳层、侧栏与导航控件尺寸规格（默认继承 AbcProvider.theme.componentSize） */
     size?: AbcSize;
     /** 覆写壳层交互动效规格（默认继承 AbcProvider.theme.motion） */
@@ -3528,6 +3685,9 @@ export declare interface SearchInputProps extends Omit<InputProps, 'prefix'> {
     clearLabel?: string;
 }
 
+/** 次要按钮样式 */
+export declare const secondaryClass = "inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md,0.5rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:border-[var(--abc-border-strong)] px-3.5 py-1.5 text-xs font-medium transition-all disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer select-none";
+
 /**
  * 分段选择器控件 (SegmentedControl)
  * 用于在多个互斥选项之间进行快捷切换，支持图标、角标、等宽/流式自适应布局
@@ -3822,7 +3982,55 @@ export declare interface SwitchProps {
     className?: string;
 }
 
-export declare const TabErrorBoundary: typeof ErrorBoundary;
+/**
+ * 单页签异常隔离边界 (TabErrorBoundary)
+ * 将渲染期运行时错误封闭在故障页签内，避免穿透击毁整个应用壳层或丢失其他页签状态。
+ */
+export declare class TabErrorBoundary extends Component<TabErrorBoundaryProps, TabErrorBoundaryState> {
+    state: TabErrorBoundaryState;
+    static getDerivedStateFromError(error: Error): Partial<TabErrorBoundaryState>;
+    componentDidCatch(error: Error, errorInfo: ErrorInfo): void;
+    componentDidUpdate(prevProps: TabErrorBoundaryProps): void;
+    reset: () => void;
+    render(): string | number | bigint | boolean | Iterable<ReactNode> | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | JSX.Element | null | undefined;
+}
+
+export declare interface TabErrorBoundaryProps {
+    /** 当前页签对应的路由路径标识 */
+    path?: string;
+    /** 路由或状态变更时自动复位异常边界的重置键 */
+    resetKey?: string | number;
+    /** 子视图组件 */
+    children: ReactNode;
+    /** 触发重新加载当前页签的回调 */
+    onReload?: () => void;
+    /** 兼容 onReset 回调命名 */
+    onReset?: () => void;
+    /** 关闭当前页签的回调 */
+    onClose?: () => void;
+    /** 返回首页/大盘的回调 */
+    onNavigateHome?: () => void;
+    /** 捕获到异常时的上报钩子 */
+    onError?: (error: Error, errorInfo: ErrorInfo) => void;
+    /** 自定义标题文案 */
+    title?: string;
+    /** 自定义描述文案 */
+    description?: string;
+    /** 重载按钮文案 */
+    reloadText?: string;
+    /** 关闭页签按钮文案 */
+    closeText?: string;
+    /** 返回首页按钮文案 */
+    homeText?: string;
+    className?: string;
+}
+
+declare interface TabErrorBoundaryState {
+    hasError: boolean;
+    error: Error | null;
+    errorInfo: ErrorInfo | null;
+    showDetails: boolean;
+}
 
 export declare interface TabItem<K extends string = string> {
     key: K;
@@ -3843,7 +4051,13 @@ export declare const TableBody: React_2.ForwardRefExoticComponent<React_2.HTMLAt
 
 export declare const TableCaption: React_2.ForwardRefExoticComponent<React_2.HTMLAttributes<HTMLTableCaptionElement> & React_2.RefAttributes<HTMLTableCaptionElement>>;
 
+/** 数据表格外层卡片样式 */
+export declare const tableCardClass = "rounded-[var(--abc-radius-lg,0.75rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] shadow-[var(--abc-shadow-card)] overflow-hidden";
+
 export declare const TableCell: React_2.ForwardRefExoticComponent<React_2.TdHTMLAttributes<HTMLTableCellElement> & React_2.RefAttributes<HTMLTableCellElement>>;
+
+/** 数据表体单元格样式 */
+export declare const tableCellClass = "px-4 py-3 text-xs text-[var(--abc-fg-secondary)]";
 
 /**
  * 企业级核心数据表格引擎 (TableCore)
@@ -3940,7 +4154,13 @@ export declare const TableFooter: React_2.ForwardRefExoticComponent<React_2.HTML
 
 export declare const TableHead: React_2.ForwardRefExoticComponent<React_2.ThHTMLAttributes<HTMLTableCellElement> & React_2.RefAttributes<HTMLTableCellElement>>;
 
+/** 数据表头行样式 */
+export declare const tableHeadClass = "bg-[var(--abc-bg-muted)] border-b border-[var(--abc-border)] text-xs font-semibold text-[var(--abc-fg-secondary)]";
+
 export declare const TableHeader: React_2.ForwardRefExoticComponent<TableHeaderProps & React_2.RefAttributes<HTMLTableSectionElement>>;
+
+/** 数据表头单元格样式 */
+export declare const tableHeaderCellClass = "px-4 py-3 text-xs font-semibold text-[var(--abc-fg-secondary)] whitespace-nowrap";
 
 export declare interface TableHeaderProps extends React_2.HTMLAttributes<HTMLTableSectionElement> {
     sticky?: boolean;
@@ -4009,8 +4229,15 @@ export declare function tagVariants(_opts?: {
     variant?: string;
 }): string;
 
+export declare const TenantIcon: default_2.FC<BrandIconProps>;
+
+export declare type TenantIconProps = BrandIconProps;
+
 /** 多行文本域组件（支持四档尺寸、动效规格、内联标签、错误文案与实时字数统计） */
 export declare const Textarea: default_2.ForwardRefExoticComponent<TextareaProps & default_2.RefAttributes<HTMLTextAreaElement>>;
+
+/** 多行文本域统一样式 */
+export declare const textareaClass = "w-full rounded-[var(--abc-radius-md,0.5rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] p-3 text-xs text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] hover:border-[var(--abc-border-strong)] focus:border-[var(--abc-primary)] focus:ring-2 focus:ring-[var(--abc-ring)] focus:outline-none transition-all disabled:bg-[var(--abc-bg-muted)] disabled:text-[var(--abc-fg-muted)] disabled:cursor-not-allowed";
 
 export declare interface TextareaProps extends default_2.TextareaHTMLAttributes<HTMLTextAreaElement> {
     size?: ControlSize;
@@ -4022,6 +4249,9 @@ export declare interface TextareaProps extends default_2.TextareaHTMLAttributes<
     invalid?: boolean;
     mono?: boolean;
 }
+
+/** 文本轻量按钮样式 */
+export declare const textButtonClass = "inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-sm,0.375rem)] bg-transparent text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-primary)] px-2.5 py-1.5 text-xs font-medium transition-all cursor-pointer select-none";
 
 /**
  * 实时主题、微交互沙盒与多布局可视化定制中心 (ThemeCustomizer)
@@ -4238,6 +4468,28 @@ export declare const TopHorizontalNav: default_2.FC<{
     onSelectRoot?: (item: AbcMenuItem) => void;
     onNavigate: (path: string, item: AbcMenuItem) => void;
 }>;
+
+/**
+ * 顶部轻量加载与路由切换进度条 (TopProgressBar)
+ * 同时支持监听 activeKey 自动过渡、受控 loading 以及 abcProgress.start()/done() 命令式调用。
+ */
+export declare const TopProgressBar: default_2.FC<TopProgressBarProps>;
+
+export declare interface TopProgressBarProps {
+    /** 路由路径或视图激活键；变化时自动触发顶部过渡进度条 */
+    activeKey?: string;
+    /** 受控加载状态 */
+    loading?: boolean;
+    /** 首次挂载时是否跳过触发（默认 true，避免首屏重复闪烁） */
+    skipInitial?: boolean;
+    /** 进度条高度（px，默认 2） */
+    height?: number;
+    /** 自定义颜色（默认读取 --abc-primary） */
+    color?: string;
+    /** 层级 z-index（默认 9999） */
+    zIndex?: number;
+    className?: string;
+}
 
 /**
  * 企业级层级树形控件 (Tree)

@@ -73,6 +73,8 @@ export interface AbcLayoutSettings {
   showBreadcrumb?: boolean
   /** 是否在主内容区底部展示应用页脚 */
   showFooter?: boolean
+  /** 是否在路由切换时显示顶部轻量加载进度条（默认 true） */
+  routeProgress?: boolean
 }
 
 /** 随全局四档尺寸联动的默认侧边栏宽度与顶栏高度对照表 */
@@ -102,4 +104,5 @@ export const DEFAULT_ABC_LAYOUT_SETTINGS: AbcLayoutSettings = {
   headerBlur: true,
   showBreadcrumb: true,
   showFooter: false,
+  routeProgress: true,
 }

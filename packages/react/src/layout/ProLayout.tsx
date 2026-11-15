@@ -13,6 +13,7 @@ import {
 import { Dropdown, Tooltip } from '../components/display/Overlays'
 import { Avatar } from '../components/display/StatusTag'
 import Drawer from '../components/feedback/Drawer'
+import TopProgressBar from '../components/feedback/TopProgressBar'
 import Watermark from '../components/feedback/Watermark'
 import { Kbd } from '../components/typography/CopyableText'
 import { useAbcMotion, useAbcSize } from '../hooks/useAbcDefaults'
@@ -70,6 +71,10 @@ export interface ProLayoutProps {
   authProps?: Partial<AuthLayoutProps>
   /** 是否显示右上角主题与布局配置触发器（默认开启） */
   showCustomizerTrigger?: boolean
+  /** 是否自动为多页签视图包裹 TabErrorBoundary 单页签异常隔离（默认 true） */
+  isolateTabError?: boolean
+  /** 单页签异常边界点击“返回仪表盘”时的目标路径（默认 '/'） */
+  homePath?: string
   /** 覆写壳层、侧栏与导航控件尺寸规格（默认继承 AbcProvider.theme.componentSize） */
   size?: AbcSize
   /** 覆写壳层交互动效规格（默认继承 AbcProvider.theme.motion） */
@@ -161,6 +166,8 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
   authRender,
   authProps,
   showCustomizerTrigger = true,
+  isolateTabError = true,
+  homePath = '/',
   size,
   motion,
   children,
@@ -567,7 +574,14 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
             aliveKeys={autoTabs.map((t) => t.path)}
             scrollContainerRef={mainScrollRef}
             refreshSeed={refreshSeeds[pathname] ?? 0}
+            refreshKeys={refreshSeeds}
             activeClassName={TRANSITION_CLASS_MAP[pageTransition]}
+            isolateError={isolateTabError}
+            onTabReload={(p) =>
+              setRefreshSeeds((prev) => ({ ...prev, [p]: (prev[p] ?? 0) + 1 }))
+            }
+            onTabClose={layoutSettings.showTabs ? (p) => handleCloseTab(p) : undefined}
+            onNavigateHome={() => onNavigate(homePath)}
           >
             {children}
           </KeepAliveContainer>
@@ -594,6 +608,7 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
       style={layoutInlineVars}
       className="flex h-dvh w-dvw flex-col overflow-hidden bg-[var(--abc-bg-canvas)] text-[var(--abc-fg)]"
     >
+      {layoutSettings.routeProgress !== false && <TopProgressBar activeKey={pathname} />}
       {isMixMode && headerNode}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {isMixMode && mixSideItems.length > 0 && (

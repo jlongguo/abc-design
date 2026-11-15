@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import {
   Alert,
   AttentionList,
   Avatar,
   Badge,
+  BrandIcon,
   Breadcrumb,
   Button,
   Collapse,
@@ -36,14 +37,17 @@ import {
   StatusTag,
   Steps,
   Switch,
+  TabErrorBoundary,
   Tabs,
   Timeline,
   Tooltip,
   Watermark,
   abcConfirm,
+  abcProgress,
   abcToast,
   useAbcConfig,
 } from '@abc-design/react'
+import { MarkdownEditor, type MarkdownEditorHandle } from '@abc-design/markdown'
 import {
   AlertTriangle,
   Bell,
@@ -93,6 +97,11 @@ export const DataAndFeedbackDocsPage: React.FC = () => {
   const [cursorPage, setCursorPage] = useState(1)
   const [cursorSize, setCursorSize] = useState(20)
   const [cursorLoading, setCursorLoading] = useState(false)
+  const [tabCrash, setTabCrash] = useState(false)
+  const [mdContent, setMdContent] = useState(
+    '### ABC Design Markdown\n\n- 自动跟随 **AbcProvider** 亮/暗主题\n- 支持 `ref.current.insertText()` 光标处精准插值\n'
+  )
+  const mdRef = useRef<MarkdownEditorHandle>(null)
 
   return (
     <PageContainer
@@ -1173,6 +1182,110 @@ abcToast.success('更新成功', {
                 </Button>
               </PermissionGuard>
             </div>
+          </div>
+        </ComponentDocPreview>
+
+        {/* 12. 多租户品牌图标、页签异常隔离、顶部路由进度条与独立 Markdown 子包 */}
+        <ComponentDocPreview
+          title="BrandIcon / TabErrorBoundary / TopProgressBar / @abc-design/markdown"
+          description="沉淀自企业级多租户中后台通用设施：支持远程图标异常降级与 SVG Mask 主题色渲染的 BrandIcon、将崩溃封闭在单页签内的 TabErrorBoundary、零依赖路由进度控制器 abcProgress，以及按需引入的独立子包 @abc-design/markdown。"
+          controls={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  abcProgress.start()
+                  setTimeout(() => abcProgress.done(), 420)
+                }}
+              >
+                触发顶部进度条 (abcProgress)
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => mdRef.current?.insertText('\n> 已通过 insertText 插入引用段落\n')}
+              >
+                光标处插入 Markdown
+              </Button>
+              <Button
+                size="sm"
+                variant={tabCrash ? 'primary' : 'danger'}
+                onClick={() => setTabCrash((v) => !v)}
+              >
+                {tabCrash ? '恢复页签正常态' : '模拟单页签崩溃'}
+              </Button>
+            </div>
+          }
+          code={`import { BrandIcon, TabErrorBoundary, abcProgress } from '@abc-design/react'
+import { MarkdownEditor } from '@abc-design/markdown'
+
+<BrandIcon code="core" presets={{ core: { mode: 'mask', src: '/logo.svg' } }} />
+<TabErrorBoundary path="/ops/clusters" onReload={reloadTab} onClose={closeTab}>
+  <ClusterPanel />
+</TabErrorBoundary>
+<MarkdownEditor ref={mdRef} value={md} onChange={setMd} height={240} />`}
+          apiRows={[
+            { prop: 'BrandIcon.presets', type: 'Record<string, BrandIconPreset>', description: '配置 image 远程图片（失败自动回退图标）或 mask 矢量主题色着色模式' },
+            { prop: 'TabErrorBoundary.path', type: 'string', description: '发生异常的页签路由标识，支持堆栈折叠排查、重载本页与关闭页签' },
+            { prop: 'abcProgress.start / done', type: '() => void', description: '命令式触发顶部轻量加载进度条（ProLayout 默认内置路由切换联动）' },
+            { prop: 'MarkdownEditor.colorMode', type: "'auto' | 'light' | 'dark'", defaultValue: "'auto'", description: '独立子包 @abc-design/markdown，自动感知 AbcProvider 主题并暴露 insertText 实例方法' },
+          ]}
+        >
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-4 rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)]/70 p-3.5 text-xs">
+              <div className="inline-flex items-center gap-2">
+                <BrandIcon
+                  code="svg-demo"
+                  presets={{
+                    'svg-demo': {
+                      mode: 'image',
+                      src: `data:image/svg+xml;utf8,${encodeURIComponent(DEMO_SVG)}`,
+                    },
+                  }}
+                  className="h-5 w-5"
+                />
+                <span>Image 模式正常渲染</span>
+              </div>
+              <div className="inline-flex items-center gap-2">
+                <BrandIcon
+                  code="mask-demo"
+                  presets={{
+                    'mask-demo': {
+                      mode: 'mask',
+                      src: `data:image/svg+xml;utf8,${encodeURIComponent(DEMO_SVG)}`,
+                      maskClassName: 'bg-[var(--abc-primary)]',
+                    },
+                  }}
+                  className="h-5 w-5"
+                />
+                <span>CSS Mask 品牌色自适应</span>
+              </div>
+              <div className="inline-flex items-center gap-2">
+                <BrandIcon code="unknown-tenant" className="h-5 w-5" />
+                <span>未命中预设优雅兜底</span>
+              </div>
+            </div>
+
+            <TabErrorBoundary
+              path="/playground/tab-isolation-demo"
+              resetKey={String(tabCrash)}
+              onReload={() => setTabCrash(false)}
+              onClose={() => {
+                setTabCrash(false)
+                abcToast.info('已触发关闭故障页签回调')
+              }}
+              className="min-h-0 p-0"
+            >
+              <CrashTriggerDemo shouldCrash={tabCrash} />
+            </TabErrorBoundary>
+
+            <MarkdownEditor
+              ref={mdRef}
+              value={mdContent}
+              onChange={(val) => setMdContent(val ?? '')}
+              height={220}
+            />
           </div>
         </ComponentDocPreview>
       </div>
