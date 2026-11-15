@@ -1,10 +1,23 @@
-import React, { useCallback, useEffect, useId, useRef, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { AbcMotionPreset } from '@abc-design/tokens'
 import { Maximize2, Minimize2, X } from 'lucide-react'
 import { useAbcMotion } from '../../hooks'
 import { usePresence } from '../../hooks/usePresence'
 import { cn } from '../../utils/cn'
+
+export interface DialogContextValue {
+  isOpen: boolean
+  handleClose: () => void
+  closeDisabled: boolean
+  hasHeader: boolean
+}
+
+export const DialogContext = createContext<DialogContextValue | null>(null)
+
+export function useDialog() {
+  return useContext(DialogContext)
+}
 
 /**
  * 企业级高保真模态弹窗组件 (Dialog / Modal)
@@ -22,10 +35,15 @@ export interface DialogProps {
   open?: boolean
   visible?: boolean
   isOpen?: boolean
-  /** 请求关闭回调 */
+  /** 请求关闭回调（兼容 onClose / onCancel） */
   onClose?: () => void
+  onCancel?: () => void
   /** 兼容 onOpenChange 签名 */
   onOpenChange?: (open: boolean) => void
+  /** 是否展示右上角关闭按钮（默认 true） */
+  closable?: boolean
+  /** 是否禁用关闭按钮（如表单提交中） */
+  closeDisabled?: boolean
   /** 标题内容 */
   title?: React.ReactNode
   /** 副标题或辅助描述 */
@@ -86,7 +104,10 @@ export const Dialog: React.FC<DialogProps> = ({
   visible,
   isOpen: isOpenProp,
   onClose,
+  onCancel,
   onOpenChange,
+  closable = true,
+  closeDisabled = false,
   title,
   description,
   children,
@@ -112,14 +133,19 @@ export const Dialog: React.FC<DialogProps> = ({
   const panelRef = useRef<HTMLDivElement>(null)
   const pressedOutsideRef = useRef(false)
   const handleClose = useCallback(() => {
+    if (closeDisabled) return
     if (onClose) {
       onClose()
+    } else if (onCancel) {
+      onCancel()
     } else if (onOpenChange) {
       onOpenChange(false)
     }
-  }, [onClose, onOpenChange])
+  }, [closeDisabled, onClose, onCancel, onOpenChange])
   const onCloseRef = useRef(handleClose)
   onCloseRef.current = handleClose
+
+  const hasHeader = Boolean(title !== undefined || fullscreenable)
 
   const [internalFullscreen, setInternalFullscreen] = useState(false)
   const isFullscreen = controlledFullscreen !== undefined ? controlledFullscreen : internalFullscreen
@@ -318,65 +344,83 @@ export const Dialog: React.FC<DialogProps> = ({
           className
         )}
       >
-        {(title !== undefined || fullscreenable) && (
+        <DialogContext.Provider value={{ isOpen, handleClose, closeDisabled, hasHeader }}>
+          {(title !== undefined || fullscreenable) && (
+            <div
+              onMouseDown={handleHeaderMouseDown}
+              onDoubleClick={fullscreenable ? toggleFullscreen : undefined}
+              className={cn(
+                'flex shrink-0 items-start justify-between gap-4 border-b border-[var(--abc-border)] px-5 py-3.5 select-none',
+                draggable && !isFullscreen && 'cursor-move'
+              )}
+            >
+              <div className="min-w-0 flex-1">
+                {title && (
+                  <h2 id={titleId} className="text-sm font-semibold text-[var(--abc-fg)] leading-snug">
+                    {title}
+                  </h2>
+                )}
+                {description && (
+                  <p id={descId} className="mt-0.5 text-xs text-[var(--abc-fg-muted)]">
+                    {description}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex shrink-0 items-center gap-1">
+                {fullscreenable && (
+                  <button
+                    type="button"
+                    aria-label={isFullscreen ? '还原窗口' : '全屏'}
+                    title={isFullscreen ? '退出全屏' : '全屏显示'}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleFullscreen()
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--abc-radius-sm)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+                  >
+                    {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                  </button>
+                )}
+                {closable && (
+                  <button
+                    type="button"
+                    aria-label="关闭"
+                    title="关闭弹窗"
+                    disabled={closeDisabled}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleClose()
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className={cn(
+                      'inline-flex h-7 w-7 items-center justify-center rounded-[var(--abc-radius-sm)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer',
+                      closeDisabled && 'cursor-not-allowed opacity-40 hover:bg-transparent hover:text-[var(--abc-fg-muted)]'
+                    )}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <div
-            onMouseDown={handleHeaderMouseDown}
-            onDoubleClick={fullscreenable ? toggleFullscreen : undefined}
-            className={cn(
-              'flex shrink-0 items-start justify-between gap-4 border-b border-[var(--abc-border)] px-5 py-3.5 select-none',
-              draggable && !isFullscreen && 'cursor-move'
-            )}
+            data-dialog-body=""
+            className="flex-1 overflow-y-auto px-5 py-4 text-xs text-[var(--abc-fg-secondary)]"
           >
-            <div className="min-w-0 flex-1">
-              {title && (
-                <h2 id={titleId} className="text-sm font-semibold text-[var(--abc-fg)] leading-snug">
-                  {title}
-                </h2>
-              )}
-              {description && (
-                <p id={descId} className="mt-0.5 text-xs text-[var(--abc-fg-muted)]">
-                  {description}
-                </p>
-              )}
-            </div>
-
-            <div className="flex shrink-0 items-center gap-1">
-              {fullscreenable && (
-                <button
-                  type="button"
-                  aria-label={isFullscreen ? '还原窗口' : '全屏'}
-                  title={isFullscreen ? '退出全屏' : '全屏显示'}
-                  onClick={toggleFullscreen}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--abc-radius-sm)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
-                >
-                  {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-                </button>
-              )}
-              <button
-                type="button"
-                aria-label="关闭"
-                title="关闭弹窗"
-                onClick={onClose}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--abc-radius-sm)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+            {children}
           </div>
-        )}
 
-        <div
-          data-dialog-body=""
-          className="flex-1 overflow-y-auto px-5 py-4 text-xs text-[var(--abc-fg-secondary)]"
-        >
-          {children}
-        </div>
-
-        {footer && (
-          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-[var(--abc-border)] bg-[var(--abc-bg-muted)]/60 px-5 py-3">
-            {footer}
-          </div>
-        )}
+          {footer && (
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-[var(--abc-border)] bg-[var(--abc-bg-muted)]/60 px-5 py-3">
+              {footer}
+            </div>
+          )}
+        </DialogContext.Provider>
       </div>
     </dialog>,
     document.body
@@ -389,12 +433,49 @@ export type ModalProps = DialogProps
 export interface DialogContentProps extends React.HTMLAttributes<HTMLDivElement> {
   closeLabel?: string
   closeDisabled?: boolean
+  closable?: boolean
   onClose?: () => void
 }
 
-export function DialogContent({ className, children, ...props }: DialogContentProps) {
+export function DialogContent({
+  className,
+  children,
+  closeLabel = '关闭',
+  closeDisabled,
+  closable,
+  onClose: contentOnClose,
+  ...props
+}: DialogContentProps) {
+  const dialogCtx = useContext(DialogContext)
+  const isClosable = closable ?? (dialogCtx ? !dialogCtx.hasHeader : false)
+  const isDisabled = closeDisabled ?? dialogCtx?.closeDisabled ?? false
+
   return (
-    <div data-slot="dialog-content" className={cn('space-y-4', className)} {...props}>
+    <div data-slot="dialog-content" className={cn('relative space-y-4', className)} {...props}>
+      {isClosable && (
+        <button
+          type="button"
+          aria-label={closeLabel}
+          title={closeLabel}
+          disabled={isDisabled}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (contentOnClose) {
+              contentOnClose()
+            } else if (dialogCtx) {
+              dialogCtx.handleClose()
+            }
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          className={cn(
+            'absolute right-0 top-0 inline-flex h-7 w-7 items-center justify-center rounded-[var(--abc-radius-sm)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer z-10',
+            isDisabled && 'cursor-not-allowed opacity-40 hover:bg-transparent hover:text-[var(--abc-fg-muted)]'
+          )}
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
       {children}
     </div>
   )

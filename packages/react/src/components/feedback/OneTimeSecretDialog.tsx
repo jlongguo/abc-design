@@ -86,7 +86,14 @@ export function OneTimeSecretDialog({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(next) => !next && onClose()}>
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      onCancel={onClose}
+      onOpenChange={(next) => !next && onClose()}
+      fullscreenable={false}
+      draggable={false}
+    >
       <DialogContent
         data-slot="one-time-secret-dialog"
         className={cn('w-full max-w-lg', className)}

@@ -59,7 +59,7 @@ export function SegmentedControl<T extends string | number>({
 
   return (
     <div
-      role="radiogroup"
+      role="group"
       data-slot="segmented-control"
       data-motion={resolvedMotion}
       className={cn(
@@ -77,8 +77,7 @@ export function SegmentedControl<T extends string | number>({
           <button
             key={String(option.value)}
             type="button"
-            role="radio"
-            aria-checked={selected}
+            aria-pressed={selected}
             disabled={isDisabled}
             onClick={() => handleSelect?.(option.value)}
             className={cn(

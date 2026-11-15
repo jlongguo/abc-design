@@ -27,6 +27,7 @@ export interface ReasonedActionDialogProps {
   description: React.ReactNode
   confirmLabel: React.ReactNode
   cancelLabel?: React.ReactNode
+  onCancel?: () => void
   workingLabel?: React.ReactNode
   reasonLabel?: React.ReactNode
   reasonPlaceholder?: string
@@ -56,13 +57,14 @@ export function ReasonedActionDialog({
   title,
   description,
   confirmLabel,
-  cancelLabel = 'Cancel',
-  workingLabel = 'Working…',
-  reasonLabel = 'Reason',
-  reasonPlaceholder = 'Record why this change is required',
-  reasonHint = '8–512 characters. Stored in the operation audit.',
-  reasonTooLongMessage = 'Shorten the reason to 512 characters or fewer.',
-  closeLabel = 'Close',
+  cancelLabel = '取消',
+  onCancel,
+  workingLabel = '正在处理…',
+  reasonLabel = '操作原因',
+  reasonPlaceholder = '请详细填写本次变更的业务原因或工单号',
+  reasonHint = '需输入 8–512 字符，作为运维审计依据留痕',
+  reasonTooLongMessage = '操作原因不能超过 512 字符',
+  closeLabel = '关闭',
   minReasonLength = 8,
   maxReasonLength = 512,
   destructive = false,
@@ -103,8 +105,23 @@ export function ReasonedActionDialog({
     }
   }
 
+  const handleClose = () => {
+    if (!pending) {
+      onCancel?.()
+      onOpenChange?.(false)
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      onCancel={handleClose}
+      onOpenChange={onOpenChange}
+      closeDisabled={pending}
+      fullscreenable={false}
+      draggable={false}
+    >
       <DialogContent
         data-slot="reasoned-action-dialog"
         className={cn('w-full max-w-lg', maxWidthClass, className)}

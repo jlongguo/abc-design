@@ -21,7 +21,7 @@ const TEXTAREA_SIZE_CLASSES: Record<ControlSize, string> = {
 }
 
 export const baseFieldControlClass =
-  'w-full rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] transition-[color,background-color,border-color,box-shadow] duration-[var(--abc-motion-fast,140ms)] ease-out enabled:hover:border-[var(--abc-border-strong)] focus-within:border-[var(--abc-primary)] focus-within:ring-2 focus-within:ring-[var(--abc-ring)] focus:border-[var(--abc-primary)] focus:ring-2 focus:ring-[var(--abc-ring)] focus:outline-none disabled:bg-[var(--abc-bg-muted)] disabled:text-[var(--abc-fg-muted)] disabled:cursor-not-allowed'
+  'w-full rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] leading-normal py-0 transition-[color,background-color,border-color,box-shadow] duration-[var(--abc-motion-fast,140ms)] ease-out enabled:hover:border-[var(--abc-border-strong)] focus-within:border-[var(--abc-primary)] focus-within:ring-2 focus-within:ring-[var(--abc-ring)] focus:border-[var(--abc-primary)] focus:ring-2 focus:ring-[var(--abc-ring)] focus:outline-none disabled:bg-[var(--abc-bg-muted)] disabled:text-[var(--abc-fg-muted)] disabled:cursor-not-allowed'
 
 export interface InputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size' | 'prefix'> {
@@ -181,7 +181,12 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
       >
         {leadingNode && (
-          <div className="pointer-events-none absolute inset-y-0 left-3 z-10 flex items-center text-[var(--abc-fg-muted)]">
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-y-0 z-10 flex items-center justify-center text-[var(--abc-fg-muted)] [&>svg]:shrink-0",
+              resolvedSize === 'xs' ? 'left-2 [&>svg]:h-3.5 [&>svg]:w-3.5' : 'left-2.5 [&>svg]:h-4 [&>svg]:w-4'
+            )}
+          >
             {leadingNode}
           </div>
         )}
@@ -200,7 +205,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className={cn(
             baseFieldControlClass,
             HEIGHT_BY_SIZE[resolvedSize],
-            leadingNode ? 'pl-9' : 'pl-3',
+            leadingNode ? (resolvedSize === 'xs' ? 'pl-7' : 'pl-8') : (resolvedSize === 'xs' ? 'pl-2' : 'pl-3'),
             rightPaddingClass,
             '[&::-ms-reveal]:hidden [&::-ms-clear]:hidden',
             actualType === 'number' &&

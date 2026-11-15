@@ -444,7 +444,7 @@ export declare interface BadgeProps {
     className?: string;
 }
 
-export declare const baseFieldControlClass = "w-full rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] transition-[color,background-color,border-color,box-shadow] duration-[var(--abc-motion-fast,140ms)] ease-out enabled:hover:border-[var(--abc-border-strong)] focus-within:border-[var(--abc-primary)] focus-within:ring-2 focus-within:ring-[var(--abc-ring)] focus:border-[var(--abc-primary)] focus:ring-2 focus:ring-[var(--abc-ring)] focus:outline-none disabled:bg-[var(--abc-bg-muted)] disabled:text-[var(--abc-fg-muted)] disabled:cursor-not-allowed";
+export declare const baseFieldControlClass = "w-full rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] leading-normal py-0 transition-[color,background-color,border-color,box-shadow] duration-[var(--abc-motion-fast,140ms)] ease-out enabled:hover:border-[var(--abc-border-strong)] focus-within:border-[var(--abc-primary)] focus-within:ring-2 focus-within:ring-[var(--abc-ring)] focus:border-[var(--abc-primary)] focus:ring-2 focus:ring-[var(--abc-ring)] focus:outline-none disabled:bg-[var(--abc-bg-muted)] disabled:text-[var(--abc-fg-muted)] disabled:cursor-not-allowed";
 
 /** Bento 网格单卡（支持跨列/跨行特性视觉呈现与微交互上浮） */
 export declare const BentoCard: default_2.FC<BentoCardProps>;
@@ -1039,12 +1039,22 @@ export declare interface DescriptionsProps {
  */
 export declare const Dialog: default_2.FC<DialogProps>;
 
-export declare function DialogContent({ className, children, ...props }: DialogContentProps): default_2.JSX.Element;
+export declare function DialogContent({ className, children, closeLabel, closeDisabled, closable, onClose: contentOnClose, ...props }: DialogContentProps): default_2.JSX.Element;
 
 export declare interface DialogContentProps extends default_2.HTMLAttributes<HTMLDivElement> {
     closeLabel?: string;
     closeDisabled?: boolean;
+    closable?: boolean;
     onClose?: () => void;
+}
+
+export declare const DialogContext: default_2.Context<DialogContextValue | null>;
+
+export declare interface DialogContextValue {
+    isOpen: boolean;
+    handleClose: () => void;
+    closeDisabled: boolean;
+    hasHeader: boolean;
 }
 
 export declare function DialogDescription({ className, children, ...props }: default_2.HTMLAttributes<HTMLParagraphElement>): default_2.JSX.Element;
@@ -1058,10 +1068,15 @@ export declare interface DialogProps {
     open?: boolean;
     visible?: boolean;
     isOpen?: boolean;
-    /** 请求关闭回调 */
+    /** 请求关闭回调（兼容 onClose / onCancel） */
     onClose?: () => void;
+    onCancel?: () => void;
     /** 兼容 onOpenChange 签名 */
     onOpenChange?: (open: boolean) => void;
+    /** 是否展示右上角关闭按钮（默认 true） */
+    closable?: boolean;
+    /** 是否禁用关闭按钮（如表单提交中） */
+    closeDisabled?: boolean;
     /** 标题内容 */
     title?: default_2.ReactNode;
     /** 副标题或辅助描述 */
@@ -2341,7 +2356,7 @@ export declare interface ReadErrorBannerProps extends Omit<NotificationBannerPro
  * 必填审计原因确认弹窗 (ReasonedActionDialog)
  * 专用于高安全等级操作（如删除租户、切换环境、强制变更配额、重置密钥等），强制要求填入审计说明
  */
-export declare function ReasonedActionDialog({ open, title, description, confirmLabel, cancelLabel, workingLabel, reasonLabel, reasonPlaceholder, reasonHint, reasonTooLongMessage, closeLabel, minReasonLength, maxReasonLength, destructive, variant, pending, confirmDisabled, error, maxWidthClass, className, children, onOpenChange, onConfirm, }: ReasonedActionDialogProps): React_2.JSX.Element;
+export declare function ReasonedActionDialog({ open, title, description, confirmLabel, cancelLabel, onCancel, workingLabel, reasonLabel, reasonPlaceholder, reasonHint, reasonTooLongMessage, closeLabel, minReasonLength, maxReasonLength, destructive, variant, pending, confirmDisabled, error, maxWidthClass, className, children, onOpenChange, onConfirm, }: ReasonedActionDialogProps): React_2.JSX.Element;
 
 export declare interface ReasonedActionDialogProps {
     open: boolean;
@@ -2349,6 +2364,7 @@ export declare interface ReasonedActionDialogProps {
     description: React_2.ReactNode;
     confirmLabel: React_2.ReactNode;
     cancelLabel?: React_2.ReactNode;
+    onCancel?: () => void;
     workingLabel?: React_2.ReactNode;
     reasonLabel?: React_2.ReactNode;
     reasonPlaceholder?: string;
@@ -3160,6 +3176,8 @@ export declare interface UseControllableStateParams<T> {
     defaultValue: T;
     onChange?: (next: T) => void;
 }
+
+export declare function useDialog(): DialogContextValue | null;
 
 /**
  * 表单草稿持久化存储 Hook

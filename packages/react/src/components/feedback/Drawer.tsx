@@ -181,6 +181,17 @@ export const Drawer: React.FC<DrawerProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isMounted, drawerId])
 
+  // 视口宽度动态感知
+  const [viewportW, setViewportW] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1440
+  )
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handleResize = () => setViewportW(window.innerWidth)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   const stackIndex = activeDrawers.findIndex((item) => item.id === drawerId)
   const depthFromTop =
     stackIndex >= 0 ? Math.max(0, activeDrawers.length - 1 - stackIndex) : 0
@@ -194,10 +205,10 @@ export const Drawer: React.FC<DrawerProps> = ({
   // 计算上方所有子抽屉的累加宽度（即右侧所有子抽屉的占位宽度）
   const childTotalWidthPx = higherDrawers.reduce((sum, item) => sum + (item.widthPx || 560), 0)
 
-  // 视口保护自适应：当多级抽屉平级并排展开时，确保底层抽屉宽度适度自适应屏幕剩余可用空间
-  const viewportW = typeof window !== 'undefined' ? window.innerWidth : 1440
+  // 视口保护自适应：当多级抽屉平级并排展开时，确保底层抽屉宽度适度自适应屏幕剩余可用空间，且左边界绝不超出可视区
   let effectiveWidthPx = resolvedWidthPx
   if (isAdjacent && depthFromTop > 0 && childTotalWidthPx > 0) {
+    // 保留左侧安全边距 24px，若底层+顶层总宽超限，按比例动态压缩，确保 L1 完整展现
     const maxSafeWidth = Math.max(minWidth, viewportW - childTotalWidthPx - 24)
     if (effectiveWidthPx > maxSafeWidth) {
       effectiveWidthPx = maxSafeWidth

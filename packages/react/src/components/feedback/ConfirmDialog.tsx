@@ -49,7 +49,15 @@ export function ConfirmDialog({
   const isDestructive = variant === 'destructive'
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && onCancel()}>
+    <Dialog
+      open={open}
+      onClose={onCancel}
+      onCancel={onCancel}
+      onOpenChange={(next) => !next && onCancel()}
+      closeDisabled={loading}
+      fullscreenable={false}
+      draggable={false}
+    >
       <DialogContent
         data-slot="confirm-dialog"
         className={cn('w-full max-w-md', className)}
