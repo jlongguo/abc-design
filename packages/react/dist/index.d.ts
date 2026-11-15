@@ -2551,7 +2551,7 @@ export declare interface ProCrudFormModalProps<T extends Record<string, any> = R
 export declare interface ProCrudSearchFieldItem {
     key: string;
     label: string;
-    type: 'input' | 'select' | 'date' | 'datetimePicker' | 'dateRange';
+    type: 'input' | 'text' | 'number' | 'select' | 'date' | 'datetimePicker' | 'dateRange';
     columnKey?: string;
     placeholder?: string;
     options?: SelectOption[];
@@ -2888,12 +2888,12 @@ export declare interface ProSchemaLike<T = any> {
         success: boolean;
         data?: T;
         error?: {
-            issues?: Array<{
-                path?: Array<string | number>;
+            issues?: ReadonlyArray<{
+                path?: ReadonlyArray<PropertyKey>;
                 message?: string;
             }>;
-            errors?: Array<{
-                path?: Array<string | number>;
+            errors?: ReadonlyArray<{
+                path?: ReadonlyArray<PropertyKey>;
                 message?: string;
             }>;
         };

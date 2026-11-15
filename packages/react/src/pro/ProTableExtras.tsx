@@ -796,7 +796,7 @@ export function ProFloatingBatchBar<T = Record<string, any>>({
 export interface ProCrudSearchFieldItem {
   key: string
   label: string
-  type: 'input' | 'select' | 'date' | 'datetimePicker' | 'dateRange'
+  type: 'input' | 'text' | 'number' | 'select' | 'date' | 'datetimePicker' | 'dateRange'
   columnKey?: string
   placeholder?: string
   options?: SelectOption[]

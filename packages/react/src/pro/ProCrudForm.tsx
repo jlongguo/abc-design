@@ -66,8 +66,8 @@ export interface ProSchemaLike<T = any> {
     success: boolean
     data?: T
     error?: {
-      issues?: Array<{ path?: Array<string | number>; message?: string }>
-      errors?: Array<{ path?: Array<string | number>; message?: string }>
+      issues?: ReadonlyArray<{ path?: ReadonlyArray<PropertyKey>; message?: string }>
+      errors?: ReadonlyArray<{ path?: ReadonlyArray<PropertyKey>; message?: string }>
     }
   }
   shape?: Record<string, any> | (() => Record<string, any>)
