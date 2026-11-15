@@ -152,18 +152,20 @@ export interface BadgeProps {
   maxCount?: number
   dot?: boolean
   tone?: 'danger' | 'primary' | 'success'
+  variant?: 'default' | 'secondary' | 'outline' | 'destructive'
   size?: AbcSize
   motion?: AbcMotionPreset
   children?: React.ReactNode
   className?: string
 }
 
-/** 数字/红点角标组件 */
+/** 数字/红点角标组件（兼具语义标签模式） */
 export const Badge: React.FC<BadgeProps> = ({
   count = 0,
   maxCount = 99,
   dot = false,
   tone = 'danger',
+  variant,
   size,
   motion,
   children,
@@ -171,6 +173,30 @@ export const Badge: React.FC<BadgeProps> = ({
 }) => {
   const resolvedSize = useAbcSize(size, 'sm')
   const resolvedMotion = useAbcMotion(motion)
+
+  if (variant) {
+    const variantClass =
+      variant === 'secondary'
+        ? 'border-transparent bg-[var(--abc-bg-subtle,#f1f5f9)] text-[var(--abc-fg-secondary,#64748b)]'
+        : variant === 'outline'
+          ? 'border-[var(--abc-border,#e2e8f0)] text-[var(--abc-fg,#0f172a)] bg-transparent'
+          : variant === 'destructive'
+            ? 'border-transparent bg-[var(--abc-danger,#ef4444)] text-white'
+            : 'border-transparent bg-[var(--abc-primary,#2563eb)] text-white'
+
+    return (
+      <span
+        data-motion={resolvedMotion}
+        className={cn(
+          'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--abc-primary)] focus:ring-offset-2',
+          variantClass,
+          className
+        )}
+      >
+        {children}
+      </span>
+    )
+  }
 
   const bgClass =
     tone === 'primary'

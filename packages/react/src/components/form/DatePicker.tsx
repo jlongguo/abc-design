@@ -45,6 +45,7 @@ const WEEK_DAYS = ['日', '一', '二', '三', '四', '五', '六']
 const SIZE_H: Record<ControlSize, string> = {
   xs: 'h-[var(--abc-control-h-xs)] text-xs',
   sm: 'h-[var(--abc-control-h-sm)] text-xs',
+  default: 'h-[var(--abc-control-h-sm)] text-xs',
   md: 'h-[var(--abc-control-h-md)] text-sm',
   lg: 'h-[var(--abc-control-h-lg)] text-sm',
 }

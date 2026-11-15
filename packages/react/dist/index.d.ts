@@ -430,7 +430,7 @@ export declare interface AvatarProps {
     className?: string;
 }
 
-/** 数字/红点角标组件 */
+/** 数字/红点角标组件（兼具语义标签模式） */
 export declare const Badge: default_2.FC<BadgeProps>;
 
 export declare interface BadgeProps {
@@ -438,6 +438,7 @@ export declare interface BadgeProps {
     maxCount?: number;
     dot?: boolean;
     tone?: 'danger' | 'primary' | 'success';
+    variant?: 'default' | 'secondary' | 'outline' | 'destructive';
     size?: AbcSize;
     motion?: AbcMotionPreset;
     children?: default_2.ReactNode;
@@ -823,7 +824,7 @@ export declare const ConfirmProvider: default_2.FC<{
     children: default_2.ReactNode;
 }>;
 
-export declare type ControlSize = AbcSize;
+export declare type ControlSize = AbcSize | 'default';
 
 export declare const CopyableCode: React_2.ForwardRefExoticComponent<CopyableCodeProps & React_2.RefAttributes<HTMLSpanElement>>;
 
@@ -2894,6 +2895,7 @@ export declare interface TextareaProps extends default_2.TextareaHTMLAttributes<
     helperText?: default_2.ReactNode;
     showCount?: boolean;
     invalid?: boolean;
+    mono?: boolean;
 }
 
 /**
@@ -3172,7 +3174,7 @@ export declare function useAbcPermission(): {
  * 解析组件最终生效的尺寸规格（xs | sm | md | lg）
  * 优先级：组件显式 size prop > AbcProvider 全局 componentSize 覆盖 > 组件自身语义默认 fallback
  */
-export declare function useAbcSize(propSize?: AbcSize, fallback?: AbcSize): AbcSize;
+export declare function useAbcSize(propSize?: AbcSize | 'default', fallback?: AbcSize): AbcSize;
 
 /** 返回命令式确认函数的 Hook */
 export declare function useConfirm(): typeof abcConfirm;

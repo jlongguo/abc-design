@@ -4,11 +4,12 @@ import { Eye, EyeOff, Minus, Plus, X } from 'lucide-react'
 import { useAbcMotion, useAbcSize } from '../../hooks/useAbcDefaults'
 import { cn } from '../../utils/cn'
 
-export type ControlSize = AbcSize
+export type ControlSize = AbcSize | 'default'
 
 const HEIGHT_BY_SIZE: Record<ControlSize, string> = {
   xs: 'h-[var(--abc-control-h-xs)] text-xs',
   sm: 'h-[var(--abc-control-h-sm)] text-xs',
+  default: 'h-[var(--abc-control-h-sm)] text-xs',
   md: 'h-[var(--abc-control-h-md)] text-sm',
   lg: 'h-[var(--abc-control-h-lg)] text-sm',
 }
@@ -16,6 +17,7 @@ const HEIGHT_BY_SIZE: Record<ControlSize, string> = {
 const TEXTAREA_SIZE_CLASSES: Record<ControlSize, string> = {
   xs: 'px-2 py-1 text-xs min-h-[60px]',
   sm: 'px-2.5 py-1.5 text-xs min-h-[72px]',
+  default: 'px-2.5 py-1.5 text-xs min-h-[72px]',
   md: 'px-3 py-2 text-sm min-h-[84px]',
   lg: 'px-3.5 py-2.5 text-sm min-h-[98px]',
 }
@@ -408,6 +410,7 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
   helperText?: React.ReactNode
   showCount?: boolean
   invalid?: boolean
+  mono?: boolean
 }
 
 /** 多行文本域组件（支持四档尺寸、动效规格、内联标签、错误文案与实时字数统计） */
@@ -421,6 +424,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       helperText,
       showCount = false,
       invalid = false,
+      mono = false,
       id,
       value,
       defaultValue,
@@ -465,6 +469,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           baseFieldControlClass,
           TEXTAREA_SIZE_CLASSES[resolvedSize],
           'leading-relaxed resize-y',
+          mono && 'font-mono',
           isInvalid && 'border-[var(--abc-danger)] focus:border-[var(--abc-danger)]',
           className
         )}

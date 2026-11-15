@@ -52,6 +52,7 @@ export interface SelectProps {
 const SINGLE_SIZE_H: Record<ControlSize, string> = {
   xs: 'h-[var(--abc-control-h-xs)] text-xs',
   sm: 'h-[var(--abc-control-h-sm)] text-xs',
+  default: 'h-[var(--abc-control-h-sm)] text-xs',
   md: 'h-[var(--abc-control-h-md)] text-sm',
   lg: 'h-[var(--abc-control-h-lg)] text-sm',
 }
@@ -59,6 +60,7 @@ const SINGLE_SIZE_H: Record<ControlSize, string> = {
 const MULTI_SIZE_H: Record<ControlSize, string> = {
   xs: 'min-h-[var(--abc-control-h-xs)] text-xs',
   sm: 'min-h-[var(--abc-control-h-sm)] text-xs',
+  default: 'min-h-[var(--abc-control-h-sm)] text-xs',
   md: 'min-h-[var(--abc-control-h-md)] text-sm',
   lg: 'min-h-[var(--abc-control-h-lg)] text-sm',
 }

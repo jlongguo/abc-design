@@ -113,7 +113,6 @@ export function ReasonedActionDialog({
   return (
     <Dialog
       open={open}
-      title={typeof title === 'string' ? title : undefined}
       closeLabel={closeLabel}
       onClose={handleClose}
       onCancel={handleClose}
@@ -127,6 +126,7 @@ export function ReasonedActionDialog({
         className={cn('w-full max-w-lg', maxWidthClass, className)}
         closeLabel={closeLabel}
         closeDisabled={false}
+        closable={true}
       >
         <DialogHeader>
           <div className="flex items-center gap-2">

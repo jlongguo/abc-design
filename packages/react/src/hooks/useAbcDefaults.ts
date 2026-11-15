@@ -5,9 +5,10 @@ import { useAbcConfig } from '../provider/AbcProvider'
  * 解析组件最终生效的尺寸规格（xs | sm | md | lg）
  * 优先级：组件显式 size prop > AbcProvider 全局 componentSize 覆盖 > 组件自身语义默认 fallback
  */
-export function useAbcSize(propSize?: AbcSize, fallback: AbcSize = 'sm'): AbcSize {
+export function useAbcSize(propSize?: AbcSize | 'default', fallback: AbcSize = 'sm'): AbcSize {
   const { theme } = useAbcConfig()
-  return propSize ?? theme.componentSize ?? fallback
+  const normalized = propSize === 'default' ? undefined : propSize
+  return normalized ?? theme.componentSize ?? fallback
 }
 
 /**
