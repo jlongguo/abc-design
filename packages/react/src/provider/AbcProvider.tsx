@@ -315,6 +315,11 @@ export const AbcProvider: React.FC<AbcProviderProps> = ({
   )
 }
 
+/** 读取 ABC Design 上下文（若未包裹 AbcProvider，返回 null） */
+export function useOptionalAbcConfig(): AbcContextValue | null {
+  return useContext(AbcContext)
+}
+
 /** 读取 ABC Design 上下文（若未包裹 AbcProvider，提供安全兜底实例以保证单组件独立渲染与单测可用） */
 export function useAbcConfig(): AbcContextValue {
   const ctx = useContext(AbcContext)

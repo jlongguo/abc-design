@@ -22,6 +22,7 @@ import { GeneralAndFormDocsPage } from './pages/GeneralAndFormDocsPage'
 import { LayoutsPage } from './pages/LayoutsPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { ProConfigPage } from './pages/ProConfigPage'
+import { ProOpsSuitePage } from './pages/ProOpsSuitePage'
 import { ProTablePage } from './pages/ProTablePage'
 import { TemplatesPage } from './pages/TemplatesPage'
 
@@ -55,6 +56,7 @@ const MENU_TREE: AbcMenuItem[] = [
     children: [
       { key: 'pro-table', label: 'ProTable 数据表格', path: '/pro/table', icon: 'table' },
       { key: 'pro-config', label: 'ProConfigForm 配置页', path: '/pro/config', icon: 'config' },
+      { key: 'pro-ops', label: 'Pro 命令与虚拟日志套件', path: '/pro/ops', icon: 'layers', badge: 'New' },
       { key: 'templates', label: '5 套开箱业务页模板', path: '/templates', icon: 'sparkles', badge: '5' },
     ],
   },
@@ -171,6 +173,7 @@ export const App: React.FC = () => {
         {pathname === '/pro/config' && (
           <ProConfigPage brand={brand} onUpdateBrand={setBrand} />
         )}
+        {pathname === '/pro/ops' && <ProOpsSuitePage onJump={setPathname} />}
         {pathname === '/templates' && <TemplatesPage />}
       </ProLayout>
 

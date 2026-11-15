@@ -20,14 +20,17 @@ import {
   SearchInput,
   SegmentedControl,
   Select,
+  SelectField,
   SliderVerify,
   StatusTag,
   Switch,
   Tabs,
   TagInput,
   Textarea,
+  ThemeSwitcher,
   Tree,
   useAbcConfig,
+  useColorScheme,
   type AbcMotionPreset,
   type AbcSize,
   type AbcTreeNode,
@@ -82,11 +85,18 @@ export const GeneralAndFormDocsPage: React.FC = () => {
   const [inputError, setInputError] = useState(false)
   const [numVal, setNumVal] = useState<number | null>(120)
 
-  // Select Knobs
+  // Select & ThemeSwitcher Knobs
   const [selectMulti, setSelectMulti] = useState(true)
   const [selectSearchable, setSelectSearchable] = useState(true)
   const [singleRole, setSingleRole] = useState<string | number>('arch')
   const [multiRoles, setMultiRoles] = useState<Array<string | number>>(['arch', 'ops'])
+  const [selectFieldVal, setSelectFieldVal] = useState<string>('staging')
+  const [legacyProtocol, setLegacyProtocol] = useState<string>('socks5')
+  const {
+    preference: colorPreference,
+    resolvedScheme,
+    setPreference: setColorPreference,
+  } = useColorScheme()
 
   // Tree
   const [checkedMenuKeys, setCheckedMenuKeys] = useState<Array<string | number>>([
@@ -322,6 +332,7 @@ import { Download, ArrowRight, RefreshCw } from 'lucide-react'
             <Button
               variant={btnVariant}
               size={btnSize}
+              iconOnly={btnIconOnly}
               loading={btnLoading}
               loadingText="处理中…"
               disabled={btnDisabled}
@@ -541,40 +552,52 @@ export function IconDemo() {
           </div>
         </ComponentDocPreview>
 
-        {/* 4. Select & DictSelect */}
+        {/* 4. Select & DictSelect & SelectField */}
         <ComponentDocPreview
-          title="Select & DictSelect 选择器与字典下拉"
-          description="内置中文拼音首字母检索（如输入 xts 匹配“系统审计员”）、跳过禁用项的键盘上下键导航、多选胶囊标签与字典适配器联动。"
+          title="Select / DictSelect / SelectField 双模选择器"
+          description="完整融合声明式 options 模式（内置拼音首字母检索、多选胶囊标签、禁用项跳过、原生 Top-Layer 穿透）与原生 <option>/<optgroup> 子节点兼容模式（派生 ChangeEvent 与 SelectField 字符串快捷封装）。"
           controls={
             <>
               <Checkbox label="multiple (多选胶囊)" checked={selectMulti} onChange={setSelectMulti} />
               <Checkbox label="searchable (拼音检索)" checked={selectSearchable} onChange={setSelectSearchable} />
             </>
           }
-          code={`import { Select, DictSelect } from '@abc-design/react'
+          code={`import { Select, SelectField, DictSelect } from '@abc-design/react'
 
+{/* 1. 声明式 options（onChange 直接返回值/数组） */}
 <Select
   label="分配职能角色"
   multiple={${selectMulti}}
   searchable={${selectSearchable}}
   clearable
-  options={[
-    { label: '平台架构师', value: 'arch' },
-    { label: '站点可靠性工程师', value: 'ops' },
-    { label: '系统审计员', value: 'auditor' },
-  ]}
-/>`}
+  options={[{ label: '平台架构师', value: 'arch' }]}
+/>
+
+{/* 2. SelectField 字符串快捷封装 */}
+<SelectField
+  label="部署环境"
+  value={env}
+  onValueChange={setEnv}
+  options={[{ label: '预发环境 (Staging)', value: 'staging' }]}
+/>
+
+{/* 3. 原生 <option>/<optgroup> 迁移兼容模式 */}
+<Select value={protocol} onChange={(e) => setProtocol(e.target.value)}>
+  <optgroup label="常规加密">
+    <option value="socks5">SOCKS5</option>
+  </optgroup>
+</Select>`}
           apiRows={[
-            { prop: 'options', type: 'SelectOption[]', required: true, description: '选项集合（支持 label、value、disabled、description）' },
+            { prop: 'options', type: 'SelectOption[]', description: '声明式选项集合（未传时自动降级解析 <option>/<optgroup> 子节点并派生 ChangeEvent）' },
             { prop: 'multiple', type: 'boolean', defaultValue: 'false', description: '多选数组模式，选中后保持弹层展开并以胶囊标签呈现' },
             { prop: 'searchable', type: 'boolean', defaultValue: 'false', description: '开启本地关键字 + 汉字拼音首字母即时检索' },
-            { prop: 'clearable / allowClear', type: 'boolean', defaultValue: 'false', description: '一键清空已选项' },
+            { prop: 'SelectField.onValueChange', type: '(val: string) => void', description: 'SelectField 专用字符串回调与 triggerClassName / contentClassName 类名透传' },
             { prop: 'dictCode / dictKey', type: 'string', description: 'DictSelect 专用：通过 AbcProvider.dictAdapter 自动拉取远程字典项' },
           ]}
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Select
-              label="分配职能角色（支持输入拼音如 ptjgs）"
+              label="1. 分配职能角色（支持拼音如 ptjgs）"
               multiple={selectMulti}
               searchable={selectSearchable}
               clearable
@@ -588,11 +611,41 @@ export function IconDemo() {
               ]}
             />
             <DictSelect
-              label="租户状态筛选 (DictSelect 自动读取 tenant_status 字典)"
+              label="2. 租户状态筛选 (DictSelect 字典驱动)"
               dictCode="tenant_status"
               prependOptions={[{ label: '全部状态', value: '' }]}
               clearable
             />
+            <SelectField
+              label="3. SelectField 快捷单选封装"
+              value={selectFieldVal}
+              onValueChange={setSelectFieldVal}
+              searchable
+              clearable
+              helperText={`onValueChange 当前返回值: ${selectFieldVal || '(已清空)'}`}
+              options={[
+                { label: '生产主环境 (Production)', value: 'prod', description: 'SLA 99.99% 核心链路' },
+                { label: '预发灰度环境 (Staging)', value: 'staging', description: '全量回归与灰度验证集群' },
+                { label: '沙箱测试环境 (Sandbox)', value: 'sandbox' },
+              ]}
+            />
+            <Select
+              label="4. 原生 <option>/<optgroup> 子节点模式"
+              value={legacyProtocol}
+              onChange={(e) => setLegacyProtocol(e.target.value)}
+              helperText={`ChangeEvent.target.value: ${legacyProtocol}`}
+            >
+              <optgroup label="代理传输协议">
+                <option value="socks5">SOCKS5 (隧道优先)</option>
+                <option value="https">HTTPS CONNECT</option>
+                <option value="http">HTTP 明文内网</option>
+              </optgroup>
+              <optgroup label="受限协议">
+                <option value="ftp" disabled>
+                  FTP（安全策略已禁用）
+                </option>
+              </optgroup>
+            </Select>
           </div>
         </ComponentDocPreview>
 
@@ -688,6 +741,70 @@ export function IconDemo() {
                 onChange={setUploadedLogo}
                 helperText="支持拖拽任意 PNG / JPG / SVG 文件至此区域体验"
               />
+            </div>
+          </div>
+        </ComponentDocPreview>
+
+        {/* 7. ThemeSwitcher & useColorScheme */}
+        <ComponentDocPreview
+          title="ThemeSwitcher 主题切换器 & useColorScheme"
+          description="支持单键切换 (toggle) 与浅色/深色/跟随系统三态切换器 (segmented)，与顶层 AbcProvider、DOM data-abc-theme / .dark 属性及跨标签页状态自动双向同步。"
+          controls={
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-[var(--abc-fg-muted)]">快捷切换:</span>
+              {(['light', 'dark', 'system'] as const).map((pref) => (
+                <Button
+                  key={pref}
+                  size="xs"
+                  variant={colorPreference === pref ? 'primary' : 'outline'}
+                  onClick={() => setColorPreference(pref)}
+                >
+                  {pref === 'light' ? '浅色 Light' : pref === 'dark' ? '深色 Dark' : '跟随系统'}
+                </Button>
+              ))}
+              <StatusTag tone={resolvedScheme === 'dark' ? 'info' : 'neutral'}>
+                实际渲染：{resolvedScheme}（偏好：{colorPreference}）
+              </StatusTag>
+            </div>
+          }
+          code={`import { ThemeSwitcher, useColorScheme } from '@abc-design/react'
+
+const { preference, resolvedScheme, toggleScheme } = useColorScheme()
+
+{/* 顶部导航常用快捷按钮 */}
+<ThemeSwitcher mode="toggle" />
+
+{/* 设置页/命令中心用三态分段切换器 */}
+<ThemeSwitcher mode="segmented" />`}
+          apiRows={[
+            { prop: 'mode', type: "'toggle' | 'segmented'", defaultValue: "'toggle'", description: '快捷图标单键切换或浅色/深色/跟随系统三态分段切换' },
+            { prop: 'dark', type: 'boolean', defaultValue: 'false', description: '适配深色顶栏或暗黑底色容器的对比度预设' },
+            { prop: 'locale', type: 'string', defaultValue: "'zh-CN'", description: '按钮无障碍标签及三态切换提示语种' },
+            { prop: 'useColorScheme()', type: '{ preference, resolvedScheme, systemScheme, setPreference, toggleScheme }', description: '读写全局颜色偏好并自动执行圆形扩散视口过渡动画' },
+          ]}
+        >
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)]/70 p-4 space-y-2.5">
+              <div className="text-xs font-semibold text-[var(--abc-fg)]">浅色表面 Toggle 形态</div>
+              <div className="flex items-center gap-3">
+                <ThemeSwitcher mode="toggle" />
+                <span className="text-xs text-[var(--abc-fg-muted)]">单击在浅色/深色间平滑切换</span>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-700/80 bg-slate-900 p-4 space-y-2.5 text-slate-100">
+              <div className="text-xs font-semibold text-slate-200">深色 Header 适配 (dark=true)</div>
+              <div className="flex items-center gap-3">
+                <ThemeSwitcher mode="toggle" dark />
+                <span className="text-xs text-slate-400">高对比度暗黑导航底座预览</span>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)]/70 p-4 space-y-2.5">
+              <div className="text-xs font-semibold text-[var(--abc-fg)]">三态分段切换 (segmented)</div>
+              <div>
+                <ThemeSwitcher mode="segmented" />
+              </div>
             </div>
           </div>
         </ComponentDocPreview>

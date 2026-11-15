@@ -16,6 +16,7 @@ import {
   Edit3,
   Eye,
   Filter,
+  GripVertical,
   ListFilter,
   Maximize2,
   Minimize2,
@@ -24,21 +25,18 @@ import {
   RotateCcw,
   Search,
   Trash2,
+  Upload,
 } from 'lucide-react'
-import Button from '../components/button/Button'
+import Button, { type ButtonVariant } from '../components/button/Button'
 import { Pagination, type PaginationProps } from '../components/display/FeedbackStates'
 import { Dropdown, Tooltip } from '../components/display/Overlays'
-import { Descriptions } from '../components/display/StructuredDisplay'
 import { abcConfirm } from '../components/feedback/Confirm'
-import Dialog from '../components/feedback/Dialog'
-import Drawer from '../components/feedback/Drawer'
-import { TagInput } from '../components/form/AdvancedControls'
-import { Switch } from '../components/form/Controls'
+import type { DialogSize } from '../components/feedback/Dialog'
 import { DatePicker, DateRangePicker } from '../components/form/DatePicker'
 import FormField from '../components/form/FormField'
-import { Input, InputNumber, Textarea } from '../components/form/Input'
+import { Input, InputNumber } from '../components/form/Input'
 import { Select, type SelectOption } from '../components/form/Select'
-import { IconPicker } from '../components/icon/IconPicker'
+import Icon from '../components/icon/Icon'
 import { Card } from '../components/surface/Card'
 import TableCore, {
   type AbcColumn,
@@ -52,6 +50,16 @@ import { useAbcConfig } from '../provider/AbcProvider'
 import { cn } from '../utils/cn'
 import { useAbcPermission } from './PermissionAndDict'
 import {
+  ProCrudFormModal,
+  ProCrudViewModal,
+  resolveFieldKey,
+  useProForm,
+  type ProCrudFieldType,
+  type ProCrudFormField,
+  type ProFormInstance,
+  type ProSchemaLike,
+} from './ProCrudForm'
+import {
   HeaderColumnFilterPopover,
   ProColumnSettingsPopover,
   ProFloatingBatchBar,
@@ -60,6 +68,15 @@ import {
   type ProTableBatchAction,
   type ResolvedRowActionItem,
 } from './ProTableExtras'
+import {
+  createProTableApi,
+  isProApiFailure,
+  normalizeProListResponse,
+  type ProCrudApiConfig,
+  type ProTableApiInput,
+} from './useProTable'
+
+/* ==================== 1. 搜索、表单、操作与工具栏模型定义 ==================== */
 
 export interface ProTableFieldSchema {
   name: string
@@ -74,6 +91,9 @@ export interface ProTableFieldSchema {
     | 'dateRange'
     | 'tags'
     | 'icon'
+    | 'password'
+    | 'image'
+    | 'color'
   options?: SelectOption[]
   /** 下拉选择器是否启用多选模式 */
   multiple?: boolean
@@ -90,6 +110,26 @@ export interface ProTableFieldSchema {
   hideInForm?: boolean
 }
 
+export interface ProSearchFieldConfig {
+  key: string
+  label: string
+  type?: 'text' | 'input' | 'number' | 'select' | 'date' | 'datetimePicker' | 'dateRange'
+  /** 关联表格列 key（用于表头筛选状态联动与高亮） */
+  columnKey?: string
+  placeholder?: string
+  options?: SelectOption[]
+  searchable?: boolean
+  multiple?: boolean
+  span?: number
+  order?: number
+  format?: string
+  clearable?: boolean
+  /** 内部标记：是否源自 ProTableFieldSchema */
+  __fromFieldSchema?: boolean
+}
+
+export type SearchFieldConfig = ProSearchFieldConfig
+
 export interface ProTableRowAction<T = Record<string, any>> {
   key: string
   label: React.ReactNode
@@ -97,7 +137,45 @@ export interface ProTableRowAction<T = Record<string, any>> {
   danger?: boolean
   permission?: string
   hidden?: (record: T) => boolean
-  onClick: (record: T) => void
+  onClick: (record: T) => void | Promise<any>
+}
+
+export interface ProActionButtonConfig<T = Record<string, any>> {
+  key: string
+  label?: React.ReactNode
+  icon?: React.ReactNode | string
+  className?: string
+  variant?: ButtonVariant
+  type?: ButtonVariant
+  show?: boolean | ((record: T) => boolean)
+  disabled?: boolean | ((record: T) => boolean)
+  title?: string | ((record: T) => string | undefined)
+  permission?: string
+  onClick?: (record: T) => void | Promise<any>
+}
+
+export type ActionButtonConfig<T = Record<string, any>> = ProActionButtonConfig<T>
+
+export interface ProToolbarButtonConfig {
+  key: string
+  label: React.ReactNode
+  icon?: React.ReactNode
+  variant?: ButtonVariant
+  type?: ButtonVariant
+  permission?: string
+  onClick: () => void
+}
+
+export type ToolbarButtonConfig = ProToolbarButtonConfig
+
+export interface ProDraftConfig {
+  enabled?: boolean
+  autoSave?: boolean
+  autoSaveInterval?: number
+  showDraftButton?: boolean
+  enableVersions?: boolean
+  maxVersions?: number
+  showDraftList?: boolean
 }
 
 export interface ProTableRequestParams {
@@ -127,22 +205,54 @@ export type ProTablePaginationConfig =
       mode?: 'offset' | 'cursor'
     })
 
-export interface ProTableProps<T extends Record<string, any> = Record<string, any>> {
+export interface ProTableProps<
+  T extends Record<string, any> = any,
+  Q extends Record<string, any> = Record<string, any>,
+  F extends Record<string, any> = Record<string, any>,
+> {
   /** 表格标识键（用于本地持久化列宽、列序、固定列、显隐与新建表单草稿） */
   storageKey?: string
+  /** storageKey 语义别名（兼容 CrudTable） */
+  tableId?: string
   title?: React.ReactNode
+  subTitle?: React.ReactNode
   columns: AbcColumn<T>[]
-  /** 搜索与新建/编辑弹窗共用的字段定义 */
+  /** 搜索与新建/编辑弹窗共用的紧凑字段定义 */
   fields?: ProTableFieldSchema[]
+  /** 独立声明的检索字段列表（自动与列定义 col.search 合并并按 order 排序） */
+  searchFields?: ProSearchFieldConfig[]
+  /** 独立声明的弹窗表单字段列表（自动与列定义 col.form 合并并按 order 排序） */
+  formFields?: ProCrudFormField<T>[]
+  /** 表单外部 Schema 校验器（鸭子类型兼容 Zod safeParse / shape） */
+  formSchema?: ProSchemaLike<F>
+  /** 表单初始默认值 */
+  defaultFormValues?: Partial<F>
+  /** 表单弹窗标题配置 */
+  dialogTitle?: { add?: string; edit?: string }
+  /** 表单弹窗尺寸 */
+  dialogSize?: DialogSize | string
+  /** 表单布局形态：自适应网格 ('grid') 或五区左右分栏 ('split') */
+  formLayout?: 'grid' | 'split'
+  /** 草稿缓存策略配置 */
+  draftConfig?: ProDraftConfig
   /** 静态数据源（纯前端模式或外层受控数据） */
   dataSource?: T[]
-  /** 是否处于加载状态（支持受控外部 loading，默认在 request 查询期间自驱动） */
+  /** 是否处于加载状态（支持受控外部 loading，默认在异步查询期间自驱动） */
   loading?: boolean
   /** 异步服务端查询函数 */
   request?: (params: ProTableRequestParams) => Promise<ProTableRequestResult<T>>
-  rowKey?: keyof T | ((record: T) => string | number)
+  /** 全生命周期 CRUD 接口集合或分页查询函数（支持 list/get/view/create/add/update/delete/export/children） */
+  api?: ProCrudApiConfig<T, Q, F> | ProTableApiInput<T>
+  /** 默认固定附加查询参数 */
+  defaultQuery?: Partial<NoInfer<Q>>
+  /** 列表加载完成回调 */
+  onListLoaded?: (list: T[]) => void
+  rowKey?: (NoInfer<keyof T> & string) | string | ((record: T) => string | number)
   defaultPageSize?: number
-  /** 自定义分页器配置：传 false 隐藏底栏分页，或传具体 Pagination 配置，或完全由 request 自动推导 */
+  pageSizeOptions?: number[]
+  /** 是否隐藏底部分页栏 */
+  hidePagination?: boolean
+  /** 自定义分页器配置：传 false 隐藏底栏分页，或传具体 Pagination 配置 */
   pagination?: ProTablePaginationConfig
   /** 自定义底部分页插槽渲染函数 */
   renderPagination?: (paginationMeta: {
@@ -155,6 +265,8 @@ export interface ProTableProps<T extends Record<string, any> = Record<string, an
   selectedRowKey?: string | number | null
   /** 行点击回调（单行点击唤起 Drawer 或选中） */
   onRowClick?: (record: T, event: React.MouseEvent<HTMLTableRowElement>) => void
+  /** 自定义行原生属性钩子 */
+  onRow?: (record: T, rowIndex: number) => React.HTMLAttributes<HTMLTableRowElement>
   /** 搜索面板展示形态：'card' 默认多维折叠卡片 | 'toolbar' 紧凑水平工具条 | 'none' 不展示搜索面板 */
   searchVariant?: 'card' | 'toolbar' | 'none'
   /** 搜索条件实时变更时的受控回调 */
@@ -163,108 +275,353 @@ export interface ProTableProps<T extends Record<string, any> = Record<string, an
   onSearchSubmit?: (filters: Record<string, any>) => void
   /** 点击重置按钮时的回调 */
   onSearchReset?: () => void
-  /**
-   * 是否启用当前数据本地前端筛选模式（默认自动判断：无 request 时开启；后端接口不支持搜索时亦可开启）
-   */
+  /** 受控表头内联筛选模式（不传则组件内部自管理） */
+  headerFilterMode?: boolean
+  onHeaderFilterModeChange?: (enabled: boolean) => void
+  /** 是否启用当前数据本地前端筛选模式 */
   clientFilter?: boolean
   /** 是否在工具栏展示“前端筛选 / 接口筛选”实时切换开关 */
   showClientFilterSwitch?: boolean
   /** 搜索面板超出 3 项时初始是否自动折叠为单行（默认 true） */
   defaultSearchCollapsed?: boolean
-  /** 是否在工具栏显示定时自动轮询控件（默认在传入 request 时开启） */
+  /** 是否在工具栏显示定时自动轮询控件 */
   autoRefresh?: boolean
-  /** 是否启用 CSV 数据导出按钮（默认 true） */
+  /** 细粒度自动轮询配置（兼容 CrudTable） */
+  autoRefreshConfig?: {
+    show?: boolean
+    defaultEnabled?: boolean
+    defaultInterval?: number
+  }
+  /** 默认轮询间隔毫秒数 */
+  refetchInterval?: number
+  /** 是否启用导出按钮 */
   exportable?: boolean
-  /** 自定义导出回调（未传时默认导出当前可见列与过滤后数据的 UTF-8 CSV） */
-  onExport?: (rows: T[]) => void
+  /** exportable 语义别名 */
+  showExport?: boolean
+  /** 自定义导出回调（无 api 时接收当前可见数据行数组，传入 api 时接收清洗后的查询参数） */
+  onExport?: (rowsOrQuery: any) => void | Promise<void>
+  /** 是否显示导入按钮 */
+  showImport?: boolean
+  onImport?: () => void | Promise<void>
   /** 是否将当前页码与筛选条件双向同步至浏览器 URL 查询参数 */
   syncToUrl?: boolean
-  /** 是否自动开启操作列“详情”只读查看弹窗（基于 Descriptions 渲染） */
+  /** 是否开启操作列“详情/查看”只读弹窗 */
   viewable?: boolean
+  /** viewable 语义别名 */
+  showView?: boolean
+  viewTitle?: string | ((record: T) => React.ReactNode)
+  viewSize?: DialogSize | string
+  renderViewExtra?: (record: T) => React.ReactNode
+  renderViewFooter?: (record: T, closeView: () => void) => React.ReactNode
+  /** 当列配置 linkToView 为路由路径时触发的外部导航回调 */
+  onNavigate?: (path: string, record?: T) => void
   /** 新建/编辑表单承载容器形态：模态弹窗 ('dialog') 或侧滑抽屉 ('drawer') */
   formContainer?: 'dialog' | 'drawer'
-  /** 新建/编辑表单栅格列数（1 单列 / 2 双列并排，默认字段 >= 6 时自动采用 2 列） */
+  /** 新建/编辑表单栅格列数（1 单列 / 2 双列并排） */
   formColumns?: 1 | 2
-  /** 操作列扩展自定义按钮 */
+  /** 是否允许展示新增按钮 */
+  showAdd?: boolean
+  /** 新增按钮文案 */
+  addButtonText?: string
+  /** 是否允许展示编辑按钮 */
+  showEdit?: boolean
+  /** 是否允许展示删除按钮 */
+  showDelete?: boolean
+  /** 是否在工具栏与悬浮栏启用批量删除 */
+  showBatchDelete?: boolean
+  /** 操作列扩展自定义按钮（ProTable 风格） */
   rowActions?: ProTableRowAction<T>[]
-  /** 操作列最多平铺按钮数，超出自动收纳至 `...` 下拉菜单（默认 3） */
+  /** 操作列扩展自定义按钮（兼容 CrudTable 风格，支持覆盖内置 edit/delete、返回 Promise 自动刷新） */
+  actionButtons?: ProActionButtonConfig<T>[]
+  /** 操作列默认宽度 */
+  actionColumnWidth?: number
+  /** 操作列最多平铺按钮数，超出自动收纳至 `...` 下拉菜单 */
   maxInlineActions?: number
-  /** 是否强制开启多选框（默认当配置 onDeleteRecords 或 batchActions 时自动开启） */
+  /** 是否开启行多选框 */
   rowSelection?: boolean
+  /** rowSelection 语义别名 */
+  showRowSelection?: boolean
+  /** 受控选中行主键列表 */
+  selectedRowKeys?: Array<string | number>
+  /** 选中行变更回调 */
+  onRowSelectionChange?: (keys: Array<string | number>, rows: T[]) => void
   /** 悬浮批量操作栏扩展动作 */
   batchActions?: ProTableBatchAction<T>[]
+  /** 自定义批量操作插槽 */
+  renderBatchActions?: (selectedRowKeys: Array<string | number>, selectedRows: T[]) => React.ReactNode
+  /** 是否开启树形层级表格渲染 */
+  treeData?: boolean
   /** 展开详情子面板与树形数据配置 */
   expandable?: AbcTableExpandableConfig<T>
+  /** 行拖拽重排配置 */
+  sortable?: {
+    enabled: boolean
+    onSort: (items: T[]) => void | Promise<any>
+    handle?: boolean
+  }
+  /** 是否展示列设置按钮（默认 true） */
+  columnSettingsEnabled?: boolean
   /** 表格纵向最大高度（开启后表头吸顶内滚） */
   maxHeight?: number | string
-  /** 细粒度 CRUD 权限码绑定 */
+  /** 细粒度 CRUD 权限码绑定（ProTable 风格） */
   permissions?: {
     create?: string
     update?: string
     delete?: string
   }
-  /** 工具栏左侧附加按钮插槽 */
+  /** 细粒度 CRUD 权限码绑定（CrudTable 风格） */
+  permission?: {
+    add?: string
+    edit?: string
+    delete?: string
+    batchDelete?: string
+    query?: string
+    export?: string
+    view?: string
+  }
+  /** 可选自定义权限断言器（未传时默认消费 AbcProvider.permissionAdapter） */
+  hasPermission?: (code?: string) => boolean
+  /** 工具栏左侧附加按钮列表 */
+  toolbarButtons?: ProToolbarButtonConfig[]
+  /** 工具栏左侧附加节点插槽 */
   toolbarExtra?: React.ReactNode
+  renderToolbarExtra?: () => React.ReactNode
+  /** 页面顶部标题右侧扩展区 */
+  headerExtra?: React.ReactNode
+  renderExtra?: () => React.ReactNode
+  /** 搜索卡片上方自定义统计或提示横幅插槽 */
+  cardExtra?: React.ReactNode
+  renderCardExtra?: () => React.ReactNode
+  /** 搜索表单自定义扩展筛选项插槽 */
+  renderSearchExtra?: (ctx: {
+    query: Record<string, any>
+    onQueryChange: (key: string, value: any) => void
+    isSearchVisible: (columnKey: string) => boolean
+  }) => React.ReactNode
+  /** 表单弹窗底部扩展内容插槽 */
+  renderFormExtra?: (form: ProFormInstance<any>, isEdit: boolean) => React.ReactNode
+  /** 完全接管新建/编辑表单弹窗渲染 */
+  renderCustomForm?: (props: {
+    open: boolean
+    onClose: () => void
+    record: T | null
+    isEdit: boolean
+    onSuccess: () => void
+  }) => React.ReactNode
+  /** 外部命令式控制引用 */
+  onRefreshRef?: React.MutableRefObject<((resetToFirstPage?: boolean) => void) | null>
+  onAddWithValuesRef?: React.MutableRefObject<((values: Partial<F>) => void) | null>
+  openEditRef?: React.MutableRefObject<((record: T) => void) | null>
+  /** CRUD 生命周期拦截与回调钩子 */
+  onAdd?: () => void
+  onEdit?: (record: T) => void
+  onDelete?: (record: T) => void
+  onBeforeAdd?: (values: F) => boolean | F | Promise<boolean | F>
+  onBeforeEdit?: (values: F, record: T) => boolean | F | Promise<boolean | F>
+  onBeforeSubmit?: (
+    values: F,
+    isEdit: boolean,
+    record: T | null
+  ) => boolean | Record<string, any> | Promise<boolean | Record<string, any>>
+  onBeforeDelete?: (record: T) => boolean | Promise<boolean>
+  onBeforeBatchDelete?: (ids: Array<string | number>) => boolean | Promise<boolean>
+  onAfterSave?: (record: any) => void
+  onAfterDelete?: () => void
+  onAfterBatchDelete?: () => void
   /** 表格整体交互动效规格 */
   motion?: AbcMotionPreset
-  /** 新建/编辑保存回调 */
+  /** 新建/编辑保存回调（无 api 时的轻量直连模式） */
   onSaveRecord?: (values: Record<string, any>, editingRecord: T | null) => void | Promise<void>
-  /** 单行或批量删除回调 */
+  /** 单行或批量删除回调（无 api 时的轻量直连模式） */
   onDeleteRecords?: (keys: Array<string | number>) => void | Promise<void>
 }
 
+export type ProCrudTableProps<
+  T extends Record<string, any> = any,
+  Q extends Record<string, any> = Record<string, any>,
+  F extends Record<string, any> = Record<string, any>,
+> = ProTableProps<T, Q, F>
+
+function hasActiveFilterValue(val: unknown): boolean {
+  if (val === undefined || val === null || val === '') return false
+  if (Array.isArray(val)) return val.length > 0
+  if (typeof val === 'object' && ('start' in (val as any) || 'end' in (val as any))) {
+    return Boolean((val as any).start || (val as any).end)
+  }
+  return true
+}
+
+function formatFilterBadgeText(field: ProSearchFieldConfig, rawVal: any): string {
+  const resolveOptLabel = (optLabel: React.ReactNode, fallback: any): string =>
+    typeof optLabel === 'string' || typeof optLabel === 'number'
+      ? String(optLabel)
+      : String(fallback ?? '')
+
+  if (Array.isArray(rawVal)) {
+    return rawVal
+      .map((item) => {
+        const hit = field.options?.find((o) => String(o.value) === String(item))
+        return hit ? resolveOptLabel(hit.label, item) : String(item)
+      })
+      .join(', ')
+  }
+  if (rawVal && typeof rawVal === 'object' && ('start' in rawVal || 'end' in rawVal)) {
+    return `${rawVal.start || '...'} ~ ${rawVal.end || '...'}`
+  }
+  if (field.options && field.options.length > 0) {
+    const hit = field.options.find((o) => String(o.value) === String(rawVal))
+    if (hit) return resolveOptLabel(hit.label, rawVal)
+  }
+  return String(rawVal ?? '')
+}
+
 /**
- * Schema 驱动的企业级全功能 CRUD 数据表格 (ProTable)
- * 完整对齐并融合 CrudTable 交互范式：
- * - 可折叠多维搜索卡片（支持文本、数值、多选、单日期、双月日期区间）
- * - 表头单列气泡筛选 + 表头内联筛选行双模式 + 表头右键快捷菜单
- * - 服务端接口检索与客户端本地拼音检索一键切换
- * - 定时自动轮询、UTF-8 CSV 导出、沉浸全屏工作台、列宽/列序/左右冻结/筛选项持久化
- * - 行操作自动溢出折叠、毛玻璃悬浮批量操作胶囊栏、草稿自动记忆与字段级校验
+ * Schema 驱动的企业级全功能 CRUD 数据表格 (ProTable / ProCrudTable)
+ * 完整统一声明式 API 引擎、响应式联动表单、列驱动搜索/详情、树表懒加载与拖拽排序
  */
-export function ProTable<T extends Record<string, any> = Record<string, any>>({
-  storageKey,
+export function ProTable<
+  T extends Record<string, any> = any,
+  Q extends Record<string, any> = Record<string, any>,
+  F extends Record<string, any> = Record<string, any>,
+>({
+  storageKey: propStorageKey,
+  tableId,
   title,
+  subTitle,
   columns,
   fields = [],
+  searchFields: propSearchFields,
+  formFields: propFormFields,
+  formSchema,
+  defaultFormValues,
+  dialogTitle,
+  dialogSize,
+  formLayout = 'grid',
+  draftConfig,
   dataSource,
   loading: propLoading,
   request,
+  api: apiProp,
+  defaultQuery,
+  onListLoaded,
   rowKey = 'id',
   defaultPageSize = 10,
+  pageSizeOptions,
+  hidePagination = false,
   pagination,
   renderPagination,
   selectedRowKey,
   onRowClick,
+  onRow,
   searchVariant = 'card',
   onSearchChange,
   onSearchSubmit,
   onSearchReset,
+  headerFilterMode: controlledHeaderFilterMode,
+  onHeaderFilterModeChange,
   clientFilter: initialClientFilter,
-  showClientFilterSwitch = false,
+  showClientFilterSwitch,
   defaultSearchCollapsed = true,
   autoRefresh,
-  exportable = true,
+  autoRefreshConfig,
+  refetchInterval,
+  exportable,
+  showExport,
   onExport,
+  showImport = false,
+  onImport,
   syncToUrl = false,
-  viewable = false,
+  viewable,
+  showView,
+  viewTitle,
+  viewSize = 'lg',
+  renderViewExtra,
+  renderViewFooter,
+  onNavigate,
   formContainer = 'dialog',
   formColumns,
+  showAdd,
+  addButtonText,
+  showEdit,
+  showDelete,
+  showBatchDelete,
   rowActions = [],
-  maxInlineActions = 3,
+  actionButtons = [],
+  actionColumnWidth,
+  maxInlineActions,
   rowSelection,
+  showRowSelection,
+  selectedRowKeys: controlledSelectedRowKeys,
+  onRowSelectionChange,
   batchActions = [],
+  renderBatchActions,
+  treeData = false,
   expandable,
+  sortable,
+  columnSettingsEnabled = true,
   maxHeight,
   permissions,
+  permission,
+  hasPermission: customHasPermission,
+  toolbarButtons = [],
   toolbarExtra,
+  renderToolbarExtra,
+  headerExtra,
+  renderExtra,
+  cardExtra,
+  renderCardExtra,
+  renderSearchExtra,
+  renderFormExtra,
+  renderCustomForm,
+  onRefreshRef,
+  onAddWithValuesRef,
+  openEditRef,
+  onAdd,
+  onEdit,
+  onDelete,
+  onBeforeAdd,
+  onBeforeEdit,
+  onBeforeSubmit,
+  onBeforeDelete,
+  onBeforeBatchDelete,
+  onAfterSave,
+  onAfterDelete,
+  onAfterBatchDelete,
   motion,
   onSaveRecord,
   onDeleteRecords,
-}: ProTableProps<T>) {
+}: ProTableProps<T, Q, F>) {
+  const storageKey = propStorageKey ?? tableId
   const { toast } = useAbcConfig()
   const resolvedMotion = useAbcMotion(motion)
-  const { hasPermission } = useAbcPermission()
+  const { hasPermission: abcHasPermission } = useAbcPermission()
+
+  const checkPermission = useCallback(
+    (code?: string): boolean => {
+      if (!code) return true
+      return customHasPermission ? customHasPermission(code) : abcHasPermission(code)
+    },
+    [customHasPermission, abcHasPermission]
+  )
+
+  const resolvedApi = useMemo<ProCrudApiConfig<T, Q, F> | undefined>(() => {
+    if (!apiProp) return undefined
+    if (typeof apiProp === 'function') {
+      return createProTableApi<T>(apiProp) as ProCrudApiConfig<T, Q, F>
+    }
+    return apiProp
+  }, [apiProp])
+
+  const apiRef = useRef(resolvedApi)
+  apiRef.current = resolvedApi
+  const onListLoadedRef = useRef(onListLoaded)
+  onListLoadedRef.current = onListLoaded
+
+  const defaultHiddenKeys = useMemo(
+    () => columns.filter((c) => c.visible === false).map((c) => c.key),
+    [columns]
+  )
+
   const {
     settings,
     toggleColumnVisible,
@@ -275,7 +632,9 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
     setSearchFieldVisible,
     setDensity,
     resetSettings,
-  } = useTableSettings(storageKey)
+  } = useTableSettings(columnSettingsEnabled ? storageKey : undefined, 'default', defaultHiddenKeys)
+
+  const hasRemoteSource = Boolean(request || resolvedApi?.list)
 
   const initialUrlParams = useMemo(() => {
     if (!syncToUrl || typeof window === 'undefined') return {}
@@ -283,66 +642,305 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
   }, [syncToUrl])
 
   const [isClientFilter, setIsClientFilter] = useState<boolean>(
-    () => initialClientFilter ?? !request
+    () => initialClientFilter ?? !hasRemoteSource
   )
-  const [headerFilterMode, setHeaderFilterMode] = useState(false)
+  const [internalHeaderFilterMode, setInternalHeaderFilterMode] = useState(false)
+  const headerFilterMode = controlledHeaderFilterMode ?? internalHeaderFilterMode
+  const updateHeaderFilterMode = (next: boolean) => {
+    if (controlledHeaderFilterMode === undefined) {
+      setInternalHeaderFilterMode(next)
+    }
+    onHeaderFilterModeChange?.(next)
+  }
+
+  const [extraFilterCollapsed, setExtraFilterCollapsed] = useState(true)
   const [searchPanelExpanded, setSearchPanelExpanded] = useState(true)
   const [searchFieldsCollapsed, setSearchFieldsCollapsed] = useState(defaultSearchCollapsed)
 
   const [searchInputs, setSearchInputs] = useState<Record<string, any>>(() => {
     const { page: _p, pageSize: _ps, ...rest } = initialUrlParams
-    return rest
+    return { ...(defaultQuery as Record<string, any>), ...rest }
   })
+  const searchInputsRef = useRef(searchInputs)
+  searchInputsRef.current = searchInputs
+
   const [appliedFilters, setAppliedFilters] = useState<Record<string, any>>(() => {
     const { page: _p, pageSize: _ps, ...rest } = initialUrlParams
-    return rest
+    return { ...(defaultQuery as Record<string, any>), ...rest }
   })
   const [quickKeyword, setQuickKeyword] = useState('')
-  const [sortState, setSortState] = useState<{ key: string; direction: SortDirection }>({
-    key: '',
-    direction: null,
-  })
+  const [sortState, setSortState] = useState<{ key: string; direction: SortDirection }>(() => ({
+    key: String((defaultQuery as any)?.orderBy ?? ''),
+    direction: ((defaultQuery as any)?.orderType as SortDirection) ?? null,
+  }))
 
   const [current, setCurrent] = useState<number>(() => Number(initialUrlParams.page) || 1)
   const [pageSize, setPageSize] = useState<number>(
     () => Number(initialUrlParams.pageSize) || defaultPageSize
   )
   const [internalLoading, setInternalLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const loading = propLoading !== undefined ? propLoading : internalLoading
   const [remoteRows, setRemoteRows] = useState<T[]>([])
   const [remoteTotal, setRemoteTotal] = useState(0)
-  const [selectedKeys, setSelectedKeys] = useState<Array<string | number>>([])
-  const [selectedRows, setSelectedRows] = useState<T[]>([])
+
+  const [internalSelectedKeys, setInternalSelectedKeys] = useState<Array<string | number>>([])
+  const selectedKeys = controlledSelectedRowKeys ?? internalSelectedKeys
+  const [cachedSelectedRows, setCachedSelectedRows] = useState<T[]>([])
   const [isFullScreen, setIsFullScreen] = useState(false)
 
+  // 树形/子表异步懒加载缓存状态
+  const [childrenData, setChildrenData] = useState<Record<string | number, T[]>>({})
+  const [childrenLoading, setChildrenLoading] = useState<Record<string | number, boolean>>({})
+  const [childrenError, setChildrenError] = useState<Record<string | number, string>>({})
+
   // 自动轮询控制
-  const showAutoRefreshControl = autoRefresh ?? Boolean(request)
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false)
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState(10000)
+  const showAutoRefreshControl =
+    autoRefresh ?? (autoRefreshConfig ? autoRefreshConfig.show !== false : hasRemoteSource)
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(
+    autoRefreshConfig?.defaultEnabled ?? false
+  )
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(
+    refetchInterval ?? autoRefreshConfig?.defaultInterval ?? 10000
+  )
 
   // 异步请求竞态序列号防卫，杜绝慢响应覆盖最新筛选结果
   const requestSeqRef = useRef(0)
 
   // 详情查看弹窗状态
   const [viewingRecord, setViewingRecord] = useState<T | null>(null)
+  const [viewLoading, setViewLoading] = useState(false)
+
+  // 聚合声明式搜索字段（兼容 fields + columns.search/searchable + searchFields）
+  const allSearchFields = useMemo<ProSearchFieldConfig[]>(() => {
+    const merged = new Map<string, ProSearchFieldConfig>()
+
+    fields
+      .filter((f) => !f.hideInSearch)
+      .forEach((f) => {
+        merged.set(f.name, {
+          key: f.name,
+          columnKey: f.name,
+          label: f.label,
+          type: (f.type as ProSearchFieldConfig['type']) ?? 'text',
+          placeholder: f.placeholder,
+          options: f.options,
+          multiple: f.multiple,
+          span: f.span,
+          __fromFieldSchema: true,
+        })
+      })
+
+    columns.forEach((col) => {
+      const enabled =
+        col.search === true ||
+        (typeof col.search === 'object' && col.search !== null) ||
+        col.searchable === true
+      if (!enabled) return
+      const searchCfg =
+        typeof col.search === 'object' && col.search !== null ? (col.search as Record<string, any>) : {}
+      if (searchCfg.custom) return
+      const typeCfg = typeof col.type === 'object' ? col.type : undefined
+      const selectOptions = searchCfg.options ?? typeCfg?.options ?? col.options
+      const resolvedType: ProSearchFieldConfig['type'] =
+        searchCfg.type ?? (selectOptions ? 'select' : 'input')
+      const fieldKey = String(
+        searchCfg.key ??
+          (Array.isArray(col.dataIndex) ? col.dataIndex.join('.') : col.dataIndex) ??
+          col.key
+      )
+      merged.set(fieldKey, {
+        key: fieldKey,
+        columnKey: col.key,
+        label: col.title,
+        type: resolvedType,
+        placeholder: searchCfg.placeholder,
+        options: selectOptions,
+        searchable: searchCfg.searchable,
+        multiple: searchCfg.multiple,
+        span: searchCfg.span,
+        order: searchCfg.order,
+        format: searchCfg.format,
+        clearable: searchCfg.clearable,
+        __fromFieldSchema: false,
+      })
+    })
+
+    ;(propSearchFields ?? []).forEach((sf) => {
+      const prev = merged.get(sf.key)
+      merged.set(sf.key, {
+        ...prev,
+        ...sf,
+        __fromFieldSchema: false,
+      })
+    })
+
+    return Array.from(merged.values()).sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+  }, [fields, columns, propSearchFields])
+
+  const searchableFieldNames = useMemo(
+    () => new Set(allSearchFields.map((f) => f.key)),
+    [allSearchFields]
+  )
+
+  const visibleSearchFields = useMemo(
+    () =>
+      allSearchFields.filter((f) => {
+        if (settings.searchVisible[f.key] === false) return false
+        if (f.columnKey && settings.searchVisible[f.columnKey] === false) return false
+        return true
+      }),
+    [allSearchFields, settings.searchVisible]
+  )
+
+  const extraFilterFields = useMemo(
+    () =>
+      visibleSearchFields.filter(
+        (field) => !columns.some((col) => col.key === (field.columnKey || field.key))
+      ),
+    [visibleSearchFields, columns]
+  )
+
+  const displayedSearchFields = useMemo(() => {
+    if (!searchFieldsCollapsed || visibleSearchFields.length <= 3) {
+      return visibleSearchFields
+    }
+    return visibleSearchFields.slice(0, 3)
+  }, [visibleSearchFields, searchFieldsCollapsed])
+
+  // 聚合声明式表单字段（兼容 fields + columns.form + formFields）
+  const resolvedFormFields = useMemo<ProCrudFormField<T>[]>(() => {
+    const merged = new Map<string, ProCrudFormField<T>>()
+
+    fields
+      .filter((f) => !f.hideInForm)
+      .forEach((f) => {
+        merged.set(f.name, {
+          key: f.name,
+          name: f.name,
+          label: f.label,
+          type: (f.type as ProCrudFieldType) ?? 'text',
+          options: f.options,
+          multiple: f.multiple,
+          placeholder: f.placeholder,
+          helperText: f.helperText,
+          defaultValue: f.defaultValue,
+          span: f.span,
+          required: f.required,
+          disabled: f.disabled,
+          validator: f.validator,
+          __fromFieldSchema: true,
+        })
+      })
+
+    columns
+      .filter((col) => col.form === true || (typeof col.form === 'object' && col.form !== null))
+      .forEach((col) => {
+        const formCfg =
+          typeof col.form === 'object' && col.form !== null
+            ? (col.form as Partial<ProCrudFormField<T>>)
+            : {}
+        const fieldKey = String(
+          formCfg.key ??
+            formCfg.name ??
+            (Array.isArray(col.dataIndex) ? col.dataIndex[0] : col.dataIndex) ??
+            col.key
+        )
+        merged.set(fieldKey, {
+          ...formCfg,
+          key: fieldKey,
+          label: formCfg.label ?? col.title,
+          tooltip: formCfg.tooltip ?? col.tooltip,
+          type: formCfg.type ?? 'input',
+        })
+      })
+
+    ;(propFormFields ?? []).forEach((ff) => {
+      const fk = resolveFieldKey(ff)
+      if (!fk) return
+      const prev = merged.get(fk)
+      merged.set(fk, {
+        ...prev,
+        ...ff,
+        key: fk,
+      })
+    })
+
+    return Array.from(merged.values()).sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+  }, [fields, columns, propFormFields])
+
+  const buildDefaultFormValues = useCallback((): Record<string, any> => {
+    const defaults: Record<string, any> = { ...(defaultFormValues as Record<string, any>) }
+    for (const f of resolvedFormFields) {
+      const fk = resolveFieldKey(f)
+      if (fk && f.defaultValue !== undefined && defaults[fk] === undefined) {
+        defaults[fk] = f.defaultValue
+      }
+    }
+    return defaults
+  }, [defaultFormValues, resolvedFormFields])
+
+  const form = useProForm<Record<string, any>>({
+    defaultValues: buildDefaultFormValues(),
+    schema: formSchema,
+    fields: resolvedFormFields,
+  })
 
   // 新建 / 编辑弹窗与草稿记忆
-  const draft = useDraftStorage<Record<string, any>>(storageKey ? `${storageKey}_form` : undefined)
+  const draftEnabled = draftConfig ? Boolean(draftConfig.enabled) : Boolean(storageKey && !apiProp)
+  const autoRestoreDraft = !draftConfig && Boolean(storageKey && !apiProp)
+  const draft = useDraftStorage<Record<string, any>>(
+    draftEnabled && storageKey ? `${storageKey}_form` : undefined
+  )
   const [modalOpen, setModalOpen] = useState(false)
+  const [isEdit, setIsEdit] = useState(false)
   const [editingRecord, setEditingRecord] = useState<T | null>(null)
-  const [formValues, setFormValues] = useState<Record<string, any>>({})
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-  const [saving, setSaving] = useState(false)
+  const [formSubmitting, setFormSubmitting] = useState(false)
+  const [formDetailLoading, setFormDetailLoading] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [showDraftBanner, setShowDraftBanner] = useState(false)
 
-  const canCreate = !permissions?.create || hasPermission(permissions.create)
-  const canUpdate = !permissions?.update || hasPermission(permissions.update)
-  const canDelete = !permissions?.delete || hasPermission(permissions.delete)
+  // 权限断言计算
+  const addPermCode = permission?.add ?? permissions?.create
+  const editPermCode = permission?.edit ?? permissions?.update
+  const deletePermCode = permission?.delete ?? permissions?.delete
+  const batchDeletePermCode = permission?.batchDelete ?? deletePermCode
+  const exportPermCode = permission?.export
+  const viewPermCode = permission?.view
+
+  const canCreate = (showAdd ?? true) && checkPermission(addPermCode)
+  const canUpdate = (showEdit ?? true) && checkPermission(editPermCode)
+  const canDelete = (showDelete ?? true) && checkPermission(deletePermCode)
+  const canBatchDelete =
+    (showBatchDelete ?? Boolean(onDeleteRecords)) && checkPermission(batchDeletePermCode)
+  const effectiveExportable =
+    (showExport ?? exportable ?? !Boolean(apiProp)) && checkPermission(exportPermCode)
+  const effectiveViewable = (showView ?? viewable ?? false) && checkPermission(viewPermCode)
+
+  const canOpenAdd =
+    canCreate &&
+    Boolean(
+      onAdd ||
+        renderCustomForm ||
+        (onSaveRecord && resolvedFormFields.length > 0) ||
+        resolvedApi?.add ||
+        resolvedApi?.create
+    )
+  const canOpenEdit =
+    canUpdate &&
+    Boolean(
+      onEdit || renderCustomForm || onSaveRecord || resolvedApi?.update || resolvedApi?.edit
+    )
+  const canOpenDelete =
+    canDelete && Boolean(onDelete || onDeleteRecords || resolvedApi?.delete)
 
   useEffect(() => {
     if (!syncToUrl || typeof window === 'undefined') return
     const managedKeys = [
-      ...fields.filter((f) => !f.hideInSearch).map((f) => f.name),
-      ...columns.map((c) => String(c.dataIndex ?? c.key)),
+      ...allSearchFields.map((f) => f.key),
+      ...columns.map((c) =>
+        Array.isArray(c.dataIndex) ? c.dataIndex.join('.') : String(c.dataIndex ?? c.key)
+      ),
       'page',
       'pageSize',
     ]
@@ -353,7 +951,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
     })
     const nextUrl = `${window.location.pathname}${nextSearch}${window.location.hash}`
     window.history.replaceState(null, '', nextUrl)
-  }, [syncToUrl, fields, columns, appliedFilters, current, pageSize, defaultPageSize])
+  }, [syncToUrl, allSearchFields, columns, appliedFilters, current, pageSize, defaultPageSize])
 
   // 全屏模式下按 Esc 退出全屏（仅在无打开弹窗时生效）
   useEffect(() => {
@@ -368,28 +966,63 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
   }, [isFullScreen, modalOpen, viewingRecord])
 
   const resolveRowKey = useCallback(
-    (record: T, idx: number): string | number => {
+    (record: T, idx = 0): string | number => {
       if (typeof rowKey === 'function') return rowKey(record)
-      return (record?.[rowKey] as string | number) ?? idx
+      return (record?.[rowKey as keyof T] as string | number) ?? idx
     },
     [rowKey]
   )
 
   const fetchServerData = useCallback(async () => {
-    if (!request) return
+    if (!request && !apiRef.current?.list) return
     const seq = ++requestSeqRef.current
     setInternalLoading(true)
     try {
-      const res = await request({
-        current,
+      if (request) {
+        const res = await request({
+          current,
+          pageSize,
+          filters: isClientFilter ? {} : cleanQueryObject(appliedFilters),
+          sortField: sortState.direction ? sortState.key : undefined,
+          sortOrder: sortState.direction,
+        })
+        if (seq !== requestSeqRef.current) return
+        setRemoteRows(res.data)
+        setRemoteTotal(res.total)
+        onListLoadedRef.current?.(res.data)
+        return
+      }
+
+      const activeApi = apiRef.current
+      if (!activeApi?.list) return
+      const query = cleanQueryObject({
+        ...(defaultQuery as Record<string, any>),
+        ...(isClientFilter ? {} : appliedFilters),
+        pageNum: current,
         pageSize,
-        filters: isClientFilter ? {} : cleanQueryObject(appliedFilters),
-        sortField: sortState.direction ? sortState.key : undefined,
-        sortOrder: sortState.direction,
-      })
+        ...(sortState.direction
+          ? {
+              orderBy: sortState.key,
+              orderType: sortState.direction,
+              sortField: sortState.key,
+              sortOrder: sortState.direction,
+            }
+          : {}),
+      }) as Q
+
+      const res = await activeApi.list(query)
       if (seq !== requestSeqRef.current) return
-      setRemoteRows(res.data)
-      setRemoteTotal(res.total)
+
+      if (isProApiFailure(res) && !res?.data && !res?.list) {
+        toast.error(res?.msg || '获取表格数据失败')
+        setRemoteRows([])
+        setRemoteTotal(0)
+        return
+      }
+      const { list, total } = normalizeProListResponse<T>(res)
+      setRemoteRows(list)
+      setRemoteTotal(total)
+      onListLoadedRef.current?.(list)
     } catch (err: any) {
       if (seq === requestSeqRef.current) {
         toast.error(err?.message || '加载表格数据失败')
@@ -399,28 +1032,136 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
         setInternalLoading(false)
       }
     }
-  }, [request, current, pageSize, isClientFilter, appliedFilters, sortState, toast])
+  }, [
+    request,
+    defaultQuery,
+    current,
+    pageSize,
+    isClientFilter,
+    appliedFilters,
+    sortState,
+    toast,
+  ])
 
   useEffect(() => {
-    if (request) {
-      fetchServerData()
+    if (hasRemoteSource) {
+      void fetchServerData()
     }
-  }, [request, fetchServerData])
+  }, [hasRemoteSource, fetchServerData])
+
+  // 绑定外部命令式刷新句柄
+  useEffect(() => {
+    if (!onRefreshRef) return
+    onRefreshRef.current = (resetToFirstPage = false) => {
+      if (resetToFirstPage && current !== 1) {
+        setCurrent(1)
+      } else {
+        void fetchServerData()
+      }
+    }
+    return () => {
+      onRefreshRef.current = null
+    }
+  }, [onRefreshRef, current, fetchServerData])
 
   // 定时轮询器
   useEffect(() => {
-    if (!autoRefreshEnabled || !request || typeof window === 'undefined') return
+    if (!autoRefreshEnabled || !hasRemoteSource || autoRefreshInterval <= 0 || typeof window === 'undefined') {
+      return
+    }
     const timer = window.setInterval(() => {
-      fetchServerData()
+      void fetchServerData()
     }, autoRefreshInterval)
     return () => window.clearInterval(timer)
-  }, [autoRefreshEnabled, autoRefreshInterval, request, fetchServerData])
+  }, [autoRefreshEnabled, autoRefreshInterval, hasRemoteSource, fetchServerData])
 
-  // 计算可见且按用户拖拽排序后的列集合
-  const visibleColumns = useMemo(() => {
-    const base = columns.filter(
-      (c) => !c.hideInTable && !settings.hiddenKeys.includes(c.key)
-    )
+  // 表单打开时触发字段 onFormReady 钩子与草稿实时自动保存订阅
+  useEffect(() => {
+    if (!modalOpen) return
+    resolvedFormFields.forEach((f) => f.onFormReady?.(form, isEdit))
+  }, [modalOpen, isEdit, resolvedFormFields, form])
+
+  useEffect(() => {
+    if (!modalOpen || !draftEnabled) return
+    if (autoRestoreDraft && !isEdit) {
+      const sub = form.watch((vals) => {
+        draft.saveDraft(vals)
+      })
+      return () => sub.unsubscribe()
+    }
+    if (draftConfig?.autoSave) {
+      let timer: number | undefined
+      const schedule = () => {
+        if (timer !== undefined) window.clearTimeout(timer)
+        timer = window.setTimeout(() => {
+          draft.saveDraft(form.getValues())
+          setShowDraftBanner(false)
+        }, draftConfig.autoSaveInterval || 30000)
+      }
+      schedule()
+      const sub = form.watch(() => {
+        schedule()
+      })
+      return () => {
+        if (timer !== undefined) window.clearTimeout(timer)
+        sub.unsubscribe()
+      }
+    }
+  }, [
+    modalOpen,
+    draftEnabled,
+    autoRestoreDraft,
+    isEdit,
+    draftConfig?.autoSave,
+    draftConfig?.autoSaveInterval,
+    form,
+    draft,
+  ])
+
+  const updateSelectedState = useCallback(
+    (nextKeys: Array<string | number>, nextRows?: T[]) => {
+      if (controlledSelectedRowKeys === undefined) {
+        setInternalSelectedKeys(nextKeys)
+      }
+      const rawPool = dataSource ?? remoteRows
+      const resolvedRows =
+        nextRows ?? rawPool.filter((item, idx) => nextKeys.includes(resolveRowKey(item, idx)))
+      setCachedSelectedRows(resolvedRows)
+      onRowSelectionChange?.(nextKeys, resolvedRows)
+    },
+    [controlledSelectedRowKeys, dataSource, remoteRows, resolveRowKey, onRowSelectionChange]
+  )
+
+  const selectedRows = useMemo(() => {
+    if (cachedSelectedRows.length > 0 && cachedSelectedRows.length === selectedKeys.length) {
+      return cachedSelectedRows
+    }
+    const rawPool = dataSource ?? remoteRows
+    return rawPool.filter((item, idx) => selectedKeys.includes(resolveRowKey(item, idx)))
+  }, [cachedSelectedRows, selectedKeys, dataSource, remoteRows, resolveRowKey])
+
+  // 计算可见且按 order / 用户拖拽排序后的列集合
+  const visibleColumns = useMemo<AbcColumn<T>[]>(() => {
+    const base = columns
+      .filter((c) => !c.hideInTable && !settings.hiddenKeys.includes(c.key))
+      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+      .map((col) => {
+        const searchOpts =
+          typeof col.search === 'object' && col.search !== null && Array.isArray((col.search as any).options)
+            ? (col.search as any).options.filter((o: any) => o.value !== '')
+            : undefined
+        return {
+          ...col,
+          options: col.options ?? searchOpts,
+          sorter:
+            col.sorter !== undefined
+              ? col.sorter
+              : apiProp && col.sortable === undefined
+                ? true
+                : col.sorter,
+        }
+      })
+
     if (settings.columnOrder.length === 0) return base
     return [...base].sort((a, b) => {
       const ia = settings.columnOrder.indexOf(a.key)
@@ -430,14 +1171,16 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
       if (ib === -1) return -1
       return ia - ib
     })
-  }, [columns, settings.hiddenKeys, settings.columnOrder])
+  }, [columns, settings.hiddenKeys, settings.columnOrder, apiProp])
 
   const rawRows = dataSource ?? remoteRows
 
-  // 客户端本地过滤与排序管道（支持汉字拼音首字母、多选数组与日期区间）
+  // 客户端本地过滤与排序管道（支持汉字拼音首字母、嵌套路径、多选数组与日期区间）
   const processedClientRows = useMemo<T[]>(() => {
-    if (!isClientFilter && request) return rawRows
-    const searchableKeys = columns.map((c) => String(c.dataIndex ?? c.key))
+    if (!isClientFilter && hasRemoteSource) return rawRows
+    const searchableKeys = columns.map((c) =>
+      Array.isArray(c.dataIndex) ? c.dataIndex.join('.') : String(c.dataIndex ?? c.key)
+    )
     return filterAndSortClientRows<T>({
       rows: rawRows,
       quickKeyword,
@@ -446,287 +1189,807 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
       sortField: sortState.key,
       sortOrder: sortState.direction,
     })
-  }, [isClientFilter, request, rawRows, quickKeyword, appliedFilters, columns, sortState])
+  }, [isClientFilter, hasRemoteSource, rawRows, quickKeyword, appliedFilters, columns, sortState])
 
   const displayRows = useMemo(() => {
-    if (!request) {
-      const start = (current - 1) * pageSize
-      return processedClientRows.slice(start, start + pageSize)
+    if (!hasRemoteSource || isClientFilter) {
+      if (hidePagination || pagination === false) return processedClientRows
+      if (processedClientRows.length > pageSize || !hasRemoteSource) {
+        const start = (current - 1) * pageSize
+        return processedClientRows.slice(start, start + pageSize)
+      }
+      return processedClientRows
     }
-    return isClientFilter ? processedClientRows : remoteRows
-  }, [request, isClientFilter, processedClientRows, remoteRows, current, pageSize])
+    return remoteRows
+  }, [
+    hasRemoteSource,
+    isClientFilter,
+    hidePagination,
+    pagination,
+    processedClientRows,
+    remoteRows,
+    current,
+    pageSize,
+  ])
 
-  const displayTotal = !request
-    ? processedClientRows.length
-    : isClientFilter
-      ? processedClientRows.length
-      : remoteTotal
-
-  const allSearchFields = useMemo(
-    () => fields.filter((f) => !f.hideInSearch),
-    [fields]
-  )
-  const searchableFieldNames = useMemo(
-    () => new Set(allSearchFields.map((f) => f.name)),
-    [allSearchFields]
-  )
-  const visibleSearchFields = useMemo(
-    () => allSearchFields.filter((f) => settings.searchVisible[f.name] !== false),
-    [allSearchFields, settings.searchVisible]
-  )
-  const displayedSearchFields = useMemo(() => {
-    if (!searchFieldsCollapsed || visibleSearchFields.length <= 3) {
-      return visibleSearchFields
-    }
-    return visibleSearchFields.slice(0, 3)
-  }, [visibleSearchFields, searchFieldsCollapsed])
-
-  const formFields = useMemo(
-    () => fields.filter((f) => !f.hideInForm),
-    [fields]
-  )
+  const displayTotal =
+    !hasRemoteSource || isClientFilter ? processedClientRows.length : remoteTotal
 
   const activeFilterCount = useMemo(() => {
-    return Object.keys(cleanQueryObject(appliedFilters)).length + (quickKeyword.trim() ? 1 : 0)
-  }, [appliedFilters, quickKeyword])
+    const defaultKeys = defaultQuery ? new Set(Object.keys(defaultQuery)) : null
+    const userFilterEntries = Object.entries(cleanQueryObject(appliedFilters)).filter(([k, v]) => {
+      if (defaultKeys && defaultKeys.has(k) && (defaultQuery as any)[k] === v) return false
+      return true
+    })
+    return userFilterEntries.length + (quickKeyword.trim() ? 1 : 0)
+  }, [appliedFilters, quickKeyword, defaultQuery])
 
   const resetAllFilters = useCallback(() => {
-    setSearchInputs({})
-    setAppliedFilters({})
+    const base = { ...(defaultQuery as Record<string, any>) }
+    searchInputsRef.current = base
+    setSearchInputs(base)
+    setAppliedFilters(base)
     setQuickKeyword('')
+    setSortState({ key: '', direction: null })
     setCurrent(1)
     onSearchReset?.()
-    onSearchChange?.({})
-  }, [onSearchReset, onSearchChange])
+    onSearchChange?.(base)
+  }, [defaultQuery, onSearchReset, onSearchChange])
 
-  const buildDefaultFormValues = useCallback(() => {
-    const defaults: Record<string, any> = {}
-    for (const f of formFields) {
-      if (f.defaultValue !== undefined) {
-        defaults[f.name] = f.defaultValue
+  const openCreateModal = useCallback(
+    async (preset?: Partial<F>) => {
+      if (onAdd && !preset) {
+        onAdd()
+        return
       }
-    }
-    return defaults
-  }, [formFields])
-
-  const openCreateModal = () => {
-    setEditingRecord(null)
-    setFieldErrors({})
-    const cached = draft.readDraft()
-    setFormValues(cached ?? buildDefaultFormValues())
-    setModalOpen(true)
-  }
-
-  const openEditModal = (record: T) => {
-    setEditingRecord(record)
-    setFieldErrors({})
-    setFormValues({ ...record })
-    setModalOpen(true)
-  }
-
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!onSaveRecord) return
-
-    const nextErrors: Record<string, string> = {}
-    for (const f of formFields) {
-      const v = formValues[f.name]
-      const isEmpty =
-        v === undefined ||
-        v === null ||
-        (typeof v === 'string' && v.trim() === '') ||
-        (Array.isArray(v) && v.length === 0)
-
-      if (f.required && isEmpty) {
-        nextErrors[f.name] = `请填写${f.label}`
-        continue
+      let initialVals: Record<string, any> = {
+        ...buildDefaultFormValues(),
+        ...(preset as Record<string, any>),
       }
-      if (f.validator) {
-        const customErr = f.validator(v, formValues)
-        if (customErr) {
-          nextErrors[f.name] = customErr
+      if (onBeforeAdd) {
+        const res = await onBeforeAdd(initialVals as F)
+        if (res === false) return
+        if (res && typeof res === 'object') {
+          initialVals = { ...initialVals, ...res }
         }
       }
-    }
+      setEditingRecord(null)
+      setIsEdit(false)
+      setFormError(null)
+      form.clearErrors()
 
-    if (Object.keys(nextErrors).length > 0) {
-      setFieldErrors(nextErrors)
-      const firstError = Object.values(nextErrors)[0]
-      toast.warning(firstError)
+      const cached = draftEnabled ? draft.readDraft() : null
+      if (cached && autoRestoreDraft && !preset) {
+        form.reset({ ...initialVals, ...cached })
+        setShowDraftBanner(true)
+      } else {
+        form.reset(initialVals)
+        setShowDraftBanner(Boolean(cached && draftEnabled && !preset))
+      }
+      setModalOpen(true)
+    },
+    [
+      onAdd,
+      buildDefaultFormValues,
+      onBeforeAdd,
+      form,
+      draftEnabled,
+      draft,
+      autoRestoreDraft,
+    ]
+  )
+
+  const openEditModal = useCallback(
+    async (record: T) => {
+      if (onEdit) {
+        onEdit(record)
+        return
+      }
+      let initialVals: Record<string, any> = { ...buildDefaultFormValues(), ...record }
+      if (onBeforeEdit) {
+        const res = await onBeforeEdit(record as unknown as F, record)
+        if (res === false) return
+        if (res && typeof res === 'object') {
+          initialVals = { ...buildDefaultFormValues(), ...res }
+        }
+      }
+      const id = resolveRowKey(record)
+      setEditingRecord(record)
+      setIsEdit(true)
+      setFormError(null)
+      setShowDraftBanner(false)
+      form.clearErrors()
+      form.reset(initialVals)
+      setModalOpen(true)
+
+      if (apiRef.current?.get && id !== undefined && id !== null) {
+        setFormDetailLoading(true)
+        try {
+          const res = await apiRef.current.get(id)
+          const detail = res?.data && !Array.isArray(res.data) ? res.data : res
+          if (!isProApiFailure(res) && detail && typeof detail === 'object') {
+            let merged: Record<string, any> = { ...initialVals, ...detail }
+            if (onBeforeEdit) {
+              const transformed = await onBeforeEdit(merged as F, record)
+              if (transformed && typeof transformed === 'object') {
+                merged = { ...buildDefaultFormValues(), ...transformed }
+              }
+            }
+            form.reset(merged)
+          }
+        } catch {
+          // 保持已预填的当前行快照数据，不阻断编辑操作
+        } finally {
+          setFormDetailLoading(false)
+        }
+      }
+    },
+    [onEdit, buildDefaultFormValues, onBeforeEdit, resolveRowKey, form]
+  )
+
+  useEffect(() => {
+    if (!onAddWithValuesRef) return
+    onAddWithValuesRef.current = (presetValues: Partial<F>) => {
+      void openCreateModal(presetValues)
+    }
+    return () => {
+      onAddWithValuesRef.current = null
+    }
+  }, [onAddWithValuesRef, openCreateModal])
+
+  useEffect(() => {
+    if (!openEditRef) return
+    openEditRef.current = (record: T) => {
+      void openEditModal(record)
+    }
+    return () => {
+      openEditRef.current = null
+    }
+  }, [openEditRef, openEditModal])
+
+  const openViewModal = useCallback(
+    async (record: T, linkTarget?: string) => {
+      if (linkTarget) {
+        if (linkTarget.startsWith('/') || linkTarget.startsWith('http')) {
+          onNavigate?.(linkTarget, record)
+          return
+        }
+        const customAction = apiRef.current?.[linkTarget]
+        if (typeof customAction === 'function') {
+          await customAction(record)
+          return
+        }
+      }
+      setViewingRecord(record)
+      if (apiRef.current?.view) {
+        setViewLoading(true)
+        try {
+          const res = await apiRef.current.view(resolveRowKey(record))
+          const detail = res?.data && !Array.isArray(res.data) ? res.data : res
+          if (!isProApiFailure(res) && detail && typeof detail === 'object') {
+            setViewingRecord({ ...record, ...detail } as T)
+          }
+        } catch {
+          // 保留行快照展示
+        } finally {
+          setViewLoading(false)
+        }
+      }
+    },
+    [onNavigate, resolveRowKey]
+  )
+
+  const handleValidFormSubmit = async (values: Record<string, any>) => {
+    setFormSubmitting(true)
+    setFormError(null)
+    try {
+      let submitValues: Record<string, any> = values
+      let hasCustomSubmitPayload = false
+      if (onBeforeSubmit) {
+        const transformed = await onBeforeSubmit(values as F, isEdit, editingRecord)
+        if (transformed === false) {
+          setFormSubmitting(false)
+          return
+        }
+        if (transformed && typeof transformed === 'object') {
+          submitValues = transformed
+          hasCustomSubmitPayload = true
+        }
+      }
+
+      if (onSaveRecord) {
+        await onSaveRecord(submitValues, editingRecord)
+      } else if (apiRef.current) {
+        const recordKeyName = typeof rowKey === 'string' ? rowKey : 'id'
+        const recordId = editingRecord ? resolveRowKey(editingRecord) : undefined
+        const payload = hasCustomSubmitPayload
+          ? {
+              ...submitValues,
+              ...(isEdit && recordId != null ? { [recordKeyName]: recordId } : {}),
+            }
+          : {
+              ...(editingRecord || {}),
+              ...submitValues,
+              ...(isEdit && recordId != null ? { [recordKeyName]: recordId } : {}),
+            }
+        const res = isEdit
+          ? await (apiRef.current.update || apiRef.current.edit || apiRef.current.add)?.(
+              payload as F
+            )
+          : await (apiRef.current.add || apiRef.current.create)?.(submitValues as F)
+
+        if (isProApiFailure(res)) {
+          setFormError(res?.msg || '保存失败')
+          return
+        }
+      }
+
+      if (draftEnabled) {
+        draft.clearDraft()
+        setShowDraftBanner(false)
+      }
+      setModalOpen(false)
+      toast.success(isEdit ? '更新成功' : apiProp ? '新增成功' : '创建成功')
+      onAfterSave?.(submitValues)
+      if (hasRemoteSource) void fetchServerData()
+    } catch (err: any) {
+      const msg = err?.message || '提交失败'
+      setFormError(msg)
+      if (!apiProp) toast.error(msg)
+    } finally {
+      setFormSubmitting(false)
+    }
+  }
+
+  const handleFormSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    const ok = await form.trigger()
+    if (!ok) {
+      const firstErr = Object.values(form.formState.errors).find((item) => item?.message)?.message
+      if (firstErr && !apiProp) {
+        toast.warning(firstErr)
+      }
       return
     }
-
-    setFieldErrors({})
-    setSaving(true)
-    try {
-      await onSaveRecord(formValues, editingRecord)
-      if (!editingRecord) draft.clearDraft()
-      setModalOpen(false)
-      toast.success(editingRecord ? '更新成功' : '创建成功')
-      if (request) fetchServerData()
-    } catch (err: any) {
-      toast.error(err?.message || '提交失败')
-    } finally {
-      setSaving(false)
-    }
+    await handleValidFormSubmit(form.getValues())
   }
 
-  const handleBatchDelete = async (keys: Array<string | number>) => {
-    if (!onDeleteRecords || keys.length === 0) return
-    const ok = await abcConfirm({
-      title: '确认删除选中记录',
-      message: `即将删除 ${keys.length} 条数据，删除后不可恢复，是否继续？`,
-      tone: 'danger',
-      confirmText: '确认删除',
-    })
-    if (!ok) return
-    await onDeleteRecords(keys)
-    setSelectedKeys([])
-    setSelectedRows([])
-    toast.success(`已删除 ${keys.length} 条记录`)
-    if (request) fetchServerData()
-  }
+  const handleSingleDelete = useCallback(
+    async (record: T, idx = 0) => {
+      if (onDelete) {
+        onDelete(record)
+        return
+      }
+      if (onBeforeDelete) {
+        const canProceed = await onBeforeDelete(record)
+        if (canProceed === false) return
+      }
+      const rk = resolveRowKey(record, idx)
+      if (!onDeleteRecords && !apiRef.current?.delete) return
+
+      const ok = await abcConfirm({
+        title: '确认删除',
+        message: '确定要删除这条数据吗？此操作无法撤销。',
+        tone: 'danger',
+        confirmText: '确认删除',
+      })
+      if (!ok) return
+
+      try {
+        if (onDeleteRecords) {
+          await onDeleteRecords([rk])
+        } else if (apiRef.current?.delete) {
+          const res = await apiRef.current.delete([rk])
+          if (isProApiFailure(res)) {
+            toast.error(res?.msg || '删除失败')
+            return
+          }
+        }
+        updateSelectedState(selectedKeys.filter((k) => k !== rk))
+        toast.success('删除成功')
+        onAfterDelete?.()
+        if (hasRemoteSource) void fetchServerData()
+      } catch (err: any) {
+        toast.error(err?.message || '删除失败')
+      }
+    },
+    [
+      onDelete,
+      onBeforeDelete,
+      resolveRowKey,
+      onDeleteRecords,
+      selectedKeys,
+      updateSelectedState,
+      toast,
+      onAfterDelete,
+      hasRemoteSource,
+      fetchServerData,
+    ]
+  )
+
+  const handleBatchDelete = useCallback(
+    async (keys: Array<string | number>) => {
+      if (keys.length === 0) {
+        toast.warning('请先选择要删除的数据行')
+        return
+      }
+      if (onBeforeBatchDelete) {
+        const canProceed = await onBeforeBatchDelete(keys)
+        if (canProceed === false) return
+      }
+      if (!onDeleteRecords && !apiRef.current?.delete) return
+
+      const ok = await abcConfirm({
+        title: '确认删除选中记录',
+        message: `即将删除 ${keys.length} 条数据，删除后不可恢复，是否继续？`,
+        tone: 'danger',
+        confirmText: '确认删除',
+      })
+      if (!ok) return
+
+      try {
+        if (onDeleteRecords) {
+          await onDeleteRecords(keys)
+        } else if (apiRef.current?.delete) {
+          const res = await apiRef.current.delete(keys)
+          if (isProApiFailure(res)) {
+            toast.error(res?.msg || '批量删除失败')
+            return
+          }
+        }
+        updateSelectedState([], [])
+        toast.success(`已删除 ${keys.length} 条记录`)
+        onAfterBatchDelete?.()
+        if (hasRemoteSource) void fetchServerData()
+      } catch (err: any) {
+        toast.error(err?.message || '批量删除失败')
+      }
+    },
+    [
+      onBeforeBatchDelete,
+      onDeleteRecords,
+      updateSelectedState,
+      toast,
+      onAfterBatchDelete,
+      hasRemoteSource,
+      fetchServerData,
+    ]
+  )
+
+  const handleExpandRow = useCallback(
+    async (expanded: boolean, record: T) => {
+      const rk = resolveRowKey(record)
+      if (expanded && apiRef.current?.children) {
+        const cached = childrenData[rk]
+        if (!cached || cached.length === 0) {
+          setChildrenLoading((prev) => ({ ...prev, [rk]: true }))
+          setChildrenError((prev) => ({ ...prev, [rk]: '' }))
+          try {
+            const res = await apiRef.current.children(record)
+            if (isProApiFailure(res)) {
+              setChildrenError((prev) => ({ ...prev, [rk]: res?.msg || '加载失败' }))
+            } else {
+              const { list } = normalizeProListResponse<T>(res)
+              setChildrenData((prev) => ({ ...prev, [rk]: list }))
+              if (treeData) {
+                setRemoteRows((prevRows) => {
+                  const injectTree = (nodes: T[]): T[] =>
+                    nodes.map((item) => {
+                      if (resolveRowKey(item) === rk) return { ...item, children: list }
+                      if (Array.isArray((item as any).children)) {
+                        return { ...item, children: injectTree((item as any).children) }
+                      }
+                      return item
+                    })
+                  return injectTree(prevRows)
+                })
+              }
+            }
+          } catch {
+            setChildrenError((prev) => ({ ...prev, [rk]: '加载失败' }))
+          } finally {
+            setChildrenLoading((prev) => ({ ...prev, [rk]: false }))
+          }
+        }
+      }
+      expandable?.onExpand?.(expanded, record)
+    },
+    [resolveRowKey, childrenData, treeData, expandable]
+  )
+
+  const handleRowReorder = useCallback(
+    (activeId: string | number, overId: string | number) => {
+      const pool = [...rawRows]
+      const oldIdx = pool.findIndex(
+        (item, idx) => String(resolveRowKey(item, idx)) === String(activeId)
+      )
+      const newIdx = pool.findIndex(
+        (item, idx) => String(resolveRowKey(item, idx)) === String(overId)
+      )
+      if (oldIdx < 0 || newIdx < 0 || oldIdx === newIdx) return
+      const [moved] = pool.splice(oldIdx, 1)
+      pool.splice(newIdx, 0, moved)
+      if (!dataSource) {
+        setRemoteRows(pool)
+      }
+      void sortable?.onSort?.(pool)
+    },
+    [rawRows, resolveRowKey, dataSource, sortable]
+  )
 
   const permittedBatchActions = useMemo(
-    () =>
-      batchActions.filter((act) => !act.permission || hasPermission(act.permission)),
-    [batchActions, hasPermission]
+    () => batchActions.filter((act) => checkPermission(act.permission)),
+    [batchActions, checkPermission]
   )
 
   const selectionEnabled =
     rowSelection ??
-    Boolean((onDeleteRecords && canDelete) || permittedBatchActions.length > 0)
+    showRowSelection ??
+    Boolean(
+      (canBatchDelete && (onDeleteRecords || resolvedApi?.delete)) ||
+        permittedBatchActions.length > 0 ||
+        renderBatchActions
+    )
 
-  // 操作列聚合：内置详情/编辑/删除 + 业务自定义动作 + 权限守卫 + 溢出折叠
+  const effectiveMaxInlineActions =
+    maxInlineActions ?? (actionButtons.length > 0 && rowActions.length === 0 ? 6 : 3)
+
   const hasAnyRowAction =
-    viewable ||
-    (Boolean(onSaveRecord) && canUpdate) ||
-    (Boolean(onDeleteRecords) && canDelete) ||
-    rowActions.length > 0
+    effectiveViewable ||
+    canOpenEdit ||
+    canOpenDelete ||
+    rowActions.length > 0 ||
+    actionButtons.length > 0
+
+  const defaultActionColWidth =
+    actionColumnWidth ??
+    (actionButtons.length > 0
+      ? Math.max(actionColumnWidth ?? 140, 200)
+      : effectiveViewable || rowActions.length > 0
+        ? 184
+        : 136)
 
   const finalColumns = useMemo<AbcColumn<T>[]>(() => {
-    if (!hasAnyRowAction) return visibleColumns
-    return [
-      ...visibleColumns,
-      {
-        key: '__abc_actions__',
-        title: '操作',
-        fixed: 'right',
-        width: viewable || rowActions.length > 0 ? 184 : 136,
-        align: 'right',
-        render: (_, record, idx) => {
-          const rk = resolveRowKey(record, idx)
-          const resolved: ResolvedRowActionItem[] = []
+    const cols: AbcColumn<T>[] = [...visibleColumns]
 
-          if (viewable) {
-            resolved.push({
-              key: '__view__',
-              label: '详情',
-              icon: <Eye className="h-3 w-3" />,
-              onClick: () => setViewingRecord(record),
-            })
-          }
-          if (onSaveRecord && canUpdate) {
-            resolved.push({
-              key: '__edit__',
-              label: '编辑',
-              icon: <Edit3 className="h-3 w-3" />,
-              onClick: () => openEditModal(record),
-            })
-          }
-          for (const custom of rowActions) {
-            if (custom.permission && !hasPermission(custom.permission)) continue
-            if (custom.hidden?.(record)) continue
-            resolved.push({
-              key: custom.key,
-              label: custom.label,
-              icon: custom.icon,
-              danger: custom.danger,
-              onClick: () => custom.onClick(record),
-            })
-          }
-          if (onDeleteRecords && canDelete) {
-            resolved.push({
-              key: '__delete__',
-              label: '删除',
-              icon: <Trash2 className="h-3 w-3" />,
-              danger: true,
-              onClick: () => handleBatchDelete([rk]),
-            })
-          }
+    if (sortable?.enabled) {
+      cols.unshift({
+        key: '__drag_handle__',
+        title: '排序',
+        width: 68,
+        align: 'center',
+        sortable: false,
+        sorter: false,
+        render: () => (
+          <GripVertical className="mx-auto h-4 w-4 cursor-grab text-[var(--abc-fg-placeholder)]" />
+        ),
+      })
+    }
 
-          return <ProRowActionsOverflow actions={resolved} maxInline={maxInlineActions} />
-        },
+    if (!hasAnyRowAction) return cols
+
+    cols.push({
+      key: '__abc_actions__',
+      title: '操作',
+      fixed: 'right',
+      width: defaultActionColWidth,
+      align: 'right',
+      sortable: false,
+      sorter: false,
+      render: (_, record, idx) => {
+        const resolved: ResolvedRowActionItem[] = []
+        let editHandled = false
+        let deleteHandled = false
+
+        if (effectiveViewable) {
+          resolved.push({
+            key: '__view__',
+            label: apiProp ? '查看' : '详情',
+            icon: <Eye className="h-3 w-3" />,
+            onClick: () => void openViewModal(record),
+          })
+        }
+
+        for (const btn of actionButtons) {
+          if (btn.key === 'edit' && !btn.onClick) {
+            editHandled = true
+            if (canOpenEdit) {
+              resolved.push({
+                key: '__edit__',
+                label: btn.label ?? '编辑',
+                icon: <Edit3 className="h-3 w-3" />,
+                onClick: () => void openEditModal(record),
+              })
+            }
+            continue
+          }
+          if (btn.key === 'delete' && !btn.onClick) {
+            deleteHandled = true
+            if (canOpenDelete) {
+              resolved.push({
+                key: '__delete__',
+                label: btn.label ?? '删除',
+                icon: <Trash2 className="h-3 w-3" />,
+                danger: true,
+                onClick: () => void handleSingleDelete(record, idx),
+              })
+            }
+            continue
+          }
+          if (btn.key === 'edit') editHandled = true
+          if (btn.key === 'delete') deleteHandled = true
+
+          const shown = typeof btn.show === 'function' ? btn.show(record) : btn.show !== false
+          if (!shown || !checkPermission(btn.permission)) continue
+          const isBtnDisabled =
+            typeof btn.disabled === 'function' ? btn.disabled(record) : Boolean(btn.disabled)
+          const titleText = typeof btn.title === 'function' ? btn.title(record) : btn.title
+          const iconNode =
+            typeof btn.icon === 'string' ? <Icon name={btn.icon} size={13} /> : btn.icon
+
+          resolved.push({
+            key: btn.key,
+            label: btn.label,
+            icon: iconNode,
+            variant: btn.variant ?? btn.type ?? 'text',
+            danger: (btn.variant ?? btn.type) === 'danger',
+            disabled: isBtnDisabled,
+            title: titleText,
+            className: btn.className,
+            onClick: async () => {
+              if (isBtnDisabled) return
+              const result = btn.onClick?.(record)
+              if (result && typeof (result as Promise<any>).then === 'function') {
+                await result
+                if (hasRemoteSource) void fetchServerData()
+              }
+            },
+          })
+        }
+
+        if (!editHandled && canOpenEdit && actionButtons.length === 0) {
+          resolved.push({
+            key: '__edit__',
+            label: '编辑',
+            icon: <Edit3 className="h-3 w-3" />,
+            onClick: () => void openEditModal(record),
+          })
+        }
+
+        for (const custom of rowActions) {
+          if (!checkPermission(custom.permission)) continue
+          if (custom.hidden?.(record)) continue
+          resolved.push({
+            key: custom.key,
+            label: custom.label,
+            icon: custom.icon,
+            danger: custom.danger,
+            onClick: async () => {
+              const res = custom.onClick(record)
+              if (res && typeof (res as Promise<any>).then === 'function') {
+                await res
+                if (hasRemoteSource) void fetchServerData()
+              }
+            },
+          })
+        }
+
+        if (!editHandled && canOpenEdit && actionButtons.length > 0) {
+          resolved.push({
+            key: '__edit__',
+            label: '编辑',
+            icon: <Edit3 className="h-3 w-3" />,
+            onClick: () => void openEditModal(record),
+          })
+        }
+
+        if (!deleteHandled && canOpenDelete) {
+          resolved.push({
+            key: '__delete__',
+            label: '删除',
+            icon: <Trash2 className="h-3 w-3" />,
+            danger: true,
+            onClick: () => void handleSingleDelete(record, idx),
+          })
+        }
+
+        return <ProRowActionsOverflow actions={resolved} maxInline={effectiveMaxInlineActions} />
       },
-    ]
+    })
+
+    return cols
   }, [
     visibleColumns,
+    sortable?.enabled,
     hasAnyRowAction,
-    viewable,
-    onSaveRecord,
-    canUpdate,
-    onDeleteRecords,
-    canDelete,
+    defaultActionColWidth,
+    effectiveViewable,
+    apiProp,
+    actionButtons,
+    canOpenEdit,
+    canOpenDelete,
     rowActions,
-    maxInlineActions,
-    hasPermission,
-    resolveRowKey,
+    effectiveMaxInlineActions,
+    checkPermission,
+    openViewModal,
+    openEditModal,
+    handleSingleDelete,
+    hasRemoteSource,
+    fetchServerData,
   ])
 
-  const handleExportCsv = () => {
-    const exportTargetRows = isClientFilter || !request ? processedClientRows : remoteRows
-    if (onExport) {
-      onExport(exportTargetRows)
+  const resolvedExpandable = useMemo<AbcTableExpandableConfig<T> | undefined>(() => {
+    if (!expandable && !resolvedApi?.children) return undefined
+    const renderLazySubTable = (
+      record: T,
+      idx: number,
+      depth = 0,
+      isExpanded = true
+    ): React.ReactNode => {
+      if (expandable?.expandedRowRender) {
+        return expandable.expandedRowRender(record, idx, depth, isExpanded)
+      }
+      const rk = resolveRowKey(record, idx)
+      if (childrenLoading[rk]) {
+        return <div className="py-5 text-center text-xs text-[var(--abc-fg-muted)]">加载中...</div>
+      }
+      if (childrenError[rk]) {
+        return (
+          <div className="py-5 text-center text-xs text-[var(--abc-danger)]">
+            <span>{childrenError[rk]}</span>
+            <button
+              type="button"
+              onClick={() => void handleExpandRow(true, record)}
+              className="ml-2 text-[var(--abc-primary)] hover:underline cursor-pointer"
+            >
+              重试
+            </button>
+          </div>
+        )
+      }
+      const subRows = childrenData[rk] || []
+      if (subRows.length === 0) {
+        return <div className="py-5 text-center text-xs text-[var(--abc-fg-muted)]">暂无子项数据</div>
+      }
+      return (
+        <TableCore<T>
+          columns={visibleColumns}
+          data={subRows}
+          rowKey={rowKey}
+          density={settings.density}
+        />
+      )
+    }
+
+    return {
+      ...expandable,
+      rowExpandable:
+        expandable?.rowExpandable ?? (resolvedApi?.children ? () => true : undefined),
+      expandedRowRender: treeData
+        ? undefined
+        : resolvedApi?.children || expandable?.expandedRowRender
+          ? renderLazySubTable
+          : undefined,
+      onExpand: handleExpandRow,
+    }
+  }, [
+    expandable,
+    resolvedApi?.children,
+    treeData,
+    resolveRowKey,
+    childrenLoading,
+    childrenError,
+    childrenData,
+    handleExpandRow,
+    visibleColumns,
+    rowKey,
+    settings.density,
+  ])
+
+  const handleExportAction = async () => {
+    const exportTargetRows = isClientFilter || !hasRemoteSource ? processedClientRows : remoteRows
+    if (apiProp) {
+      setExporting(true)
+      try {
+        const query = cleanQueryObject({
+          ...(defaultQuery as Record<string, any>),
+          ...appliedFilters,
+          pageNum: current,
+          pageSize,
+        })
+        if (onExport) {
+          await onExport(query)
+        } else if (apiRef.current?.export) {
+          await apiRef.current.export(query as Q)
+        } else {
+          const baseName =
+            typeof title === 'string' && title.trim()
+              ? title.trim()
+              : storageKey || 'table-export'
+          downloadTableCsv(baseName, visibleColumns, exportTargetRows)
+        }
+        toast.success('导出成功')
+      } catch (err: any) {
+        toast.error(err?.message || '导出失败')
+      } finally {
+        setExporting(false)
+      }
       return
     }
-    const baseName = typeof title === 'string' && title.trim() ? title.trim() : storageKey || 'table-export'
+
+    if (onExport) {
+      await onExport(exportTargetRows)
+      return
+    }
+    const baseName =
+      typeof title === 'string' && title.trim() ? title.trim() : storageKey || 'table-export'
     downloadTableCsv(baseName, visibleColumns, exportTargetRows)
     toast.success(`已导出 ${exportTargetRows.length} 条记录`)
   }
 
-  const renderSearchControl = (
-    f: ProTableFieldSchema,
-    extraCls?: { input?: string; select?: string }
-  ) => {
-    const val = searchInputs[f.name]
-    const setVal = (nextVal: any) => {
+  const updateSearchInput = useCallback(
+    (fieldKey: string, nextVal: any) => {
       setSearchInputs((prev) => {
-        const next = { ...prev, [f.name]: nextVal }
+        const next = { ...prev, [fieldKey]: nextVal }
+        searchInputsRef.current = next
         onSearchChange?.(next)
         return next
       })
-    }
+    },
+    [onSearchChange]
+  )
+
+  const submitSearch = useCallback(
+    (patch?: Record<string, any>) => {
+      const next = { ...searchInputsRef.current, ...(patch || {}) }
+      searchInputsRef.current = next
+      setSearchInputs(next)
+      setAppliedFilters(next)
+      setCurrent(1)
+      onSearchSubmit?.(next)
+    },
+    [onSearchSubmit]
+  )
+
+  const renderSearchControl = (
+    f: ProSearchFieldConfig,
+    extraCls?: { input?: string; select?: string }
+  ) => {
+    const val = searchInputs[f.key]
+    const setVal = (nextVal: any) => updateSearchInput(f.key, nextVal)
 
     if (f.type === 'select') {
       return (
         <Select
-          allowClear
-          searchable
+          allowClear={f.clearable !== false}
+          searchable={f.searchable ?? true}
           multiple={f.multiple}
           options={f.options ?? []}
-          placeholder={f.placeholder ?? `全部${f.label}`}
+          placeholder={
+            f.placeholder ?? (f.__fromFieldSchema ? `全部${f.label}` : `请选择${f.label}`)
+          }
           value={val ?? (f.multiple ? [] : '')}
-          onChange={setVal}
+          onChange={(v: any) => {
+            const nextVal = v && typeof v === 'object' && 'target' in v ? v.target.value : v
+            setVal(nextVal)
+          }}
           className={extraCls?.select}
         />
       )
     }
-    if (f.type === 'date') {
+    if (f.type === 'date' || f.type === 'datetimePicker') {
       return (
         <DatePicker
           value={val ?? ''}
-          placeholder={f.placeholder ?? `选择${f.label}`}
+          placeholder={
+            f.placeholder ?? (f.__fromFieldSchema ? `选择${f.label}` : `请选择${f.label}`)
+          }
           onChange={setVal}
         />
       )
     }
     if (f.type === 'dateRange') {
-      return (
-        <DateRangePicker
-          value={val ?? null}
-          onChange={setVal}
-        />
-      )
+      return <DateRangePicker value={val ?? null} onChange={setVal} />
     }
     if (f.type === 'number') {
       return (
@@ -740,8 +2003,10 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
     }
     return (
       <Input
-        allowClear
-        placeholder={f.placeholder ?? `搜索${f.label}`}
+        allowClear={f.clearable !== false}
+        placeholder={
+          f.placeholder ?? (f.__fromFieldSchema ? `搜索${f.label}` : `请输入${f.label}`)
+        }
         value={val ?? ''}
         onChange={(e) => setVal(e.target.value)}
         wrapperClassName={extraCls?.input}
@@ -749,174 +2014,39 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
     )
   }
 
-  const renderFieldInput = (field: ProTableFieldSchema) => {
-    const val = formValues[field.name]
-    const isDisabled =
-      typeof field.disabled === 'function' ? field.disabled(editingRecord) : Boolean(field.disabled)
-
-    const update = (nextVal: any) => {
-      const nextAll = { ...formValues, [field.name]: nextVal }
-      setFormValues(nextAll)
-      if (fieldErrors[field.name]) {
-        setFieldErrors((prev) => {
-          const copy = { ...prev }
-          delete copy[field.name]
-          return copy
-        })
-      }
-      if (!editingRecord) {
-        draft.saveDraft(nextAll)
-      }
-    }
-
-    if (field.type === 'select') {
-      return (
-        <Select
-          searchable
-          multiple={field.multiple}
-          disabled={isDisabled}
-          options={field.options ?? []}
-          value={val ?? (field.multiple ? [] : '')}
-          placeholder={field.placeholder}
-          onChange={update}
-        />
-      )
-    }
-    if (field.type === 'number') {
-      return (
-        <InputNumber
-          disabled={isDisabled}
-          value={val ?? null}
-          placeholder={field.placeholder}
-          onChange={update}
-        />
-      )
-    }
-    if (field.type === 'textarea') {
-      return (
-        <Textarea
-          disabled={isDisabled}
-          value={val ?? ''}
-          placeholder={field.placeholder}
-          onChange={(e) => update(e.target.value)}
-        />
-      )
-    }
-    if (field.type === 'switch') {
-      return <Switch disabled={isDisabled} checked={Boolean(val)} onChange={update} />
-    }
-    if (field.type === 'date') {
-      return (
-        <DatePicker
-          disabled={isDisabled}
-          value={val ?? ''}
-          placeholder={field.placeholder}
-          onChange={update}
-        />
-      )
-    }
-    if (field.type === 'dateRange') {
-      return (
-        <DateRangePicker
-          disabled={isDisabled}
-          value={val ?? null}
-          onChange={update}
-        />
-      )
-    }
-    if (field.type === 'tags') {
-      return (
-        <TagInput
-          disabled={isDisabled}
-          value={Array.isArray(val) ? val : []}
-          placeholder={field.placeholder}
-          onChange={update}
-        />
-      )
-    }
-    if (field.type === 'icon') {
-      return <IconPicker value={val ?? ''} onChange={update} />
-    }
-    return (
-      <Input
-        disabled={isDisabled}
-        value={val ?? ''}
-        placeholder={field.placeholder}
-        onChange={(e) => update(e.target.value)}
-      />
-    )
-  }
-
-  const effectiveFormColumns = formColumns ?? (formFields.length >= 6 ? 2 : 1)
-
-  const formFooterNode = (
-    <>
-      {!editingRecord && draft.hasDraft && (
-        <Button
-          variant="ghost"
-          onClick={() => {
-            draft.clearDraft()
-            setFormValues(buildDefaultFormValues())
-          }}
-        >
-          清空草稿
-        </Button>
-      )}
-      <Button variant="secondary" onClick={() => setModalOpen(false)}>
-        取消
-      </Button>
-      <Button variant="primary" loading={saving} onClick={handleFormSubmit}>
-        确认提交
-      </Button>
-    </>
-  )
-
-  const formBodyNode = (
-    <form onSubmit={handleFormSubmit} className="space-y-3.5">
-      {!editingRecord && draft.hasDraft && (
-        <div className="flex items-center justify-between gap-2 rounded-[var(--abc-radius-md)] border border-[var(--abc-primary)]/25 bg-[var(--abc-primary-soft)]/70 px-3 py-2 text-xs text-[var(--abc-fg-secondary)]">
-          <span>已自动为您恢复上次未提交的本地表单草稿</span>
-          <button
-            type="button"
-            onClick={() => {
-              draft.clearDraft()
-              setFormValues(buildDefaultFormValues())
-            }}
-            className="shrink-0 font-medium text-[var(--abc-primary)] hover:underline cursor-pointer"
-          >
-            丢弃草稿
-          </button>
-        </div>
-      )}
-
-      <div
-        className={cn(
-          'grid gap-3.5',
-          effectiveFormColumns === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'
-        )}
-      >
-        {formFields.map((field) => {
-          const isFullSpan =
-            effectiveFormColumns === 2 && (field.span === 2 || field.type === 'textarea')
-          return (
-            <FormField
-              key={field.name}
-              label={field.label}
-              required={field.required}
-              helperText={field.helperText}
-              error={fieldErrors[field.name]}
-              className={isFullSpan ? 'sm:col-span-2' : undefined}
-            >
-              {renderFieldInput(field)}
-            </FormField>
-          )
-        })}
-      </div>
-    </form>
-  )
+  const effectiveFormColumns =
+    formColumns ?? (apiProp ? 2 : resolvedFormFields.length >= 6 ? 2 : 1)
+  const effectiveShowClientFilterSwitch =
+    showClientFilterSwitch ?? Boolean(apiProp && allSearchFields.length > 0)
 
   const currentIntervalLabel =
     AUTO_REFRESH_INTERVALS.find((o) => o.key === autoRefreshInterval)?.label ?? '10秒'
+
+  const showTopPageHeader = Boolean(
+    subTitle || headerExtra || renderExtra || (apiProp && title)
+  )
+  const resolvedHeaderExtra = headerExtra ?? renderExtra?.()
+  const resolvedCardExtra = cardExtra ?? renderCardExtra?.()
+  const resolvedToolbarExtra = toolbarExtra ?? renderToolbarExtra?.()
+  const resolvedAddText = addButtonText ?? (apiProp ? '新增' : '新建记录')
+
+  const activeFilterKeys = useMemo(
+    () =>
+      allSearchFields
+        .filter((f) => hasActiveFilterValue(appliedFilters[f.key]))
+        .map((f) => f.columnKey || f.key),
+    [allSearchFields, appliedFilters]
+  )
+
+  const activeFilterLabels = useMemo(
+    () =>
+      Object.fromEntries(
+        allSearchFields
+          .filter((f) => hasActiveFilterValue(appliedFilters[f.key]))
+          .map((f) => [f.columnKey || f.key, formatFilterBadgeText(f, appliedFilters[f.key])])
+      ),
+    [allSearchFields, appliedFilters]
+  )
 
   return (
     <div
@@ -926,157 +2056,280 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
         isFullScreen && 'fixed inset-0 z-[950] m-0 overflow-auto bg-[var(--abc-bg-canvas)] p-4'
       )}
     >
-      {/* 紧凑水平工具条搜索模式 (toolbar) */}
-      {searchVariant === 'toolbar' && visibleSearchFields.length > 0 && !headerFilterMode && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] p-3 text-[var(--abc-fg)] shadow-[var(--abc-shadow-card)]">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              setCurrent(1)
-              setAppliedFilters({ ...searchInputs })
-              onSearchSubmit?.(searchInputs)
-            }}
-            className="flex flex-wrap items-center gap-2.5"
-          >
-            {displayedSearchFields.map((f) => (
-              <div key={f.name} className="flex items-center">
-                {renderSearchControl(f, {
-                  input: f.span === 2 ? 'w-80 sm:w-96' : 'w-72 sm:w-80',
-                  select: 'w-40',
-                })}
-              </div>
-            ))}
-            <Button size="sm" type="submit" variant="primary" icon={<Search className="h-3.5 w-3.5" />}>
-              搜索
-            </Button>
-            <Button
-              size="sm"
-              type="button"
-              variant="secondary"
-              icon={<RotateCcw className="h-3.5 w-3.5" />}
-              onClick={resetAllFilters}
-            >
-              重置
-            </Button>
-            {activeFilterCount > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--abc-primary-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--abc-primary)]">
-                已生效 {activeFilterCount} 项
-              </span>
+      {/* 顶部页面标题与扩展操作区 */}
+      {showTopPageHeader && (title || subTitle || resolvedHeaderExtra) && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            {title && (
+              <h2 className="text-lg font-bold tracking-tight text-[var(--abc-fg)]">{title}</h2>
             )}
-          </form>
+            {subTitle && (
+              <p className="mt-0.5 text-xs text-[var(--abc-fg-muted)]">{subTitle}</p>
+            )}
+          </div>
+          {resolvedHeaderExtra && <div>{resolvedHeaderExtra}</div>}
         </div>
       )}
 
-      {/* 顶部高级可折叠条件检索面板 */}
-      {searchVariant === 'card' && visibleSearchFields.length > 0 && !headerFilterMode && (
-        <Card padding="none">
-          <div className="flex items-center justify-between border-b border-[var(--abc-border)]/70 px-4 py-2.5">
-            <div className="flex items-center gap-2">
-              <Filter className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
-              <span className="text-xs font-semibold text-[var(--abc-fg)]">筛选检索</span>
+      {resolvedCardExtra}
+
+      {/* 紧凑水平工具条搜索模式 (toolbar) */}
+      {searchVariant === 'toolbar' &&
+        (visibleSearchFields.length > 0 || Boolean(renderSearchExtra)) &&
+        !headerFilterMode && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] p-3 text-[var(--abc-fg)] shadow-[var(--abc-shadow-card)]">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                submitSearch()
+              }}
+              className="flex flex-wrap items-center gap-2.5"
+            >
+              {displayedSearchFields.map((f) => (
+                <div key={f.key} className="flex items-center">
+                  {renderSearchControl(f, {
+                    input: f.span === 2 ? 'w-80 sm:w-96' : 'w-72 sm:w-80',
+                    select: 'w-40',
+                  })}
+                </div>
+              ))}
+              {renderSearchExtra?.({
+                query: searchInputs,
+                onQueryChange: updateSearchInput,
+                isSearchVisible: (colKey) => settings.searchVisible[colKey] !== false,
+              })}
+              <Button
+                size="sm"
+                type="submit"
+                variant="primary"
+                icon={<Search className="h-3.5 w-3.5" />}
+              >
+                搜索
+              </Button>
+              <Button
+                size="sm"
+                type="button"
+                variant="secondary"
+                icon={<RotateCcw className="h-3.5 w-3.5" />}
+                onClick={resetAllFilters}
+              >
+                重置
+              </Button>
               {activeFilterCount > 0 && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[var(--abc-primary-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--abc-primary)]">
                   已生效 {activeFilterCount} 项
-                  <button
-                    type="button"
-                    aria-label="一键清空已生效筛选"
-                    onClick={resetAllFilters}
-                    className="ml-0.5 hover:underline cursor-pointer"
-                  >
-                    清空
-                  </button>
                 </span>
               )}
-            </div>
-
-            <button
-              type="button"
-              aria-expanded={searchPanelExpanded}
-              onClick={() => setSearchPanelExpanded((v) => !v)}
-              className="inline-flex items-center gap-1 rounded-[var(--abc-radius-xs)] px-2 py-0.5 text-xs text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
-            >
-              <span>{searchPanelExpanded ? '收起面板' : '展开面板'}</span>
-              {searchPanelExpanded ? (
-                <ChevronUp className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5" />
-              )}
-            </button>
+            </form>
           </div>
+        )}
 
-          <div className="abc-collapse-grid" data-open={searchPanelExpanded}>
-            <div className="abc-collapse-inner">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  setCurrent(1)
-                  setAppliedFilters({ ...searchInputs })
-                  onSearchSubmit?.(searchInputs)
-                }}
-                className="grid grid-cols-1 items-end gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4"
-              >
-                {displayedSearchFields.map((f) => (
-                  <FormField
-                    key={f.name}
-                    label={f.label}
-                    className={f.span === 2 || f.type === 'dateRange' ? 'sm:col-span-2' : undefined}
-                  >
-                    {renderSearchControl(f)}
-                  </FormField>
-                ))}
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button type="submit" variant="primary" icon={<Search className="h-3.5 w-3.5" />}>
-                    搜索
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    icon={<RotateCcw className="h-3.5 w-3.5" />}
-                    onClick={resetAllFilters}
-                  >
-                    重置
-                  </Button>
-                  {visibleSearchFields.length > 3 && (
+      {/* 顶部高级可折叠条件检索面板 */}
+      {searchVariant === 'card' &&
+        (visibleSearchFields.length > 0 || Boolean(renderSearchExtra)) &&
+        !headerFilterMode && (
+          <Card padding="none">
+            <div className="flex items-center justify-between border-b border-[var(--abc-border)]/70 px-4 py-2.5">
+              <div className="flex items-center gap-2">
+                <Filter className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
+                <span className="text-xs font-semibold text-[var(--abc-fg)]">筛选检索</span>
+                {activeFilterCount > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--abc-primary-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--abc-primary)]">
+                    已生效 {activeFilterCount} 项
                     <button
                       type="button"
-                      onClick={() => setSearchFieldsCollapsed((v) => !v)}
-                      className="inline-flex items-center gap-0.5 px-1.5 py-1 text-xs font-medium text-[var(--abc-primary)] hover:underline cursor-pointer"
+                      aria-label="一键清空已生效筛选"
+                      onClick={resetAllFilters}
+                      className="ml-0.5 hover:underline cursor-pointer"
                     >
-                      <span>
-                        {searchFieldsCollapsed
-                          ? `展开 (${visibleSearchFields.length - 3})`
-                          : '收起'}
-                      </span>
-                      {searchFieldsCollapsed ? (
-                        <ChevronDown className="h-3.5 w-3.5" />
-                      ) : (
-                        <ChevronUp className="h-3.5 w-3.5" />
-                      )}
+                      清空
                     </button>
-                  )}
-                </div>
-              </form>
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                aria-expanded={searchPanelExpanded}
+                onClick={() => setSearchPanelExpanded((v) => !v)}
+                className="inline-flex items-center gap-1 rounded-[var(--abc-radius-xs)] px-2 py-0.5 text-xs text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
+              >
+                <span>{searchPanelExpanded ? '收起面板' : '展开面板'}</span>
+                {searchPanelExpanded ? (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+              </button>
             </div>
-          </div>
-        </Card>
-      )}
+
+            <div className="abc-collapse-grid" data-open={searchPanelExpanded}>
+              <div className="abc-collapse-inner">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    submitSearch()
+                  }}
+                  className="grid grid-cols-1 items-end gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4"
+                >
+                  {displayedSearchFields.map((f) => (
+                    <FormField
+                      key={f.key}
+                      label={f.label}
+                      className={
+                        f.span === 2 || f.type === 'dateRange' ? 'sm:col-span-2' : undefined
+                      }
+                    >
+                      {renderSearchControl(f)}
+                    </FormField>
+                  ))}
+
+                  {renderSearchExtra?.({
+                    query: searchInputs,
+                    onQueryChange: updateSearchInput,
+                    isSearchVisible: (colKey) => settings.searchVisible[colKey] !== false,
+                  })}
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      icon={<Search className="h-3.5 w-3.5" />}
+                    >
+                      搜索
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      icon={<RotateCcw className="h-3.5 w-3.5" />}
+                      onClick={resetAllFilters}
+                    >
+                      重置
+                    </Button>
+                    {visibleSearchFields.length > 3 && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchFieldsCollapsed((v) => !v)}
+                        className="inline-flex items-center gap-0.5 px-1.5 py-1 text-xs font-medium text-[var(--abc-primary)] hover:underline cursor-pointer"
+                      >
+                        <span>
+                          {searchFieldsCollapsed
+                            ? `展开 (${visibleSearchFields.length - 3})`
+                            : '收起'}
+                        </span>
+                        {searchFieldsCollapsed ? (
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        ) : (
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+            </div>
+          </Card>
+        )}
 
       {/* 表格主卡片与工具栏 */}
       <Card padding="none">
+        {/* 表头筛选模式下未绑定具体表格列的附加筛选项条 */}
+        {headerFilterMode && extraFilterCollapsed && extraFilterFields.length > 0 && (
+          <div className="border-b border-[var(--abc-border)] px-4 py-2.5">
+            <div className="flex flex-wrap items-end gap-3">
+              {extraFilterFields.map((field) => (
+                <div key={field.key} className="w-48">
+                  <div className="mb-1 text-[11px] text-[var(--abc-fg-muted)]">{field.label}</div>
+                  {renderSearchControl(field)}
+                </div>
+              ))}
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => submitSearch()}
+                icon={<Search className="h-3.5 w-3.5" />}
+              >
+                搜索
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--abc-border)] px-4 py-3">
           <div className="flex flex-wrap items-center gap-2">
-            {title && <h3 className="mr-1 text-sm font-semibold text-[var(--abc-fg)]">{title}</h3>}
-            {onSaveRecord && formFields.length > 0 && canCreate && (
+            {!showTopPageHeader && title && (
+              <h3 className="mr-1 text-sm font-semibold text-[var(--abc-fg)]">{title}</h3>
+            )}
+            {canOpenAdd && (
               <Button
                 variant="primary"
                 icon={<Plus className="h-3.5 w-3.5" />}
-                onClick={openCreateModal}
+                onClick={() => void openCreateModal()}
               >
-                新建记录
+                {resolvedAddText}
               </Button>
             )}
-            {toolbarExtra}
+            {showBatchDelete && canBatchDelete && (onDeleteRecords || resolvedApi?.delete) && (
+              <Button
+                variant="danger"
+                disabled={selectedKeys.length === 0}
+                icon={<Trash2 className="h-3.5 w-3.5" />}
+                onClick={() => void handleBatchDelete(selectedKeys)}
+              >
+                批量删除
+              </Button>
+            )}
+            {showExport && effectiveExportable && (
+              <Button
+                variant="secondary"
+                loading={exporting}
+                icon={<Download className="h-3.5 w-3.5" />}
+                onClick={() => void handleExportAction()}
+              >
+                导出
+              </Button>
+            )}
+            {showImport && (
+              <Button
+                variant="secondary"
+                icon={<Upload className="h-3.5 w-3.5" />}
+                onClick={() => void onImport?.()}
+              >
+                导入
+              </Button>
+            )}
+            {toolbarButtons
+              .filter((btn) => checkPermission(btn.permission))
+              .map((btn) => (
+                <Button
+                  key={btn.key}
+                  variant={btn.variant ?? btn.type ?? 'secondary'}
+                  icon={btn.icon}
+                  onClick={btn.onClick}
+                >
+                  {btn.label}
+                </Button>
+              ))}
+            {resolvedToolbarExtra}
+            {headerFilterMode && extraFilterFields.length > 0 && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setExtraFilterCollapsed((v) => !v)}
+              >
+                {extraFilterCollapsed ? '收起筛选' : '展开筛选'}
+              </Button>
+            )}
+            {headerFilterMode && visibleSearchFields.length > 0 && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<RotateCcw className="h-3.5 w-3.5" />}
+                onClick={resetAllFilters}
+              >
+                重置
+              </Button>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
@@ -1095,7 +2348,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
               />
             )}
 
-            {showClientFilterSwitch && (
+            {effectiveShowClientFilterSwitch && (
               <Tooltip
                 content={
                   isClientFilter
@@ -1105,14 +2358,15 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
               >
                 <button
                   type="button"
-                  role="switch"
-                  aria-checked={isClientFilter}
+                  aria-pressed={isClientFilter}
                   aria-label="切换前端本地筛选模式"
                   onClick={() => {
                     const next = !isClientFilter
                     setIsClientFilter(next)
                     setCurrent(1)
-                    toast.info(next ? '已切换至前端本地筛选模式' : '已切换至服务端接口查询模式')
+                    toast.info(
+                      next ? '已切换至前端本地筛选模式' : '已切换至服务端接口查询模式'
+                    )
                   }}
                   className={cn(
                     'inline-flex h-7 items-center gap-1.5 rounded-[var(--abc-radius-sm)] border px-2.5 text-[11px] font-medium transition-colors cursor-pointer select-none',
@@ -1128,7 +2382,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
             )}
 
             {/* 自动定时轮询组合键 */}
-            {showAutoRefreshControl && request && (
+            {showAutoRefreshControl && hasRemoteSource && (
               <div className="inline-flex h-7 items-center rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)]">
                 <Tooltip
                   content={
@@ -1188,7 +2442,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
               <button
                 type="button"
                 aria-label="切换表头内联筛选"
-                onClick={() => setHeaderFilterMode((v) => !v)}
+                onClick={() => updateHeaderFilterMode(!headerFilterMode)}
                 className={cn(
                   'inline-flex h-7 w-7 items-center justify-center rounded-[var(--abc-radius-sm)] border transition-colors cursor-pointer',
                   headerFilterMode
@@ -1200,12 +2454,12 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
               </button>
             </Tooltip>
 
-            {exportable && (
+            {effectiveExportable && !showExport && (
               <Tooltip content="导出当前数据 (CSV)">
                 <button
                   type="button"
                   aria-label="导出数据"
-                  onClick={handleExportCsv}
+                  onClick={() => void handleExportAction()}
                   className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
                 >
                   <Download className="h-3.5 w-3.5" />
@@ -1213,12 +2467,12 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
               </Tooltip>
             )}
 
-            {request && (
+            {hasRemoteSource && (
               <Tooltip content="刷新表格数据">
                 <button
                   type="button"
                   aria-label="刷新数据"
-                  onClick={fetchServerData}
+                  onClick={() => void fetchServerData()}
                   className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
                 >
                   <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
@@ -1226,7 +2480,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
               </Tooltip>
             )}
 
-            {/* 独立行密度菜单（Portal 下拉，绝不与 Tooltip 冲突或被裁剪） */}
+            {/* 独立行密度菜单 */}
             <Dropdown
               placement="bottomRight"
               items={[
@@ -1301,21 +2555,23 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
             </Tooltip>
 
             {/* 高级列设置与筛选项管理气泡面板 */}
-            <ProColumnSettingsPopover
-              columns={columns}
-              searchableFieldNames={searchableFieldNames}
-              settings={settings}
-              hasActionColumn={hasAnyRowAction}
-              defaultActionWidth={viewable || rowActions.length > 0 ? 184 : 136}
-              motion={resolvedMotion}
-              onToggleVisible={toggleColumnVisible}
-              onSetAllVisible={setAllColumnsVisible}
-              onSetFixed={setColumnFixed}
-              onSetWidth={setColumnWidth}
-              onSetOrder={setColumnOrder}
-              onSetSearchVisible={setSearchFieldVisible}
-              onReset={resetSettings}
-            />
+            {columnSettingsEnabled && (
+              <ProColumnSettingsPopover
+                columns={columns}
+                searchableFieldNames={searchableFieldNames}
+                settings={settings}
+                hasActionColumn={hasAnyRowAction}
+                defaultActionWidth={defaultActionColWidth}
+                motion={resolvedMotion}
+                onToggleVisible={toggleColumnVisible}
+                onSetAllVisible={setAllColumnsVisible}
+                onSetFixed={setColumnFixed}
+                onSetWidth={setColumnWidth}
+                onSetOrder={setColumnOrder}
+                onSetSearchVisible={setSearchFieldVisible}
+                onReset={resetSettings}
+              />
+            )}
           </div>
         </div>
 
@@ -1330,33 +2586,43 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
           onSelectionChange={
             selectionEnabled
               ? (keys, rows) => {
-                  setSelectedKeys(keys)
-                  setSelectedRows(rows)
+                  updateSelectedState(keys, rows)
                 }
               : undefined
           }
           sortState={sortState}
-          onSortChange={(key, direction) => setSortState({ key, direction })}
+          onSortChange={(key, direction) => {
+            setSortState({ key, direction })
+            setCurrent(1)
+          }}
           headerFilterMode={headerFilterMode}
           headerFilters={appliedFilters}
           onHeaderFilterChange={(k, val) => {
             setCurrent(1)
-            setSearchInputs((prev) => ({ ...prev, [k]: val }))
+            updateSearchInput(k, val)
             setAppliedFilters((prev) => ({ ...prev, [k]: val }))
           }}
           headerFilterRender={
             !headerFilterMode
               ? (col) => {
-                  const filterKey = String(col.dataIndex ?? col.key)
+                  const filterKey = Array.isArray(col.dataIndex)
+                    ? col.dataIndex.join('.')
+                    : String(col.dataIndex ?? col.key)
+                  const matchedSearch = allSearchFields.find(
+                    (sf) => sf.columnKey === col.key || sf.key === filterKey
+                  )
+                  const filterOpts = col.filterOptions ?? matchedSearch?.options
+                  const filterType =
+                    col.filterType ?? (filterOpts && filterOpts.length > 0 ? 'select' : 'text')
                   return (
                     <HeaderColumnFilterPopover
                       title={col.title}
-                      filterType={col.filterType}
-                      filterOptions={col.filterOptions}
+                      filterType={filterType}
+                      filterOptions={filterOpts}
                       value={appliedFilters[filterKey]}
                       onApply={(nextVal) => {
                         setCurrent(1)
-                        setSearchInputs((prev) => ({ ...prev, [filterKey]: nextVal }))
+                        updateSearchInput(filterKey, nextVal)
                         setAppliedFilters((prev) => ({ ...prev, [filterKey]: nextVal }))
                       }}
                     />
@@ -1364,23 +2630,29 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
                 }
               : undefined
           }
+          activeFilterKeys={activeFilterKeys}
+          activeFilterLabels={activeFilterLabels}
           columnWidths={settings.columnWidths}
           onColumnResize={setColumnWidth}
           columnFixed={settings.columnFixed}
           onColumnPin={setColumnFixed}
-          onColumnHide={toggleColumnVisible}
-          onResetColumns={resetSettings}
-          onColumnReorder={setColumnOrder}
-          expandable={expandable}
+          onColumnHide={columnSettingsEnabled ? toggleColumnVisible : undefined}
+          onResetColumns={columnSettingsEnabled ? resetSettings : undefined}
+          onColumnReorder={columnSettingsEnabled ? setColumnOrder : undefined}
+          treeData={treeData}
+          expandable={resolvedExpandable}
+          rowDraggable={Boolean(sortable?.enabled)}
+          onRowDragEnd={sortable?.enabled ? handleRowReorder : undefined}
           activeRowKey={selectedRowKey}
           onRowClick={onRowClick}
-          onRowView={viewable ? (record) => setViewingRecord(record) : undefined}
+          onRow={onRow}
+          onRowView={(record, linkTarget) => void openViewModal(record, linkTarget)}
           onEmptyReset={activeFilterCount > 0 ? resetAllFilters : undefined}
           maxHeight={maxHeight}
           className="rounded-none border-0"
         />
 
-        {pagination !== false && (
+        {!hidePagination && pagination !== false && (
           <div className="border-t border-[var(--abc-border)] px-4 py-3">
             {renderPagination ? (
               renderPagination({
@@ -1396,6 +2668,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
               <Pagination
                 current={current}
                 pageSize={pageSize}
+                pageSizeOptions={pageSizeOptions}
                 motion={resolvedMotion}
                 total={displayTotal}
                 onChange={(nextPage, nextSize) => {
@@ -1408,6 +2681,7 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
               <Pagination
                 current={current}
                 pageSize={pageSize}
+                pageSizeOptions={pageSizeOptions}
                 motion={resolvedMotion}
                 total={displayTotal}
                 onChange={(nextPage, nextSize) => {
@@ -1426,86 +2700,89 @@ export function ProTable<T extends Record<string, any> = Record<string, any>>({
           selectedKeys={selectedKeys}
           selectedRows={selectedRows}
           batchActions={permittedBatchActions}
+          extraContent={renderBatchActions?.(selectedKeys, selectedRows)}
           motion={resolvedMotion}
           onBatchDelete={
-            onDeleteRecords && canDelete ? () => handleBatchDelete(selectedKeys) : undefined
+            canBatchDelete && (onDeleteRecords || resolvedApi?.delete)
+              ? () => void handleBatchDelete(selectedKeys)
+              : undefined
           }
-          onClear={() => {
-            setSelectedKeys([])
-            setSelectedRows([])
-          }}
+          onClear={() => updateSelectedState([], [])}
         />
       )}
 
       {/* 详情只读查看弹窗 */}
-      <Dialog
+      <ProCrudViewModal<T>
         open={Boolean(viewingRecord)}
         onClose={() => setViewingRecord(null)}
-        title="记录详情"
-        size="lg"
-        footer={
-          <>
-            {viewingRecord && onSaveRecord && canUpdate && (
-              <Button
-                variant="secondary"
-                icon={<Edit3 className="h-3.5 w-3.5" />}
-                onClick={() => {
-                  const target = viewingRecord
-                  setViewingRecord(null)
-                  openEditModal(target)
-                }}
-              >
-                编辑此记录
-              </Button>
-            )}
-            <Button variant="primary" onClick={() => setViewingRecord(null)}>
-              关闭
-            </Button>
-          </>
-        }
-      >
-        {viewingRecord && (
-          <Descriptions
-            bordered
-            column={2}
-            items={columns
-              .filter((c) => !c.hideInTable)
-              .map((c) => {
-                const rawVal = viewingRecord[(c.dataIndex ?? c.key) as string]
-                return {
-                  key: c.key,
-                  label: c.title,
-                  children: c.render ? c.render(rawVal, viewingRecord, 0) : String(rawVal ?? '-'),
-                }
-              })}
-          />
-        )}
-      </Dialog>
+        record={viewingRecord}
+        columns={columns}
+        viewTitle={viewTitle ?? (apiProp ? '详情' : '记录详情')}
+        viewSize={viewSize}
+        viewLoading={viewLoading}
+        canEdit={canOpenEdit}
+        onEditRecord={(rec) => void openEditModal(rec)}
+        renderViewExtra={renderViewExtra}
+        renderViewFooter={renderViewFooter}
+      />
 
-      {/* 带草稿防丢失记忆的新建 / 编辑容器（支持模态窗或侧边抽屉双形态，双列栅格自适应） */}
-      {formContainer === 'drawer' ? (
-        <Drawer
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          title={editingRecord ? '编辑记录' : '新建记录'}
-          size={effectiveFormColumns === 2 ? 'lg' : 'md'}
-          footer={formFooterNode}
-        >
-          {formBodyNode}
-        </Drawer>
-      ) : (
-        <Dialog
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          title={editingRecord ? '编辑记录' : '新建记录'}
-          size={effectiveFormColumns === 2 ? 'lg' : 'md'}
-          footer={formFooterNode}
-        >
-          {formBodyNode}
-        </Dialog>
-      )}
+      {/* 新建 / 编辑弹窗与侧滑抽屉容器 */}
+      <ProCrudFormModal<T>
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        isEdit={isEdit}
+        currentRecord={editingRecord}
+        container={formContainer}
+        dialogTitle={
+          dialogTitle ??
+          (apiProp ? { add: '新增', edit: '编辑' } : { add: '新建记录', edit: '编辑记录' })
+        }
+        dialogSize={dialogSize}
+        formLayout={formLayout}
+        formColumns={effectiveFormColumns}
+        formFields={resolvedFormFields}
+        form={form}
+        formSchema={formSchema}
+        columns={columns}
+        formSubmitting={formSubmitting}
+        formDetailLoading={formDetailLoading}
+        formError={formError}
+        onSubmit={handleFormSubmit}
+        draftEnabled={draftEnabled}
+        showDraftButton={Boolean(draftConfig?.showDraftButton && draftEnabled)}
+        showDraftBanner={showDraftBanner}
+        draftBannerMode={autoRestoreDraft ? 'auto-restored' : 'prompt'}
+        onSaveDraft={
+          draftEnabled
+            ? () => {
+                draft.saveDraft(form.getValues())
+                toast.success('草稿已保存')
+              }
+            : undefined
+        }
+        onRestoreDraft={() => {
+          const cached = draft.readDraft()
+          if (cached) form.reset({ ...buildDefaultFormValues(), ...cached })
+          setShowDraftBanner(false)
+        }}
+        onDiscardDraft={() => {
+          draft.clearDraft()
+          if (autoRestoreDraft) {
+            form.reset(buildDefaultFormValues())
+          }
+          setShowDraftBanner(false)
+        }}
+        submitButtonText={apiProp ? '保存' : '确认提交'}
+        renderFormExtra={renderFormExtra}
+        renderCustomForm={renderCustomForm}
+        onSuccessFetch={() => {
+          if (hasRemoteSource) void fetchServerData()
+        }}
+      />
     </div>
   )
 }
 
+export const ProCrudTable = ProTable
+export const CrudTable = ProTable
 export default ProTable

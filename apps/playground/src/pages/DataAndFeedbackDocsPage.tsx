@@ -22,8 +22,11 @@ import {
   Input,
   NotificationBanner,
   OneTimeSecretDialog,
+  CursorPagination,
   PageContainer,
   Pagination,
+  Permission,
+  PermissionGuard,
   Popover,
   Progress,
   RadioGroup,
@@ -36,6 +39,7 @@ import {
   Tabs,
   Timeline,
   Tooltip,
+  Watermark,
   abcConfirm,
   abcToast,
   useAbcConfig,
@@ -82,6 +86,13 @@ export const DataAndFeedbackDocsPage: React.FC = () => {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [crash, setCrash] = useState(false)
+  const [wmEnabled, setWmEnabled] = useState(true)
+  const [wmText, setWmText] = useState('ABC Design · 安全合规预览')
+  const [wmOpacity, setWmOpacity] = useState<'auto' | '0.12' | '0.22'>('0.12')
+  const [wmRotate, setWmRotate] = useState<-22 | -15 | 0>(-22)
+  const [cursorPage, setCursorPage] = useState(1)
+  const [cursorSize, setCursorSize] = useState(20)
+  const [cursorLoading, setCursorLoading] = useState(false)
 
   return (
     <PageContainer
@@ -927,15 +938,241 @@ abcToast.success('更新成功', {
               />
             </div>
 
-            <Pagination
-              current={page}
-              pageSize={pageSize}
-              total={128}
-              onChange={(nextP, nextS) => {
-                setPage(nextP)
-                setPageSize(nextS)
-              }}
-            />
+            <div className="space-y-4">
+              <Pagination
+                current={page}
+                pageSize={pageSize}
+                total={128}
+                onChange={(nextP, nextS) => {
+                  setPage(nextP)
+                  setPageSize(nextS)
+                }}
+              />
+
+              <div className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)]/60 p-3.5 space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span className="font-semibold text-[var(--abc-fg)]">
+                    CursorPagination 游标流式分页（第 {cursorPage} 批 / 最多 5 批）
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <label className="inline-flex items-center gap-2 text-xs text-[var(--abc-fg-secondary)] cursor-pointer select-none">
+                      <Switch
+                        size="sm"
+                        checked={cursorLoading}
+                        onChange={setCursorLoading}
+                        ariaLabel="模拟加载态"
+                      />
+                      <span>模拟加载态</span>
+                    </label>
+                  </div>
+                </div>
+                <CursorPagination
+                  loadedCount={cursorPage * cursorSize}
+                  pageSize={cursorSize}
+                  pageSizeOptions={[10, 20, 50]}
+                  hasPrev={cursorPage > 1}
+                  hasNext={cursorPage < 5}
+                  loading={cursorLoading}
+                  onPrev={() => setCursorPage((p) => Math.max(1, p - 1))}
+                  onNext={() => setCursorPage((p) => Math.min(5, p + 1))}
+                  onSizeChange={(nextSize) => {
+                    setCursorSize(nextSize)
+                    setCursorPage(1)
+                  }}
+                  onResetCursor={() => setCursorPage(1)}
+                />
+              </div>
+            </div>
+          </div>
+        </ComponentDocPreview>
+
+        {/* 5. Watermark 高清防篡改水印 */}
+        <ComponentDocPreview
+          title="Watermark 高清 Canvas 防篡改数字水印"
+          description="基于 Canvas 高分屏渲染平铺数字水印并内置 MutationObserver 防篡改自愈守卫；新增 opacity 自定义不透明度以兼容预览站与企业控制台双场景。"
+          controls={
+            <div className="flex flex-wrap items-center gap-2.5">
+              <label className="inline-flex items-center gap-2 text-xs text-[var(--abc-fg-secondary)] cursor-pointer select-none">
+                <Switch
+                  size="sm"
+                  checked={wmEnabled}
+                  onChange={setWmEnabled}
+                  ariaLabel="启用水印"
+                />
+                <span>启用水印</span>
+              </label>
+              <div className="w-52">
+                <Input
+                  size="xs"
+                  aria-label="水印文案"
+                  value={wmText}
+                  onChange={(e) => setWmText(e.target.value)}
+                  placeholder="输入水印文案…"
+                />
+              </div>
+              <div className="flex items-center gap-1 text-xs">
+                <span className="text-[var(--abc-fg-muted)]">不透明度:</span>
+                {(['auto', '0.12', '0.22'] as const).map((opt) => (
+                  <Button
+                    key={opt}
+                    size="xs"
+                    variant={wmOpacity === opt ? 'primary' : 'outline'}
+                    onClick={() => setWmOpacity(opt)}
+                  >
+                    {opt === 'auto' ? '自适应' : opt}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1 text-xs">
+                <span className="text-[var(--abc-fg-muted)]">旋转角:</span>
+                {([-22, -15, 0] as const).map((deg) => (
+                  <Button
+                    key={deg}
+                    size="xs"
+                    variant={wmRotate === deg ? 'primary' : 'outline'}
+                    onClick={() => setWmRotate(deg)}
+                  >
+                    {deg}°
+                  </Button>
+                ))}
+              </div>
+            </div>
+          }
+          code={`import { Watermark } from '@abc-design/react'
+
+<Watermark
+  content="${wmText || 'ABC Design'}"
+  enabled={${wmEnabled}}
+  rotate={${wmRotate}}${wmOpacity !== 'auto' ? `\n  opacity={${wmOpacity}}` : ''}
+>
+  <div className="p-6">受水印保护的敏感控制台与结算对账内容区</div>
+</Watermark>`}
+          apiRows={[
+            { prop: 'content', type: 'string | string[]', description: '水印单行或多行平铺文案' },
+            { prop: 'enabled', type: 'boolean', defaultValue: 'true', description: '是否挂载并渲染 Canvas 防篡改水印层' },
+            { prop: 'opacity', type: 'number', description: '自定义水印文字透明度（0 ~ 1），缺省时随明暗主题自动适配' },
+            { prop: 'rotate / gap', type: 'number / [number, number]', defaultValue: '-22 / [110, 96]', description: '旋转倾斜角度与横纵向平铺间距' },
+          ]}
+        >
+          <Watermark
+            content={wmText || 'ABC Design'}
+            enabled={wmEnabled}
+            opacity={wmOpacity === 'auto' ? undefined : Number(wmOpacity)}
+            rotate={wmRotate}
+            className="rounded-xl border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] p-6"
+          >
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center gap-2 font-semibold text-[var(--abc-fg)]">
+                <Shield className="h-4 w-4 text-[var(--abc-primary)]" />
+                <span>敏感运营数据保护沙箱容器</span>
+              </div>
+              <p className="text-[var(--abc-fg-secondary)] leading-relaxed">
+                尝试在 DevTools 中手动删除内层水印 DOM 节点或改写其 style 属性为 display:none，Watermark
+                内置的防自激 MutationObserver 会在下一帧自动重建还原。
+              </p>
+              <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-3">
+                <div className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)]/80 p-3">
+                  <div className="text-[var(--abc-fg-muted)]">月度结算核销额</div>
+                  <div className="mt-1 font-mono text-sm font-semibold text-[var(--abc-fg)]">¥ 1,284,920.00</div>
+                </div>
+                <div className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)]/80 p-3">
+                  <div className="text-[var(--abc-fg-muted)]">高危操作审计流水</div>
+                  <div className="mt-1 font-mono text-sm font-semibold text-[var(--abc-fg)]">342 条已签章</div>
+                </div>
+                <div className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)]/80 p-3">
+                  <div className="text-[var(--abc-fg-muted)]">当前不透明度</div>
+                  <div className="mt-1 font-mono text-sm font-semibold text-[var(--abc-fg)]">
+                    {wmOpacity === 'auto' ? '自适应 (0.065/0.055)' : wmOpacity}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Watermark>
+        </ComponentDocPreview>
+
+        {/* 6. PermissionGuard & Permission 细粒度权限守卫 */}
+        <ComponentDocPreview
+          title="PermissionGuard & Permission 细粒度权限守卫"
+          description="无缝对接顶层 AbcProvider.permissionAdapter（Playground 全局配置仅拒绝 sys:forbidden），同时支持隐藏 / fallback 降级占位与置灰禁用带气泡提示 (fallbackStrategy='disable') 双重策略。"
+          code={`import { PermissionGuard, Permission, Button } from '@abc-design/react'
+
+<Permission code="sys:deploy">
+  <Button variant="primary">放行按钮 (sys:deploy)</Button>
+</Permission>
+
+<PermissionGuard
+  permission="sys:forbidden"
+  fallbackStrategy="disable"
+  disabledTip="当前账号缺少 sys:forbidden 权限"
+>
+  <Button variant="danger">受保护高危操作</Button>
+</PermissionGuard>`}
+          apiRows={[
+            { prop: 'permission / code', type: 'string | string[]', description: '待校验权限码（支持多权限）' },
+            { prop: 'mode', type: "'any' | 'all'", defaultValue: "'any'", description: '多权限码组合检验规则' },
+            { prop: 'fallbackStrategy', type: "'hide' | 'disable'", defaultValue: "'hide'", description: '无权限时是隐藏/渲染 fallback，还是保留按钮并自动禁用 + Tooltip' },
+            { prop: 'disabledTip / fallback', type: 'string / ReactNode', description: '禁用提示气泡或 hide 模式下的自定义替代占位节点' },
+          ]}
+        >
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 text-xs">
+            <div className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)]/70 p-4 space-y-2.5">
+              <div className="flex items-center gap-1.5 font-semibold text-[var(--abc-fg)]">
+                <KeyRound className="h-3.5 w-3.5 text-emerald-500" />
+                <span>权限放行 (Permission)</span>
+              </div>
+              <p className="text-[var(--abc-fg-muted)]">
+                权限码 <code className="font-mono">sys:deploy</code> 命中放行，正常渲染可执行按钮。
+              </p>
+              <Permission code="sys:deploy">
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => abcToast.success('权限校验通过：已执行 sys:deploy 部署指令')}
+                >
+                  发布灰度版本
+                </Button>
+              </Permission>
+            </div>
+
+            <div className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)]/70 p-4 space-y-2.5">
+              <div className="flex items-center gap-1.5 font-semibold text-[var(--abc-fg)]">
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
+                <span>禁用降级 (disable 策略)</span>
+              </div>
+              <p className="text-[var(--abc-fg-muted)]">
+                无 <code className="font-mono">sys:forbidden</code> 权限时保留可见结构但强制置灰禁用。
+              </p>
+              <PermissionGuard
+                permission="sys:forbidden"
+                fallbackStrategy="disable"
+                disabledTip="当前角色缺少 sys:forbidden 权限，无法执行节点销毁"
+              >
+                <Button size="sm" variant="danger">
+                  销毁核心生产集群
+                </Button>
+              </PermissionGuard>
+            </div>
+
+            <div className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)]/70 p-4 space-y-2.5">
+              <div className="flex items-center gap-1.5 font-semibold text-[var(--abc-fg)]">
+                <Layers className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
+                <span>占位替代 (hide + fallback)</span>
+              </div>
+              <p className="text-[var(--abc-fg-muted)]">
+                隐藏真实敏感控件，并自动渲染 <code className="font-mono">fallback</code> 提示标签。
+              </p>
+              <PermissionGuard
+                permission="sys:forbidden"
+                fallbackStrategy="hide"
+                fallback={
+                  <StatusTag tone="warning">无 sys:forbidden 权限：控件已安全折叠</StatusTag>
+                }
+              >
+                <Button size="sm" variant="danger">
+                  不应被普通用户看到的按钮
+                </Button>
+              </PermissionGuard>
+            </div>
           </div>
         </ComponentDocPreview>
       </div>

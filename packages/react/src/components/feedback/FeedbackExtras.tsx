@@ -125,6 +125,8 @@ export interface ProgressProps {
   percent: number
   type?: 'line' | 'circle'
   tone?: 'primary' | 'success' | 'warning' | 'danger'
+  /** 自定义进度条填充颜色（覆盖默认 tone 色值） */
+  strokeColor?: string
   showInfo?: boolean
   /** 环形直径 / 线性条高度（支持具体像素或通用 xs/sm/md/lg 规格） */
   size?: number | AbcSize
@@ -160,6 +162,7 @@ export const Progress: React.FC<ProgressProps> = ({
   percent,
   type = 'line',
   tone = 'primary',
+  strokeColor: customStrokeColor,
   showInfo = true,
   size,
   motion,
@@ -168,7 +171,7 @@ export const Progress: React.FC<ProgressProps> = ({
   const resolvedSize = useAbcSize(typeof size === 'string' ? size : undefined, 'sm')
   const resolvedMotion = useAbcMotion(motion)
   const clamped = Math.max(0, Math.min(100, Math.round(percent)))
-  const strokeColor = PROGRESS_FILL_COLOR[tone]
+  const strokeColor = customStrokeColor || PROGRESS_FILL_COLOR[tone]
 
   if (type === 'circle') {
     const diameter = typeof size === 'number' ? size : PROGRESS_CIRCLE_PX[resolvedSize]

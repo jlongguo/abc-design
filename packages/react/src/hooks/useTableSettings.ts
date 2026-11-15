@@ -27,19 +27,24 @@ const DEFAULT_SETTINGS: AbcTablePersistedSettings = {
  */
 export function useTableSettings(
   storageKey?: string,
-  initialDensity: AbcTableDensity = 'default'
+  initialDensity: AbcTableDensity = 'default',
+  defaultHiddenKeys: string[] = []
 ) {
   const fullKey = storageKey ? `abc_table_${storageKey}` : ''
 
   const [settings, setSettings] = useState<AbcTablePersistedSettings>(() => {
-    const fallback: AbcTablePersistedSettings = { ...DEFAULT_SETTINGS, density: initialDensity }
+    const fallback: AbcTablePersistedSettings = {
+      ...DEFAULT_SETTINGS,
+      hiddenKeys: defaultHiddenKeys,
+      density: initialDensity,
+    }
     if (!fullKey || typeof window === 'undefined') return fallback
     try {
       const raw = window.localStorage.getItem(fullKey)
       if (!raw) return fallback
       const parsed = JSON.parse(raw) as Partial<AbcTablePersistedSettings>
       return {
-        hiddenKeys: Array.isArray(parsed.hiddenKeys) ? parsed.hiddenKeys : [],
+        hiddenKeys: Array.isArray(parsed.hiddenKeys) ? parsed.hiddenKeys : defaultHiddenKeys,
         columnOrder: Array.isArray(parsed.columnOrder) ? parsed.columnOrder : [],
         columnWidths:
           parsed.columnWidths && typeof parsed.columnWidths === 'object'
@@ -126,8 +131,8 @@ export function useTableSettings(
   }, [])
 
   const resetSettings = useCallback(() => {
-    setSettings({ ...DEFAULT_SETTINGS, density: initialDensity })
-  }, [initialDensity])
+    setSettings({ ...DEFAULT_SETTINGS, hiddenKeys: defaultHiddenKeys, density: initialDensity })
+  }, [initialDensity, defaultHiddenKeys])
 
   return {
     settings,

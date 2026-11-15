@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import {
   AbcProvider,
   ActionCard,
@@ -33,13 +33,17 @@ import {
   Permission,
   PermissionGuard,
   PricingCard,
+  ProCommandPalette,
   ProConfigForm,
+  ProFormContainer,
   ProLayout,
+  ProLogViewer,
   ProTable,
   Progress,
   RadioGroup,
   Result,
   Select,
+  SelectField,
   SidebarNav,
   StatusTag,
   Steps,
@@ -47,8 +51,10 @@ import {
   Tabs,
   TagInput,
   ThemeCustomizer,
+  ThemeSwitcher,
   Tooltip,
   Tree,
+  Watermark,
   buildCalendarMonthGrid,
   buildCsvContent,
   computeTreeCheckState,
@@ -1488,5 +1494,156 @@ describe('ABC Design System — 全栈四层架构单元测试', () => {
 
     // 验证底栏游标分页渲染
     expect(screen.getAllByText(/已连续加载/).length).toBe(2)
+  })
+
+  it('25. 组件收口增强：Button.iconOnly、Select 双模兼容（含 Top-Layer <dialog> 挂载）、SelectField、ThemeSwitcher 与 Watermark opacity', async () => {
+    // 1. Button iconOnly 正方形类名且不透传 icononly DOM 属性
+    render(
+      <Button iconOnly aria-label="纯图标操作">
+        <span>+</span>
+      </Button>
+    )
+    const iconBtn = screen.getByRole('button', { name: '纯图标操作' })
+    expect(iconBtn.className).toContain('w-[var(--abc-control-h-sm)]')
+    expect(iconBtn).not.toHaveAttribute('icononly')
+
+    // 2. Select 原生 <option>/<optgroup> 在 Dialog 内就地挂载于 <dialog> 并派生真实 ChangeEvent
+    const receivedNativeValues: string[] = []
+    render(
+      <Dialog open onClose={vi.fn()} title="Top-Layer 协议选择">
+        <Select
+          aria-label="传输协议"
+          defaultValue="http"
+          onChange={(e) => receivedNativeValues.push(e.target.value)}
+        >
+          <optgroup label="常规协议">
+            <option value="http">HTTP</option>
+            <option value="socks5">SOCKS5</option>
+          </optgroup>
+        </Select>
+      </Dialog>
+    )
+    fireEvent.click(screen.getByRole('combobox', { name: '传输协议' }))
+    const popover = document.querySelector('[data-slot="select-popover"]')
+    expect(popover).not.toBeNull()
+    expect(popover?.closest('dialog')).not.toBeNull()
+    fireEvent.click(within(popover as HTMLElement).getByRole('option', { name: 'SOCKS5' }))
+    expect(receivedNativeValues).toEqual(['socks5'])
+
+    // 3. SelectField 声明式字符串回调
+    const onFieldChange = vi.fn()
+    render(
+      <SelectField
+        aria-label="部署目标环境"
+        defaultValue="prod"
+        onValueChange={onFieldChange}
+        options={[
+          { label: '生产环境', value: 'prod' },
+          { label: '预发环境', value: 'staging' },
+        ]}
+      />
+    )
+    fireEvent.click(screen.getByRole('combobox', { name: '部署目标环境' }))
+    fireEvent.click(screen.getByRole('option', { name: '预发环境' }))
+    expect(onFieldChange).toHaveBeenCalledWith('staging')
+
+    // 4. ThemeSwitcher segmented 与 AbcProvider 双向同步
+    render(
+      <AbcProvider persist={false}>
+        <ThemeSwitcher mode="segmented" />
+      </AbcProvider>
+    )
+    fireEvent.click(screen.getByRole('button', { name: '深色' }))
+    await waitFor(() => {
+      expect(document.documentElement.getAttribute('data-abc-theme')).toBe('dark')
+    })
+    fireEvent.click(screen.getByRole('button', { name: '浅色' }))
+    await waitFor(() => {
+      expect(document.documentElement.getAttribute('data-abc-theme')).toBe('light')
+    })
+
+    // 5. Watermark 支持自定义 opacity 渲染
+    const recordedFillStyles: string[] = []
+    const ctxSpy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () =>
+        ({
+          scale: vi.fn(),
+          translate: vi.fn(),
+          rotate: vi.fn(),
+          fillText: vi.fn(),
+          set fillStyle(val: string) {
+            recordedFillStyles.push(val)
+          },
+          get fillStyle() {
+            return recordedFillStyles[recordedFillStyles.length - 1] ?? ''
+          },
+        }) as unknown as CanvasRenderingContext2D
+    )
+    const dataUrlSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockReturnValue('data:image/png;base64,opacityMock')
+
+    const { container: wmContainer } = render(
+      <Watermark content="CONFIDENTIAL" opacity={0.18}>
+        <div>安全水印内容区</div>
+      </Watermark>
+    )
+    expect(wmContainer.querySelector('[data-watermark-overlay="true"]')).not.toBeNull()
+    expect(recordedFillStyles.some((s) => s.includes('0.18'))).toBe(true)
+
+    ctxSpy.mockRestore()
+    dataUrlSpy.mockRestore()
+  })
+
+  it('26. Pro 套件收口：ProFormContainer、ProLogViewer 日志过滤及 ProCommandPalette 实体直达', () => {
+    // 1. ProFormContainer（测试环境下默认就地内联渲染并展示 summarySlot 与表单字段）
+    render(
+      <ProFormContainer
+        title="集群并发策略"
+        triggerLabel="编辑策略"
+        summarySlot={<div data-testid="pro-form-summary">当前并发 64 路</div>}
+      >
+        <div data-testid="pro-form-body">并发上限表单内容</div>
+      </ProFormContainer>
+    )
+    expect(screen.getByTestId('pro-form-summary')).toHaveTextContent('当前并发 64 路')
+    expect(screen.getByTestId('pro-form-body')).toHaveTextContent('并发上限表单内容')
+
+    // 2. ProLogViewer 结构化/纯文本日志渲染与关键词筛选
+    render(
+      <ProLogViewer
+        logs={[
+          { seq: 1, level: 'info', message: 'Worker node booted' },
+          { seq: 2, level: 'error', message: 'Browser navigation timeout on #login' },
+          'plain text trace line',
+        ]}
+      />
+    )
+    expect(screen.getByText('3 / 3 行')).toBeInTheDocument()
+    const filterInput = screen.getByPlaceholderText('过滤日志内容…')
+    fireEvent.change(filterInput, { target: { value: 'timeout' } })
+    expect(screen.getByText('1 / 3 行')).toBeInTheDocument()
+    expect(screen.getByText('Browser navigation timeout on #login')).toBeInTheDocument()
+    expect(screen.queryByText('Worker node booted')).not.toBeInTheDocument()
+
+    // 3. ProCommandPalette 实体前缀直达规则匹配
+    const onEntitySelect = vi.fn()
+    render(
+      <ProCommandPalette
+        open
+        searchQuery="job_123"
+        entityMatchers={[
+          {
+            id: 'job',
+            prefix: 'job_',
+            labelPrefix: '直达作业诊断: ',
+            tone: 'blue',
+            onSelect: onEntitySelect,
+          },
+        ]}
+      />
+    )
+    fireEvent.click(screen.getByText('job_123'))
+    expect(onEntitySelect).toHaveBeenCalledWith('job_123')
   })
 })

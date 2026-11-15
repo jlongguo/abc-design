@@ -36,6 +36,8 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   leftIcon?: React.ReactNode
   /** 右侧后置图标 */
   rightIcon?: React.ReactNode
+  /** 正方形纯图标按钮（需配合 aria-label） */
+  iconOnly?: boolean
   /** 是否撑满父容器宽度 */
   block?: boolean
   /** 是否将样式透传给子元素 */
@@ -77,17 +79,29 @@ const SIZE_CLASSES: Record<string, string> = {
   'icon-sm': 'h-[var(--abc-control-h-sm)] w-[var(--abc-control-h-sm)] p-0',
 }
 
+const ICON_ONLY_SIZE_CLASSES: Record<string, string> = {
+  xs: 'h-[var(--abc-control-h-xs)] w-[var(--abc-control-h-xs)] p-0',
+  sm: 'h-[var(--abc-control-h-sm)] w-[var(--abc-control-h-sm)] p-0',
+  default: 'h-[var(--abc-control-h-sm)] w-[var(--abc-control-h-sm)] p-0',
+  md: 'h-[var(--abc-control-h-md)] w-[var(--abc-control-h-md)] p-0',
+  lg: 'h-[var(--abc-control-h-lg)] w-[var(--abc-control-h-lg)] p-0',
+}
+
 export function buttonVariants({
   variant = 'primary',
   size = 'sm',
+  iconOnly = false,
   className,
 }: {
   variant?: ButtonVariant
   size?: ButtonSize
+  iconOnly?: boolean
   className?: string
 } = {}): string {
   const vClass = VARIANT_CLASSES[variant] || VARIANT_CLASSES.primary
-  const sClass = SIZE_CLASSES[size] || SIZE_CLASSES.sm
+  const sClass = iconOnly
+    ? ICON_ONLY_SIZE_CLASSES[size] || ICON_ONLY_SIZE_CLASSES.sm
+    : SIZE_CLASSES[size] || SIZE_CLASSES.sm
   return cn(
     'inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md)] font-medium select-none shrink-0 cursor-pointer abc-motion-control',
     'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-primary)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--abc-bg-surface)]',
@@ -115,6 +129,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       icon,
       leftIcon,
       rightIcon,
+      iconOnly = false,
       block = false,
       asChild = false,
       type,
@@ -136,7 +151,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-primary)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--abc-bg-surface)]',
       'disabled:opacity-45 disabled:cursor-not-allowed',
       VARIANT_CLASSES[variant] || VARIANT_CLASSES.primary,
-      isIconSize ? SIZE_CLASSES[size] : SIZE_CLASSES[resolvedSize],
+      isIconSize
+        ? SIZE_CLASSES[size]
+        : iconOnly
+          ? ICON_ONLY_SIZE_CLASSES[resolvedSize]
+          : SIZE_CLASSES[resolvedSize],
       block && 'w-full',
       className
     )

@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useRef } from 'react'
 import { useAbcConfig } from '../../provider/AbcProvider'
 import { cn } from '../../utils/cn'
 
-export interface WatermarkProps {
+export interface WatermarkProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, 'content'> {
   /** 水印单行或多行文案 */
   content?: string | string[]
   /** 是否启用渲染 */
@@ -11,6 +12,8 @@ export interface WatermarkProps {
   rotate?: number
   /** 横纵向间距 */
   gap?: [number, number]
+  /** 自定义水印文字不透明度（0 ~ 1），未传时按明暗主题自适应 */
+  opacity?: number
   children?: React.ReactNode
   className?: string
 }
@@ -25,8 +28,10 @@ export const Watermark: React.FC<WatermarkProps> = ({
   enabled = true,
   rotate = -22,
   gap = [110, 96],
+  opacity,
   children,
   className,
+  ...rest
 }) => {
   const { resolvedTheme } = useAbcConfig()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -71,8 +76,16 @@ export const Watermark: React.FC<WatermarkProps> = ({
       ctx.translate(tileW / 2, tileH / 2)
       ctx.rotate((rotate * Math.PI) / 180)
       ctx.font = '500 12px Inter, -apple-system, sans-serif'
+      const resolvedAlpha =
+        typeof opacity === 'number' && Number.isFinite(opacity)
+          ? Math.max(0, Math.min(1, opacity))
+          : resolvedTheme === 'dark'
+            ? 0.065
+            : 0.055
       ctx.fillStyle =
-        resolvedTheme === 'dark' ? 'rgba(226, 232, 240, 0.065)' : 'rgba(15, 23, 42, 0.055)'
+        resolvedTheme === 'dark'
+          ? `rgba(226, 232, 240, ${resolvedAlpha})`
+          : `rgba(15, 23, 42, ${resolvedAlpha})`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
 
@@ -156,7 +169,7 @@ export const Watermark: React.FC<WatermarkProps> = ({
         attributeFilter: ['style', 'class', 'hidden'],
       })
     }
-  }, [content, enabled, gap, resolvedTheme, rotate])
+  }, [content, enabled, gap, opacity, resolvedTheme, rotate])
 
   useEffect(() => {
     renderWatermarkLayer()
@@ -169,7 +182,7 @@ export const Watermark: React.FC<WatermarkProps> = ({
   }, [renderWatermarkLayer])
 
   return (
-    <div ref={containerRef} className={cn('relative', className)}>
+    <div ref={containerRef} className={cn('relative', className)} {...rest}>
       {children}
     </div>
   )

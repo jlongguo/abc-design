@@ -5,6 +5,15 @@ function isRangeFilterObject(val) {
         !Array.isArray(val) &&
         ('start' in val || 'end' in val));
 }
+function readCellByPath(row, key) {
+    if (!row || typeof row !== 'object')
+        return undefined;
+    if (key in row)
+        return row[key];
+    if (!key.includes('.'))
+        return undefined;
+    return key.split('.').reduce((acc, seg) => (acc == null ? undefined : acc[seg]), row);
+}
 /**
  * 纯函数客户端表格过滤与排序管道
  * 支持全局关键字（含拼音首字母）、单值/多选数组/日期区间组合筛选与中英文自然排序
@@ -16,7 +25,7 @@ export function filterAndSortClientRows({ rows, searchableKeys, quickKeyword = '
         list = list.filter((row) => {
             const keys = searchableKeys && searchableKeys.length > 0 ? searchableKeys : Object.keys(row);
             return keys.some((k) => {
-                const val = row[k];
+                const val = readCellByPath(row, k);
                 return val !== undefined && val !== null && matchKeywordWithPinyin(String(val), trimmedKw);
             });
         });
@@ -28,9 +37,12 @@ export function filterAndSortClientRows({ rows, searchableKeys, quickKeyword = '
             if (filterVal.length === 0)
                 continue;
             list = list.filter((row) => {
-                const cellVal = row[k];
+                const cellVal = readCellByPath(row, k);
                 if (cellVal === undefined || cellVal === null)
                     return false;
+                if (Array.isArray(cellVal)) {
+                    return filterVal.some((v) => cellVal.map(String).includes(String(v)));
+                }
                 return filterVal.some((v) => String(cellVal) === String(v) || matchKeywordWithPinyin(String(cellVal), String(v)));
             });
             continue;
@@ -41,7 +53,7 @@ export function filterAndSortClientRows({ rows, searchableKeys, quickKeyword = '
             if (!start && !end)
                 continue;
             list = list.filter((row) => {
-                const cellVal = row[k];
+                const cellVal = readCellByPath(row, k);
                 if (cellVal === undefined || cellVal === null)
                     return false;
                 const datePart = String(cellVal).slice(0, 10);
@@ -56,7 +68,7 @@ export function filterAndSortClientRows({ rows, searchableKeys, quickKeyword = '
         if (String(filterVal).trim() === '')
             continue;
         list = list.filter((row) => {
-            const cellVal = row[k];
+            const cellVal = readCellByPath(row, k);
             if (cellVal === undefined || cellVal === null)
                 return false;
             return matchKeywordWithPinyin(String(cellVal), String(filterVal));
@@ -65,8 +77,8 @@ export function filterAndSortClientRows({ rows, searchableKeys, quickKeyword = '
     if (sortField && sortOrder) {
         const dir = sortOrder === 'asc' ? 1 : -1;
         list.sort((a, b) => {
-            const va = a[sortField];
-            const vb = b[sortField];
+            const va = readCellByPath(a, sortField);
+            const vb = readCellByPath(b, sortField);
             if (typeof va === 'number' && typeof vb === 'number')
                 return (va - vb) * dir;
             return String(va ?? '').localeCompare(String(vb ?? ''), 'zh-CN') * dir;

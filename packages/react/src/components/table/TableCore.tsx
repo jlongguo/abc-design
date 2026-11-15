@@ -25,10 +25,23 @@ import { ImagePreview } from '../display/ImagePreview'
 import { Tooltip } from '../display/Overlays'
 import { StatusTag, type StatusTone } from '../display/StatusTag'
 import { Progress } from '../feedback/FeedbackExtras'
-import { Checkbox } from '../form/Controls'
+import { Checkbox, Switch } from '../form/Controls'
 import { Input } from '../form/Input'
 import { Select, type SelectOption } from '../form/Select'
 import { CopyableText } from '../typography/CopyableText'
+import { useAbcConfig } from '../../provider/AbcProvider'
+
+/**
+ * 安全解析对象的嵌套属性路径（支持 'a.b.c' 或 ['a', 'b', 'c']）
+ */
+export function getNestedValue(obj: any, path: string | string[] | undefined): any {
+  if (!obj || path == null || path === '') return undefined
+  if (Array.isArray(path)) return path.reduce((current, key) => current?.[key], obj)
+  if (typeof path === 'string' && path.includes('.')) {
+    return path.split('.').reduce((current, key) => current?.[key], obj)
+  }
+  return obj[path]
+}
 
 export type SortDirection = 'asc' | 'desc' | null
 
@@ -36,6 +49,7 @@ export type AbcColumnValueType =
   | 'text'
   | 'status'
   | 'tag'
+  | 'badge'
   | 'money'
   | 'number'
   | 'date'
@@ -43,6 +57,7 @@ export type AbcColumnValueType =
   | 'image'
   | 'progress'
   | 'code'
+  | 'copy'
   | 'link'
   | 'switch'
 
@@ -53,14 +68,83 @@ export interface AbcColumnOption {
   color?: string
 }
 
-export interface AbcColumn<T = Record<string, any>> {
+export interface AbcColumnTypeConfig<T = Record<string, any>> {
+  type: AbcColumnValueType
+  options?: AbcColumnOption[]
+  format?: string
+  imageWidth?: number | string
+  imageHeight?: number | string
+  target?: '_blank' | '_self'
+  progressColor?: string
+  checkedValue?: any
+  checkedChildren?: React.ReactNode
+  unCheckedChildren?: React.ReactNode
+  onChange?: (checked: boolean, record: T) => void | Promise<void>
+}
+
+export interface AbcColumnRenderMeta {
+  depth: number
+  rowIndex: number
+  isExpanded: boolean
+}
+
+export interface AbcColumnSearchConfig {
+  key?: string
+  label?: string
+  type?: 'input' | 'select' | 'date' | 'datetimePicker' | 'dateRange'
+  placeholder?: string
+  options?: AbcColumnOption[]
+  searchable?: boolean
+  multiple?: boolean
+  span?: number
+  order?: number
+  format?: string
+  clearable?: boolean
+  [key: string]: any
+}
+
+export interface AbcColumnFormConfig {
+  key?: string
+  label?: string
+  type?: string
+  placeholder?: string
+  required?: boolean
+  disabled?: boolean | ((isEdit: any, form?: any) => boolean)
+  hidden?: boolean | ((isEdit: boolean, form: any) => boolean)
+  options?:
+    | Array<{ label: React.ReactNode; value: string | number; disabled?: boolean }>
+    | ((form: any, isEdit: boolean) => Array<{ label: React.ReactNode; value: string | number; disabled?: boolean }>)
+  searchable?: boolean
+  multiple?: boolean
+  span?: number
+  order?: number
+  tooltip?: React.ReactNode
+  defaultValue?: any
+  onChange?: (value: any, form: any) => void
+  onFormReady?: (form: any, isEdit: boolean) => void
+  render?: (form: any, isEdit: boolean) => React.ReactNode
+  [key: string]: any
+}
+
+function parseNumericWidth(w?: number | string, fallback = 150): number {
+  if (typeof w === 'number' && Number.isFinite(w)) return w
+  if (typeof w === 'string') {
+    const parsed = parseFloat(w)
+    if (Number.isFinite(parsed) && !w.trim().endsWith('%')) return parsed
+  }
+  return fallback
+}
+
+export interface AbcColumn<T = any> {
   key: string
   title: string
-  dataIndex?: keyof T | string
-  width?: number
+  dataIndex?: (NoInfer<keyof T> & string) | string | string[]
+  width?: number | string
   align?: 'left' | 'center' | 'right'
   fixed?: 'left' | 'right'
   sortable?: boolean
+  /** 兼容排序配置别名 */
+  sorter?: boolean | ((a: T, b: T) => number)
   /** 表头问号提示文案 */
   tooltip?: React.ReactNode
   /** 是否支持表头快速过滤 */
@@ -69,40 +153,84 @@ export interface AbcColumn<T = Record<string, any>> {
   filterOptions?: SelectOption[]
   /** 内置格式化语义类型（未传自定义 render 时自动格式化） */
   valueType?: AbcColumnValueType
+  /** 扩展声明式列类型配置（支持字符串简写或对象精细化配置，如交互式行内 switch） */
+  type?: AbcColumnValueType | AbcColumnTypeConfig<T>
   /** 状态/枚举映射字典选项（未传自定义 render 时自动渲染 StatusTag） */
   options?: AbcColumnOption[]
-  /** 点击单元格直接唤起详情查看回调 */
-  linkToView?: boolean
+  /** 点击单元格直接唤起详情查看回调（传字符串时可作为跳转路径透传） */
+  linkToView?: boolean | string
   /** 超长文本单行省略并展示悬浮完整值 */
   ellipsis?: boolean
   /** 点击一键复制单元格内容 */
   copyable?: boolean
+  /** 是否默认显示该列（默认 true） */
+  visible?: boolean
   hideInTable?: boolean
-  render?: (value: any, record: T, index: number) => React.ReactNode
+  /** 列与派生字段排序权重（数值越小越靠前） */
+  order?: number
+  /** 单源列派生搜索配置 */
+  search?: boolean | AbcColumnSearchConfig
+  /** 快捷开启列搜索别名 */
+  searchable?: boolean
+  /** 单源列派生新增/编辑表单配置 */
+  form?: boolean | AbcColumnFormConfig
+  /** 单源列是否在详情弹窗中显示（默认 true） */
+  view?: boolean
+  /** 详情弹窗中的列跨度 */
+  viewSpan?: 1 | 2
+  /** 详情弹窗自定义渲染函数 */
+  viewRender?: (value: any, record: T) => React.ReactNode
+  render?: (
+    value: any,
+    record: T,
+    index: number,
+    meta?: AbcColumnRenderMeta
+  ) => React.ReactNode
 }
 
 export interface AbcTableExpandableConfig<T = Record<string, any>> {
   /** 自定义展开子面板渲染函数 */
-  expandedRowRender?: (record: T, index: number) => React.ReactNode
+  expandedRowRender?: (
+    record: T,
+    index: number,
+    depth?: number,
+    expanded?: boolean
+  ) => React.ReactNode
   /** 判断某行是否允许展开 */
   rowExpandable?: (record: T) => boolean
+  /** 树形子级属性名（默认 'children'） */
+  childrenColumnName?: string
+  /** 树形缩进像素步长（默认 18px） */
+  indentSize?: number
   /** 初始默认展开全部可展开行 */
   defaultExpandAllRows?: boolean
   /** 受控展开行主键集合 */
   expandedRowKeys?: Array<string | number>
   /** 展开行变更回调 */
   onExpandedRowsChange?: (keys: Array<string | number>) => void
+  /** 单行展开/收起触发回调（可用于异步懒加载子节点） */
+  onExpand?: (expanded: boolean, record: T) => void
+}
+
+export interface AbcRowSelectionConfig<T = Record<string, any>> {
+  selectedRowKeys?: Array<string | number>
+  onChange?: (keys: Array<string | number>, rows: T[]) => void
+  getCheckboxProps?: (record: T) => { disabled?: boolean; name?: string }
 }
 
 export interface TableCoreProps<T = Record<string, any>> {
   columns: AbcColumn<T>[]
-  data: T[]
+  data?: T[]
+  /** 兼容 dataSource 属性名 */
+  dataSource?: T[]
   rowKey?: keyof T | ((record: T) => string | number)
   loading?: boolean
   density?: AbcTableDensity
   /** 选中行主键数组 */
   selectedKeys?: Array<string | number>
   onSelectionChange?: (keys: Array<string | number>, rows: T[]) => void
+  /** 兼容对象式多选配置 */
+  rowSelection?: AbcRowSelectionConfig<T>
   /** 排序状态与回调 */
   sortState?: { key: string; direction: SortDirection }
   onSortChange?: (key: string, direction: SortDirection) => void
@@ -112,6 +240,12 @@ export interface TableCoreProps<T = Record<string, any>> {
   onHeaderFilterChange?: (key: string, value: any) => void
   /** 表头单列气泡筛选器插槽 */
   headerFilterRender?: (col: AbcColumn<T>) => React.ReactNode
+  /** 当前处于激活筛选状态的列键列表（用于表头底色高亮提示） */
+  activeFilterKeys?: string[]
+  /** 当前处于激活筛选状态的列摘要标签映射 */
+  activeFilterLabels?: Record<string, string>
+  /** 表头筛选激活态高亮色 */
+  filterHighlightColor?: string
   /** 个性化列宽覆盖 */
   columnWidths?: Record<string, number>
   onColumnResize?: (key: string, width: number) => void
@@ -130,12 +264,24 @@ export interface TableCoreProps<T = Record<string, any>> {
   onColumnReorder?: (nextOrder: string[]) => void
   /** 行展开与树形 children 子行配置 */
   expandable?: AbcTableExpandableConfig<T>
+  /** 是否以树形层级模式渲染（开启后向 col.render 第三参数透传层级深度 depth，并支持异步懒加载子行展开） */
+  treeData?: boolean
+  /** 是否开启行拖拽重排 */
+  rowDraggable?: boolean
+  /** 兼容 draggable 属性名 */
+  draggable?: boolean
+  /** 行拖拽放置排序完成回调 */
+  onRowDragEnd?: (activeKey: string | number, overKey: string | number) => void
+  /** 兼容 onDragEnd 属性名 */
+  onDragEnd?: (activeId: string, overId: string) => void
   /** linkToView 列点击触发查看详情回调 */
-  onRowView?: (record: T) => void
+  onRowView?: (record: T, linkTarget?: string) => void
   /** 受控单行高亮键值（如与抽屉详情联动） */
   activeRowKey?: string | number | null
   /** 行点击回调（单行点击唤起 Drawer 或选中） */
   onRowClick?: (record: T, event: React.MouseEvent<HTMLTableRowElement>) => void
+  /** 自定义行原生属性注入 */
+  onRow?: (record: T, index: number) => React.HTMLAttributes<HTMLTableRowElement>
   /** 空状态下一键清空筛选条件回调 */
   onEmptyReset?: () => void
   /** 表格滚动区域最大高度（开启后表头纵向吸顶） */
@@ -159,30 +305,121 @@ interface FlattenedRow<T> {
   hasTreeChildren: boolean
 }
 
+const COLOR_ALIAS_TO_TONE: Record<string, StatusTone> = {
+  green: 'success',
+  emerald: 'success',
+  red: 'danger',
+  rose: 'danger',
+  yellow: 'warning',
+  amber: 'warning',
+  orange: 'warning',
+  blue: 'info',
+  cyan: 'info',
+  purple: 'info',
+  gray: 'neutral',
+  slate: 'neutral',
+}
+
+/**
+ * 行内交互式拨动开关单元格（支持乐观响应、异步防重入与报错自动回滚）
+ */
+function AbcSwitchCell<T extends Record<string, any>>({
+  value,
+  record,
+  config,
+}: {
+  value: any
+  record: T
+  config: AbcColumnTypeConfig<T>
+}) {
+  const { toast } = useAbcConfig()
+  const checkedVal = config.checkedValue !== undefined ? config.checkedValue : true
+  const deriveChecked = (v: any) =>
+    v === checkedVal || v === 1 || v === '1' || v === true
+  const [optimistic, setOptimistic] = useState(() => deriveChecked(value))
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    setOptimistic(deriveChecked(value))
+  }, [value, checkedVal])
+
+  const handleToggle = async (next: boolean) => {
+    if (!config.onChange || loading) return
+    const prev = optimistic
+    setOptimistic(next)
+    setLoading(true)
+    try {
+      await config.onChange(next, record)
+    } catch (err: any) {
+      setOptimistic(prev)
+      toast.error(err?.message || '更新状态失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+      <Switch
+        size="sm"
+        checked={optimistic}
+        loading={loading}
+        disabled={!config.onChange}
+        onChange={handleToggle}
+      />
+      {(config.checkedChildren || config.unCheckedChildren) && (
+        <span className="text-xs text-[var(--abc-fg-secondary)]">
+          {optimistic ? config.checkedChildren : config.unCheckedChildren}
+        </span>
+      )}
+    </span>
+  )
+}
+
 function renderBuiltInValue<T extends Record<string, any>>(
   rawVal: any,
   record: T,
   col: AbcColumn<T>,
-  onRowView?: (record: T) => void
+  onRowView?: (record: T, linkTarget?: string) => void
 ): React.ReactNode {
+  const typeCfg: AbcColumnTypeConfig<T> | undefined =
+    typeof col.type === 'object' && col.type !== null
+      ? col.type
+      : col.type
+        ? { type: col.type }
+        : col.valueType
+          ? { type: col.valueType }
+          : undefined
+
+  // 交互式行内开关即使值为 0 / false 也必须正常渲染，不可落入空值占位
+  if (typeCfg?.type === 'switch' && (typeCfg.onChange || typeCfg.checkedValue !== undefined)) {
+    return <AbcSwitchCell value={rawVal} record={record} config={typeCfg} />
+  }
+
   if (rawVal === undefined || rawVal === null || rawVal === '') {
     return <span className="text-[var(--abc-fg-placeholder)]">-</span>
   }
 
+  const effectiveOptions = typeCfg?.options ?? col.options
   // 枚举 / 状态标签映射
-  if (col.options && col.options.length > 0) {
-    const matched = col.options.find((opt) => String(opt.value) === String(rawVal))
+  if (effectiveOptions && effectiveOptions.length > 0) {
+    const matched = effectiveOptions.find((opt) => String(opt.value) === String(rawVal))
     if (matched) {
+      const mappedTone =
+        !matched.status && matched.color ? COLOR_ALIAS_TO_TONE[matched.color] : undefined
+      const rawCustomColor =
+        matched.color && !COLOR_ALIAS_TO_TONE[matched.color] ? matched.color : undefined
       return (
-        <StatusTag status={matched.status} color={matched.color} dot>
+        <StatusTag status={matched.status ?? mappedTone} color={rawCustomColor} dot>
           {matched.label}
         </StatusTag>
       )
     }
   }
 
+  const effectiveType = typeCfg?.type
   let formatted: React.ReactNode
-  switch (col.valueType) {
+  switch (effectiveType) {
     case 'money': {
       const num = Number(rawVal)
       formatted = Number.isNaN(num) ? (
@@ -205,26 +442,40 @@ function renderBuiltInValue<T extends Record<string, any>>(
     }
     case 'date': {
       const parsed = dayjs(rawVal)
+      const fmt = typeCfg?.format || 'YYYY-MM-DD'
       formatted = (
         <span className="font-mono text-[var(--abc-fg-muted)] tabular-nums">
-          {parsed.isValid() ? parsed.format('YYYY-MM-DD') : String(rawVal)}
+          {parsed.isValid() ? parsed.format(fmt) : String(rawVal)}
         </span>
       )
       break
     }
     case 'datetime': {
       const parsed = dayjs(rawVal)
+      const fmt = typeCfg?.format || 'YYYY-MM-DD HH:mm:ss'
       formatted = (
         <span className="font-mono text-[var(--abc-fg-muted)] tabular-nums">
-          {parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm:ss') : String(rawVal)}
+          {parsed.isValid() ? parsed.format(fmt) : String(rawVal)}
         </span>
       )
       break
     }
     case 'image':
-      return <ImagePreview src={String(rawVal)} width={32} height={32} />
+      return (
+        <ImagePreview
+          src={String(rawVal)}
+          width={typeCfg?.imageWidth ?? 32}
+          height={typeCfg?.imageHeight ?? 32}
+        />
+      )
     case 'progress':
-      return <Progress percent={Number(rawVal) || 0} className="min-w-[92px]" />
+      return (
+        <Progress
+          percent={Number(rawVal) || 0}
+          strokeColor={typeCfg?.progressColor}
+          className="min-w-[92px]"
+        />
+      )
     case 'code':
       formatted = (
         <code className="rounded-[var(--abc-radius-xs)] bg-[var(--abc-bg-muted)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--abc-fg)]">
@@ -232,11 +483,13 @@ function renderBuiltInValue<T extends Record<string, any>>(
         </code>
       )
       break
+    case 'copy':
+      return <CopyableText text={String(rawVal)} />
     case 'link':
       return (
         <a
           href={String(rawVal)}
-          target="_blank"
+          target={typeCfg?.target ?? '_blank'}
           rel="noreferrer"
           onClick={(e) => e.stopPropagation()}
           className="text-[var(--abc-primary)] hover:underline"
@@ -252,18 +505,20 @@ function renderBuiltInValue<T extends Record<string, any>>(
       )
     case 'status':
     case 'tag':
+    case 'badge':
       return <StatusTag dot>{String(rawVal)}</StatusTag>
     default:
       formatted = String(rawVal)
   }
 
   if (col.linkToView && onRowView) {
+    const linkTarget = typeof col.linkToView === 'string' ? col.linkToView : undefined
     return (
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation()
-          onRowView(record)
+          onRowView(record, linkTarget)
         }}
         className="max-w-full truncate text-left font-medium text-[var(--abc-primary)] hover:underline cursor-pointer"
       >
@@ -295,17 +550,22 @@ function renderBuiltInValue<T extends Record<string, any>>(
 export function TableCore<T extends Record<string, any> = Record<string, any>>({
   columns,
   data,
+  dataSource,
   rowKey = 'id',
   loading = false,
   density = 'default',
   selectedKeys,
   onSelectionChange,
+  rowSelection,
   sortState,
   onSortChange,
   headerFilterMode = false,
   headerFilters = {},
   onHeaderFilterChange,
   headerFilterRender,
+  activeFilterKeys,
+  activeFilterLabels,
+  filterHighlightColor,
   columnWidths = {},
   onColumnResize,
   resizable,
@@ -316,15 +576,31 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
   onResetColumns,
   onColumnReorder,
   expandable,
+  treeData = false,
+  rowDraggable,
+  draggable,
+  onRowDragEnd,
+  onDragEnd,
   onRowView,
   activeRowKey,
   onRowClick,
+  onRow,
   onEmptyReset,
   maxHeight,
   ariaLabel = '数据表格',
   emptyText = '暂无符合条件的数据',
   className,
 }: TableCoreProps<T>) {
+  const resolvedData = data ?? dataSource ?? []
+  const isRowDraggable = Boolean(rowDraggable ?? draggable)
+  const emitRowDragEnd = useMemo(() => {
+    if (onRowDragEnd) return onRowDragEnd
+    if (onDragEnd) {
+      return (activeKey: string | number, overKey: string | number) =>
+        onDragEnd(String(activeKey), String(overKey))
+    }
+    return undefined
+  }, [onRowDragEnd, onDragEnd])
   const resolvedMotion = useAbcMotion(motion)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
@@ -412,26 +688,36 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
     return [...leftCols, ...centerCols, ...rightCols]
   }, [columns, columnFixed, liveDragOrder])
 
-  const selectable = Array.isArray(selectedKeys) && typeof onSelectionChange === 'function'
+  const effectiveSelectedKeys = selectedKeys ?? rowSelection?.selectedRowKeys
+  const effectiveOnSelectionChange = onSelectionChange ?? rowSelection?.onChange
+  const selectable =
+    Array.isArray(effectiveSelectedKeys) && typeof effectiveOnSelectionChange === 'function'
   const hasExpandColumn = Boolean(expandable?.expandedRowRender)
+  const childrenColumnName = expandable?.childrenColumnName || 'children'
+  const indentPx = expandable?.indentSize ?? 18
 
-  const initialExpandedKeys = useMemo<Array<string | number>>(() => {
-    if (!expandable?.defaultExpandAllRows) return []
+  const collectAllExpandableKeys = (rows: T[]): Array<string | number> => {
     const keys: Array<string | number> = []
-    const collect = (rows: T[]) => {
-      rows.forEach((r, idx) => {
+    const collect = (list: T[]) => {
+      list.forEach((r, idx) => {
         const k = resolveKey(r, idx)
-        if (!expandable.rowExpandable || expandable.rowExpandable(r)) {
+        const childRows = r?.[childrenColumnName]
+        const hasChildren = Array.isArray(childRows) && childRows.length > 0
+        if (hasChildren || (expandable?.expandedRowRender && (!expandable.rowExpandable || expandable.rowExpandable(r)))) {
           keys.push(k)
         }
-        if (Array.isArray(r.children) && r.children.length > 0) {
-          keys.push(k)
-          collect(r.children as T[])
+        if (hasChildren) {
+          collect(childRows as T[])
         }
       })
     }
-    collect(data)
-    return keys
+    collect(rows)
+    return Array.from(new Set(keys))
+  }
+
+  const initialExpandedKeys = useMemo<Array<string | number>>(() => {
+    if (!expandable?.defaultExpandAllRows) return []
+    return collectAllExpandableKeys(resolvedData)
   }, [])
 
   const [expandedKeys, setExpandedKeys] = useControllableState<Array<string | number>>({
@@ -440,12 +726,34 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
     onChange: expandable?.onExpandedRowsChange,
   })
 
-  const toggleExpandRow = (key: string | number) => {
+  const hasAutoExpandedRef = useRef(initialExpandedKeys.length > 0)
+
+  useEffect(() => {
+    if (
+      !expandable?.defaultExpandAllRows ||
+      expandable?.expandedRowKeys !== undefined ||
+      hasAutoExpandedRef.current ||
+      resolvedData.length === 0
+    ) {
+      return
+    }
+    const keys = collectAllExpandableKeys(resolvedData)
+    if (keys.length > 0) {
+      hasAutoExpandedRef.current = true
+      setExpandedKeys(keys)
+    }
+  }, [expandable?.defaultExpandAllRows, expandable?.expandedRowKeys, resolvedData, childrenColumnName])
+
+  const toggleExpandRow = (key: string | number, record?: T) => {
+    const wasExpanded = expandedKeys.includes(key)
     setExpandedKeys(
-      expandedKeys.includes(key)
+      wasExpanded
         ? expandedKeys.filter((k) => k !== key)
         : [...expandedKeys, key]
     )
+    if (record) {
+      expandable?.onExpand?.(!wasExpanded, record)
+    }
   }
 
   // 展平树形 children 结构（当某节点处于展开态时递归插入子行）
@@ -454,24 +762,27 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
     const walk = (rows: T[], depth: number) => {
       rows.forEach((record, idx) => {
         const key = resolveKey(record, idx)
-        const children = Array.isArray(record.children) ? (record.children as T[]) : []
-        const hasTreeChildren = children.length > 0
+        const children = Array.isArray(record?.[childrenColumnName])
+          ? (record[childrenColumnName] as T[])
+          : []
+        const hasTreeChildren =
+          children.length > 0 || Boolean(treeData && expandable?.rowExpandable?.(record))
         list.push({ record, key, rowIdx: idx, depth, hasTreeChildren })
-        if (hasTreeChildren && expandedKeys.includes(key)) {
+        if (children.length > 0 && expandedKeys.includes(key)) {
           walk(children, depth + 1)
         }
       })
     }
-    walk(data, 0)
+    walk(resolvedData, 0)
     return list
-  }, [data, expandedKeys, rowKey])
+  }, [resolvedData, expandedKeys, rowKey, childrenColumnName, treeData, expandable?.rowExpandable])
 
   const colWidthMeta = useMemo(() => {
     const prefixW = (selectable ? 40 : 0) + (hasExpandColumn ? 36 : 0)
     const baseWidths: Record<string, number> = {}
     let sumBase = 0
     for (const col of orderedColumns) {
-      const w = effectiveColumnWidths[col.key] ?? col.width ?? 150
+      const w = effectiveColumnWidths[col.key] ?? parseNumericWidth(col.width, 150)
       baseWidths[col.key] = w
       sumBase += w
     }
@@ -544,37 +855,48 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
     }
   }, [orderedColumns, colWidthMeta, columnFixed, selectable, hasExpandColumn])
 
+  const selectablePageItems = useMemo(
+    () =>
+      flattenedRows.filter(
+        (item) => !rowSelection?.getCheckboxProps?.(item.record)?.disabled
+      ),
+    [flattenedRows, rowSelection]
+  )
+
   const allPageKeys = useMemo(
-    () => flattenedRows.map((item) => item.key),
-    [flattenedRows]
+    () => selectablePageItems.map((item) => item.key),
+    [selectablePageItems]
   )
 
   const allSelected =
     selectable &&
     allPageKeys.length > 0 &&
-    allPageKeys.every((k) => selectedKeys.includes(k))
+    allPageKeys.every((k) => effectiveSelectedKeys.includes(k))
   const someSelected =
-    selectable && !allSelected && allPageKeys.some((k) => selectedKeys.includes(k))
+    selectable && !allSelected && allPageKeys.some((k) => effectiveSelectedKeys.includes(k))
 
   const toggleAll = (checked: boolean) => {
     if (!selectable) return
-    if (checked) {
-      const merged = Array.from(new Set([...selectedKeys, ...allPageKeys]))
-      onSelectionChange(
+    const shouldSelectAll = someSelected ? true : checked
+    if (shouldSelectAll) {
+      const merged = Array.from(new Set([...effectiveSelectedKeys, ...allPageKeys]))
+      effectiveOnSelectionChange(
         merged,
         flattenedRows.filter((item) => merged.includes(item.key)).map((item) => item.record)
       )
     } else {
-      const next = selectedKeys.filter((k) => !allPageKeys.includes(k))
-      onSelectionChange(next, [])
+      const next = effectiveSelectedKeys.filter((k) => !allPageKeys.includes(k))
+      effectiveOnSelectionChange(next, [])
     }
   }
 
   const toggleOne = (key: string | number) => {
     if (!selectable) return
-    const exists = selectedKeys.includes(key)
-    const next = exists ? selectedKeys.filter((k) => k !== key) : [...selectedKeys, key]
-    onSelectionChange(
+    const exists = effectiveSelectedKeys.includes(key)
+    const next = exists
+      ? effectiveSelectedKeys.filter((k) => k !== key)
+      : [...effectiveSelectedKeys, key]
+    effectiveOnSelectionChange(
       next,
       flattenedRows.filter((item) => next.includes(item.key)).map((item) => item.record)
     )
@@ -592,7 +914,7 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
     const thEl = (e.currentTarget as HTMLElement).parentElement
     const startW =
       effectiveColumnWidths[col.key] ??
-      col.width ??
+      (typeof col.width === 'number' ? col.width : undefined) ??
       colWidthMeta.resolvedWidths[col.key] ??
       thEl?.offsetWidth ??
       140
@@ -695,8 +1017,10 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
     })
   }, [orderedKeySig, resolvedMotion])
 
+  const isColSortable = (col: AbcColumn<T>) => Boolean(col.sortable || col.sorter)
+
   const handleSortClick = (col: AbcColumn<T>) => {
-    if (!col.sortable || !onSortChange) return
+    if (!isColSortable(col) || !onSortChange) return
     const currentDir = sortState?.key === col.key ? sortState.direction : null
     const nextDir: SortDirection =
       currentDir === null ? 'asc' : currentDir === 'asc' ? 'desc' : null
@@ -732,7 +1056,7 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
   const handleHeaderContextMenu = (e: React.MouseEvent, col: AbcColumn<T>) => {
     if (col.key === '__abc_actions__') return
     const hasActions = Boolean(
-      (col.sortable && onSortChange) || onColumnPin || onColumnHide || onResetColumns
+      (isColSortable(col) && onSortChange) || onColumnPin || onColumnHide || onResetColumns
     )
     if (!hasActions) return
     e.preventDefault()
@@ -821,12 +1145,21 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
             {orderedColumns.map((col) => {
               const colW = colWidthMeta.resolvedWidths[col.key]
               const fx = getEffectiveFixed(col)
+              const sortableCol = isColSortable(col)
               const currentDir = sortState?.key === col.key ? sortState.direction : null
               const isDraggingThis = draggingKey === col.key
+              const isFilterHighlighted = Boolean(activeFilterKeys?.includes(col.key))
+              const filterSummaryLabel = activeFilterLabels?.[col.key]
               const stickyStyle: React.CSSProperties = {
                 width: colW ? `${colW}px` : undefined,
                 ...(fx === 'left' ? { left: `${stickyMeta.leftOffsets[col.key] ?? 0}px` } : {}),
                 ...(fx === 'right' ? { right: `${stickyMeta.rightOffsets[col.key] ?? 0}px` } : {}),
+                ...(isFilterHighlighted
+                  ? {
+                      backgroundColor: filterHighlightColor || 'var(--abc-primary)',
+                      color: '#ffffff',
+                    }
+                  : {}),
               }
 
               const commitReorderAt = (targetColKey: string) => {
@@ -950,14 +1283,19 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
                     <span
                       className={cn(
                         'inline-flex items-center gap-1',
-                        col.sortable && 'cursor-pointer hover:text-[var(--abc-primary)]'
+                        sortableCol &&
+                          (isFilterHighlighted
+                            ? 'cursor-pointer opacity-95 hover:opacity-100'
+                            : 'cursor-pointer hover:text-[var(--abc-primary)]')
                       )}
                       onClick={() => handleSortClick(col)}
                     >
                       {onColumnReorder && !fx && col.key !== '__abc_actions__' && (
                         <GripVertical className="h-3 w-3 cursor-grab text-[var(--abc-fg-placeholder)] opacity-0 transition-opacity group-hover:opacity-100" />
                       )}
-                      <span>{col.title}</span>
+                      <span title={filterSummaryLabel ? col.title : undefined}>
+                        {filterSummaryLabel || col.title}
+                      </span>
                       {col.tooltip && (
                         <Tooltip content={col.tooltip}>
                           <span
@@ -968,12 +1306,27 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
                           </span>
                         </Tooltip>
                       )}
-                      {col.sortable && (
-                        <span className="inline-flex text-[var(--abc-fg-muted)]">
+                      {sortableCol && (
+                        <span
+                          className={cn(
+                            'inline-flex',
+                            isFilterHighlighted ? 'text-white' : 'text-[var(--abc-fg-muted)]'
+                          )}
+                        >
                           {currentDir === 'asc' ? (
-                            <ArrowUp className="h-3 w-3 text-[var(--abc-primary)]" />
+                            <ArrowUp
+                              className={cn(
+                                'h-3 w-3',
+                                isFilterHighlighted ? 'text-white' : 'text-[var(--abc-primary)]'
+                              )}
+                            />
                           ) : currentDir === 'desc' ? (
-                            <ArrowDown className="h-3 w-3 text-[var(--abc-primary)]" />
+                            <ArrowDown
+                              className={cn(
+                                'h-3 w-3',
+                                isFilterHighlighted ? 'text-white' : 'text-[var(--abc-primary)]'
+                              )}
+                            />
                           ) : (
                             <ArrowUpDown className="h-3 w-3 opacity-50" />
                           )}
@@ -1097,7 +1450,10 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
             </tr>
           ) : (
             flattenedRows.map(({ record, key, rowIdx, depth, hasTreeChildren }) => {
-              const isSelected = Boolean(selectable && selectedKeys.includes(key))
+              const isSelected = Boolean(selectable && effectiveSelectedKeys.includes(key))
+              const checkboxDisabled = Boolean(
+                rowSelection?.getCheckboxProps?.(record)?.disabled
+              )
               const isRowActive =
                 activeRowKey !== undefined &&
                 activeRowKey !== null &&
@@ -1106,46 +1462,71 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
               const canPanelExpand =
                 hasExpandColumn &&
                 (!expandable?.rowExpandable || expandable.rowExpandable(record))
+              const customRowProps = onRow?.(record, rowIdx) ?? {}
 
               return (
                 <React.Fragment key={String(key)}>
                   <tr
+                    {...customRowProps}
+                    draggable={isRowDraggable || customRowProps.draggable}
+                    onDragStart={(e) => {
+                      customRowProps.onDragStart?.(e)
+                      if (!isRowDraggable) return
+                      if (e.dataTransfer) {
+                        e.dataTransfer.setData('text/plain', String(key))
+                        e.dataTransfer.effectAllowed = 'move'
+                      }
+                    }}
+                    onDragOver={(e) => {
+                      customRowProps.onDragOver?.(e)
+                      if (!isRowDraggable) return
+                      e.preventDefault()
+                    }}
+                    onDrop={(e) => {
+                      customRowProps.onDrop?.(e)
+                      if (!isRowDraggable || !emitRowDragEnd) return
+                      e.preventDefault()
+                      const activeId = e.dataTransfer?.getData('text/plain')
+                      if (activeId && activeId !== String(key)) {
+                        emitRowDragEnd(activeId, key)
+                      }
+                    }}
                     data-state={isRowActive ? 'selected' : isSelected ? 'selected' : undefined}
-                    tabIndex={onRowClick ? 0 : undefined}
-                    onClick={
-                      onRowClick
-                        ? (e) => {
-                            const target = e.target as HTMLElement | null
-                            if (
-                              target &&
-                              target.closest(
-                                'button, a, input, select, textarea, [role="button"], [role="checkbox"], [role="menuitem"], details'
-                              )
-                            ) {
-                              return
-                            }
-                            onRowClick(record, e)
-                          }
-                        : undefined
-                    }
-                    onKeyDown={
-                      onRowClick
-                        ? (e) => {
-                            if (e.target !== e.currentTarget) return
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault()
-                              onRowClick(record, e as any)
-                            }
-                          }
-                        : undefined
-                    }
+                    tabIndex={onRowClick ? 0 : customRowProps.tabIndex}
+                    onClick={(e) => {
+                      customRowProps.onClick?.(e)
+                      if (!onRowClick) return
+                      const target = e.target as HTMLElement | null
+                      if (
+                        target &&
+                        target.closest(
+                          'button, a, input, select, textarea, [role="button"], [role="checkbox"], [role="menuitem"], details'
+                        )
+                      ) {
+                        return
+                      }
+                      onRowClick(record, e)
+                    }}
+                    onKeyDown={(e) => {
+                      customRowProps.onKeyDown?.(e)
+                      if (!onRowClick) return
+                      if (e.target !== e.currentTarget) return
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        onRowClick(record, e as any)
+                      }
+                    }}
                     className={cn(
                       'group transition-colors duration-150',
+                      isRowDraggable && 'cursor-grab active:cursor-grabbing',
+                      treeData && depth === 1 && 'bg-[var(--abc-primary-soft)]/25',
+                      treeData && depth >= 2 && 'bg-[var(--abc-warning-soft)]/25',
                       onRowClick &&
                         'cursor-pointer focus-visible:bg-[var(--abc-bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--abc-primary)]',
                       isSelected || isRowActive
                         ? 'bg-[var(--abc-primary-soft)]/60'
-                        : 'hover:bg-[var(--abc-bg-muted)]/85'
+                        : 'hover:bg-[var(--abc-bg-muted)]/85',
+                      customRowProps.className
                     )}
                   >
                     {selectable && (
@@ -1157,7 +1538,11 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
                             'sticky z-10 bg-[var(--abc-bg-surface)] group-hover:bg-[var(--abc-bg-muted)]'
                         )}
                       >
-                        <Checkbox checked={isSelected} onChange={() => toggleOne(key)} />
+                        <Checkbox
+                          checked={isSelected}
+                          disabled={checkboxDisabled}
+                          onChange={() => toggleOne(key)}
+                        />
                       </td>
                     )}
 
@@ -1179,7 +1564,7 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
                             type="button"
                             aria-label={isExpanded ? '收起详情行' : '展开详情行'}
                             aria-expanded={isExpanded}
-                            onClick={() => toggleExpandRow(key)}
+                            onClick={() => toggleExpandRow(key, record)}
                             className="inline-flex h-5 w-5 items-center justify-center rounded-[var(--abc-radius-xs)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
                           >
                             <ChevronRight
@@ -1194,11 +1579,15 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
                     )}
 
                     {orderedColumns.map((col, colIdx) => {
-                      const fieldKey = (col.dataIndex ?? col.key) as string
-                      const rawVal = record?.[fieldKey]
+                      const fieldPath = (col.dataIndex ?? col.key) as string | string[]
+                      const rawVal = getNestedValue(record, fieldPath)
                       const fx = getEffectiveFixed(col)
                       const cellContent = col.render
-                        ? col.render(rawVal, record, rowIdx)
+                        ? col.render(rawVal, record, treeData ? depth : rowIdx, {
+                            depth,
+                            rowIndex: rowIdx,
+                            isExpanded,
+                          })
                         : renderBuiltInValue(rawVal, record, col, onRowView)
 
                       const showTreeIndent = colIdx === 0 && (depth > 0 || hasTreeChildren)
@@ -1233,7 +1622,7 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
                         >
                           {showTreeIndent ? (
                             <div
-                              style={{ paddingLeft: `${depth * 18}px` }}
+                              style={{ paddingLeft: `${depth * indentPx}px` }}
                               className="inline-flex items-center gap-1"
                             >
                               {hasTreeChildren ? (
@@ -1241,7 +1630,7 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
                                   type="button"
                                   aria-label={isExpanded ? '收起子项' : '展开子项'}
                                   aria-expanded={isExpanded}
-                                  onClick={() => toggleExpandRow(key)}
+                                  onClick={() => toggleExpandRow(key, record)}
                                   className="inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-[var(--abc-radius-xs)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
                                 >
                                   <ChevronRight
@@ -1270,7 +1659,7 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
                         colSpan={totalColSpan}
                         className="border-b border-[var(--abc-border)] px-6 py-3.5 text-xs text-[var(--abc-fg-secondary)]"
                       >
-                        {expandable.expandedRowRender(record, rowIdx)}
+                        {expandable.expandedRowRender(record, rowIdx, depth, isExpanded)}
                       </td>
                     </tr>
                   )}
@@ -1301,7 +1690,7 @@ export function TableCore<T extends Record<string, any> = Record<string, any>>({
               列：{contextMenu.col.title}
             </div>
 
-            {contextMenu.col.sortable && onSortChange && (
+            {isColSortable(contextMenu.col) && onSortChange && (
               <div className="border-b border-[var(--abc-border)] py-1">
                 <button
                   type="button"

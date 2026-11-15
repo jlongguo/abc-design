@@ -26,7 +26,7 @@ export const OverviewPage: React.FC<{
   return (
     <PageContainer
       title="ABC Design 企业级设计系统与官方预览站"
-      subtitle="4 包协同架构（Tokens + Headless Core + React UI/ProLayout + Charts）· 55+ 生产级组件 · 大小表单分流规范 · AI Agent 零幻觉对接体系"
+      subtitle="4 包协同架构（Tokens + Headless Core + React UI/ProLayout + Charts）· 60+ 生产级组件 · 大小表单分流规范 · Pro 全栈套件"
       tags={
         <StatusTag tone="primary" dot pulse>
           v0.1.0 Public Release Ready
@@ -62,8 +62,8 @@ export const OverviewPage: React.FC<{
             {
               icon: <Layers className="h-4 w-4 text-[var(--abc-primary)]" />,
               pkg: '@abc-design/react',
-              val: '55+ 组件 + 5 布局',
-              desc: '大小表单分流规范、审计原因弹窗、FilterToolbar、主从检视面板、ProLayout + ProTable 全栈覆盖',
+              val: '60+ 组件 + 5 布局',
+              desc: '大小表单分流规范、Select 双模无损兼容、ThemeSwitcher、Watermark、ProCommandPalette、ProLogViewer 全栈覆盖',
               target: '/docs/display',
             },
             {
@@ -242,9 +242,9 @@ export const OverviewPage: React.FC<{
             </div>
 
             <div className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)] p-3.5 space-y-1.5">
-              <div className="font-semibold text-[var(--abc-fg)]">原子增强与表格骨架</div>
+              <div className="font-semibold text-[var(--abc-fg)]">原子增强与跨后台 Pro 新套件</div>
               <p className="text-[var(--abc-fg-muted)] leading-relaxed">
-                Button 9 种变体、SearchInput、SegmentedControl、QuotaUnitInput 容量时长配额、TablePrimitives 语义原语与 Card 复合插槽。
+                Select 双模与 SelectField、ThemeSwitcher 与 Watermark 透明度增强、ProCommandPalette 全局命令、ProLogViewer 虚拟日志及 ProFormContainer。
               </p>
             </div>
           </div>
