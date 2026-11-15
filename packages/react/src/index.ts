@@ -41,6 +41,7 @@ export * from './components/feedback/Loading'
 export * from './components/feedback/Watermark'
 export * from './components/feedback/FeedbackExtras'
 export * from './components/table/TableCore'
+export * from './components/table/TablePrimitives'
 
 // Layer 3: 5 模态企业级完整布局框架
 export * from './layout/types'

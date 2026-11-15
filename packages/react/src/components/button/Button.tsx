@@ -13,8 +13,11 @@ export type ButtonVariant =
   | 'warning'
   | 'ghost'
   | 'text'
+  | 'default'
+  | 'destructive'
+  | 'link'
 
-export type ButtonSize = AbcSize
+export type ButtonSize = AbcSize | 'default' | 'icon' | 'icon-sm'
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** 视觉语义变体 */
@@ -25,22 +28,32 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   motion?: AbcMotionPreset
   /** 加载中状态 */
   loading?: boolean
+  /** 加载中文案 */
+  loadingText?: React.ReactNode
   /** 左侧前置图标 */
   icon?: React.ReactNode
+  /** icon 语义别名 */
+  leftIcon?: React.ReactNode
   /** 右侧后置图标 */
   rightIcon?: React.ReactNode
   /** 是否撑满父容器宽度 */
   block?: boolean
+  /** 是否将样式透传给子元素 */
+  asChild?: boolean
 }
 
-const VARIANT_CLASSES: Record<ButtonVariant, string> = {
+const VARIANT_CLASSES: Record<string, string> = {
   primary:
+    'bg-[var(--abc-primary)] text-[var(--abc-primary-fg)] shadow-2xs enabled:hover:bg-[var(--abc-primary-hover)] enabled:hover:shadow-sm enabled:active:bg-[var(--abc-primary-active)]',
+  default:
     'bg-[var(--abc-primary)] text-[var(--abc-primary-fg)] shadow-2xs enabled:hover:bg-[var(--abc-primary-hover)] enabled:hover:shadow-sm enabled:active:bg-[var(--abc-primary-active)]',
   secondary:
     'bg-[var(--abc-bg-surface)] text-[var(--abc-fg-secondary)] border border-[var(--abc-border)] enabled:hover:bg-[var(--abc-bg-muted)] enabled:hover:border-[var(--abc-border-strong)] enabled:hover:shadow-2xs enabled:active:bg-[var(--abc-bg-subtle)]',
   outline:
     'bg-transparent border border-[var(--abc-primary)] text-[var(--abc-primary)] enabled:hover:bg-[var(--abc-primary-soft)] enabled:hover:shadow-2xs',
   danger:
+    'bg-[var(--abc-danger)] text-white shadow-2xs enabled:hover:brightness-95 enabled:hover:shadow-sm enabled:active:brightness-90',
+  destructive:
     'bg-[var(--abc-danger)] text-white shadow-2xs enabled:hover:brightness-95 enabled:hover:shadow-sm enabled:active:brightness-90',
   success:
     'bg-[var(--abc-success)] text-white shadow-2xs enabled:hover:brightness-95 enabled:hover:shadow-sm enabled:active:brightness-90',
@@ -50,13 +63,39 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
     'bg-transparent text-[var(--abc-fg-secondary)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)]',
   text:
     'bg-transparent text-[var(--abc-fg-secondary)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-primary)]',
+  link:
+    'bg-transparent text-[var(--abc-primary)] underline-offset-4 hover:underline enabled:hover:bg-transparent',
 }
 
-const SIZE_CLASSES: Record<ButtonSize, string> = {
+const SIZE_CLASSES: Record<string, string> = {
   xs: 'h-[var(--abc-control-h-xs)] px-2.5 text-xs',
   sm: 'h-[var(--abc-control-h-sm)] px-3 text-xs',
+  default: 'h-[var(--abc-control-h-sm)] px-3 text-xs',
   md: 'h-[var(--abc-control-h-md)] px-4 text-sm',
   lg: 'h-[var(--abc-control-h-lg)] px-5 text-sm',
+  icon: 'h-[var(--abc-control-h-md)] w-[var(--abc-control-h-md)] p-0',
+  'icon-sm': 'h-[var(--abc-control-h-sm)] w-[var(--abc-control-h-sm)] p-0',
+}
+
+export function buttonVariants({
+  variant = 'primary',
+  size = 'sm',
+  className,
+}: {
+  variant?: ButtonVariant
+  size?: ButtonSize
+  className?: string
+} = {}): string {
+  const vClass = VARIANT_CLASSES[variant] || VARIANT_CLASSES.primary
+  const sClass = SIZE_CLASSES[size] || SIZE_CLASSES.sm
+  return cn(
+    'inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md)] font-medium select-none shrink-0 cursor-pointer abc-motion-control',
+    'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-primary)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--abc-bg-surface)]',
+    'disabled:opacity-45 disabled:cursor-not-allowed',
+    vClass,
+    sClass,
+    className
+  )
 }
 
 /**
@@ -71,19 +110,44 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       size,
       motion,
       loading = false,
+      loadingText,
       disabled,
       icon,
+      leftIcon,
       rightIcon,
       block = false,
-      type = 'button',
+      asChild = false,
+      type,
       children,
       ...rest
     },
     ref
   ) => {
-    const resolvedSize = useAbcSize(size, 'sm')
+    const isIconSize = size === 'icon' || size === 'icon-sm'
+    const normalizedSize = size === 'default' ? 'sm' : size
+    const effectiveAbcSize = isIconSize ? undefined : (normalizedSize as AbcSize | undefined)
+    const resolvedSize = useAbcSize(effectiveAbcSize, 'sm')
     const resolvedMotion = useAbcMotion(motion)
     const isDisabled = Boolean(disabled || loading)
+    const activeIcon = leftIcon ?? icon
+
+    const computedClass = cn(
+      'inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md)] font-medium select-none shrink-0 cursor-pointer abc-motion-control',
+      'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-primary)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--abc-bg-surface)]',
+      'disabled:opacity-45 disabled:cursor-not-allowed',
+      VARIANT_CLASSES[variant] || VARIANT_CLASSES.primary,
+      isIconSize ? SIZE_CLASSES[size] : SIZE_CLASSES[resolvedSize],
+      block && 'w-full',
+      className
+    )
+
+    if (asChild && React.isValidElement(children)) {
+      const child = children as React.ReactElement<{ className?: string }>
+      return React.cloneElement(child, {
+        className: cn(computedClass, child.props.className),
+        ...rest,
+      })
+    }
 
     return (
       <button
@@ -91,23 +155,15 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         type={type}
         disabled={isDisabled}
         data-motion={resolvedMotion}
-        className={cn(
-          'inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md)] font-medium select-none shrink-0 cursor-pointer abc-motion-control',
-          'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-primary)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--abc-bg-surface)]',
-          'disabled:opacity-45 disabled:cursor-not-allowed',
-          VARIANT_CLASSES[variant],
-          SIZE_CLASSES[resolvedSize],
-          block && 'w-full',
-          className
-        )}
+        className={computedClass}
         {...rest}
       >
         {loading ? (
           <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
         ) : (
-          icon && <span className="inline-flex shrink-0 items-center">{icon}</span>
+          activeIcon && <span className="inline-flex shrink-0 items-center">{activeIcon}</span>
         )}
-        {children}
+        {loading && loadingText !== undefined ? loadingText : children}
         {!loading && rightIcon && (
           <span className="inline-flex shrink-0 items-center">{rightIcon}</span>
         )}

@@ -12,6 +12,7 @@ import { AbcTreeNode } from '@abc-design/core';
 import { AbcVisualMode } from '@abc-design/tokens';
 import { ClassValue } from 'clsx';
 import { default as default_2 } from 'react';
+import * as React_2 from 'react';
 
 export declare const ABC_HEADER_HEIGHT_BY_SIZE: Record<AbcSize, number>;
 
@@ -475,23 +476,55 @@ export declare interface ButtonProps extends default_2.ButtonHTMLAttributes<HTML
     motion?: AbcMotionPreset;
     /** 加载中状态 */
     loading?: boolean;
+    /** 加载中文案 */
+    loadingText?: default_2.ReactNode;
     /** 左侧前置图标 */
     icon?: default_2.ReactNode;
+    /** icon 语义别名 */
+    leftIcon?: default_2.ReactNode;
     /** 右侧后置图标 */
     rightIcon?: default_2.ReactNode;
     /** 是否撑满父容器宽度 */
     block?: boolean;
+    /** 是否将样式透传给子元素 */
+    asChild?: boolean;
 }
 
-export declare type ButtonSize = AbcSize;
+export declare type ButtonSize = AbcSize | 'default' | 'icon' | 'icon-sm';
 
-export declare type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'warning' | 'ghost' | 'text';
+export declare type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'warning' | 'ghost' | 'text' | 'default' | 'destructive' | 'link';
+
+export declare function buttonVariants({ variant, size, className, }?: {
+    variant?: ButtonVariant;
+    size?: ButtonSize;
+    className?: string;
+}): string;
 
 /**
  * 标准企业级表面容器卡片
  * 统一取代零散的 panelClass / filterCardClass / tableCardClass，支持四档尺寸、五种视觉表面、封面图与容器查询
  */
 export declare const Card: default_2.FC<CardProps>;
+
+export declare const CardContent: default_2.ForwardRefExoticComponent<CardContentProps & default_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface CardContentProps extends default_2.HTMLAttributes<HTMLDivElement> {
+}
+
+export declare const CardDescription: default_2.ForwardRefExoticComponent<CardDescriptionProps & default_2.RefAttributes<HTMLParagraphElement>>;
+
+export declare interface CardDescriptionProps extends default_2.HTMLAttributes<HTMLParagraphElement> {
+}
+
+export declare const CardFooter: default_2.ForwardRefExoticComponent<CardFooterProps & default_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface CardFooterProps extends default_2.HTMLAttributes<HTMLDivElement> {
+}
+
+export declare const CardHeader: default_2.ForwardRefExoticComponent<CardHeaderProps & default_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface CardHeaderProps extends default_2.HTMLAttributes<HTMLDivElement> {
+}
 
 export declare interface CardProps extends Omit<default_2.HTMLAttributes<HTMLElement>, 'title'> {
     /** 语义容器标签（默认 'div'，推荐在列表/仪表盘网格中设为 'article'） */
@@ -525,6 +558,11 @@ export declare interface CardProps extends Omit<default_2.HTMLAttributes<HTMLEle
     hoverable?: boolean;
     /** 内容容器附加类名 */
     bodyClassName?: string;
+}
+
+export declare const CardTitle: default_2.ForwardRefExoticComponent<CardTitleProps & default_2.RefAttributes<HTMLHeadingElement>>;
+
+export declare interface CardTitleProps extends default_2.HTMLAttributes<HTMLHeadingElement> {
 }
 
 export declare type CardVariant = 'default' | 'bordered' | 'ghost' | 'elevated' | 'glass';
@@ -1266,6 +1304,10 @@ export declare interface InputProps extends Omit<default_2.InputHTMLAttributes<H
     clearable?: boolean;
     /** 当 type="password" 时是否展示明密文切换按钮（默认开启） */
     passwordToggle?: boolean;
+    /** 切换显示明文时的提示或无障碍标签 */
+    showPasswordLabel?: string;
+    /** 切换隐藏明文时的提示或无障碍标签 */
+    hidePasswordLabel?: string;
     /** 是否展示底部字数统计 */
     showCount?: boolean;
     onClear?: () => void;
@@ -2034,6 +2076,14 @@ export declare interface TabItem<K extends string = string> {
     children?: default_2.ReactNode;
 }
 
+export declare const Table: React_2.ForwardRefExoticComponent<TableProps & React_2.RefAttributes<HTMLTableElement>>;
+
+export declare const TableBody: React_2.ForwardRefExoticComponent<React_2.HTMLAttributes<HTMLTableSectionElement> & React_2.RefAttributes<HTMLTableSectionElement>>;
+
+export declare const TableCaption: React_2.ForwardRefExoticComponent<React_2.HTMLAttributes<HTMLTableCaptionElement> & React_2.RefAttributes<HTMLTableCaptionElement>>;
+
+export declare const TableCell: React_2.ForwardRefExoticComponent<React_2.TdHTMLAttributes<HTMLTableCellElement> & React_2.RefAttributes<HTMLTableCellElement>>;
+
 /**
  * 企业级核心数据表格引擎 (TableCore)
  * 支持多列累加粘性左/右固定列、表头右键快捷菜单、拖拽调节列宽、拖拽交换列序、
@@ -2090,6 +2140,23 @@ export declare interface TableCoreProps<T = Record<string, any>> {
     emptyText?: string;
     className?: string;
 }
+
+export declare const TableFooter: React_2.ForwardRefExoticComponent<React_2.HTMLAttributes<HTMLTableSectionElement> & React_2.RefAttributes<HTMLTableSectionElement>>;
+
+export declare const TableHead: React_2.ForwardRefExoticComponent<React_2.ThHTMLAttributes<HTMLTableCellElement> & React_2.RefAttributes<HTMLTableCellElement>>;
+
+export declare const TableHeader: React_2.ForwardRefExoticComponent<TableHeaderProps & React_2.RefAttributes<HTMLTableSectionElement>>;
+
+export declare interface TableHeaderProps extends React_2.HTMLAttributes<HTMLTableSectionElement> {
+    sticky?: boolean;
+}
+
+export declare interface TableProps extends React_2.HTMLAttributes<HTMLTableElement> {
+    scrollLabel?: string;
+    wrapperClassName?: string;
+}
+
+export declare const TableRow: React_2.ForwardRefExoticComponent<React_2.HTMLAttributes<HTMLTableRowElement> & React_2.RefAttributes<HTMLTableRowElement>>;
 
 /**
  * 响应式无障碍标签页组件

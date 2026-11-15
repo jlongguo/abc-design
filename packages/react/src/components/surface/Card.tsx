@@ -179,6 +179,71 @@ export const Card: React.FC<CardProps> = ({
   )
 }
 
+export interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {}
+export const CardHeader = React.forwardRef<HTMLDivElement, CardHeaderProps>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      data-slot="card-header"
+      className={cn('flex flex-col gap-1.5 p-6 border-b border-[var(--abc-border)]/40', className)}
+      {...props}
+    />
+  )
+)
+CardHeader.displayName = 'CardHeader'
+
+export interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {}
+export const CardTitle = React.forwardRef<HTMLHeadingElement, CardTitleProps>(
+  ({ className, ...props }, ref) => (
+    <h3
+      ref={ref}
+      data-slot="card-title"
+      className={cn('font-semibold leading-none tracking-tight text-[var(--abc-fg)] text-base', className)}
+      {...props}
+    />
+  )
+)
+CardTitle.displayName = 'CardTitle'
+
+export interface CardDescriptionProps extends React.HTMLAttributes<HTMLParagraphElement> {}
+export const CardDescription = React.forwardRef<HTMLParagraphElement, CardDescriptionProps>(
+  ({ className, ...props }, ref) => (
+    <p
+      ref={ref}
+      data-slot="card-description"
+      className={cn('text-sm text-[var(--abc-fg-muted)] leading-relaxed', className)}
+      {...props}
+    />
+  )
+)
+CardDescription.displayName = 'CardDescription'
+
+export interface CardContentProps extends React.HTMLAttributes<HTMLDivElement> {}
+export const CardContent = React.forwardRef<HTMLDivElement, CardContentProps>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      data-slot="card-content"
+      className={cn('p-6 pt-0', className)}
+      {...props}
+    />
+  )
+)
+CardContent.displayName = 'CardContent'
+
+export interface CardFooterProps extends React.HTMLAttributes<HTMLDivElement> {}
+export const CardFooter = React.forwardRef<HTMLDivElement, CardFooterProps>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      data-slot="card-footer"
+      className={cn('flex items-center p-6 pt-0 border-t border-[var(--abc-border)]/40', className)}
+      {...props}
+    />
+  )
+)
+CardFooter.displayName = 'CardFooter'
+
 export interface DividerProps extends React.HTMLAttributes<HTMLDivElement> {
   orientation?: 'horizontal' | 'vertical'
   label?: React.ReactNode

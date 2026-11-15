@@ -48,6 +48,10 @@ export interface InputProps
   clearable?: boolean
   /** 当 type="password" 时是否展示明密文切换按钮（默认开启） */
   passwordToggle?: boolean
+  /** 切换显示明文时的提示或无障碍标签 */
+  showPasswordLabel?: string
+  /** 切换隐藏明文时的提示或无障碍标签 */
+  hidePasswordLabel?: string
   /** 是否展示底部字数统计 */
   showCount?: boolean
   onClear?: () => void
@@ -74,6 +78,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       allowClear,
       clearable,
       passwordToggle = true,
+      showPasswordLabel,
+      hidePasswordLabel,
       showCount = false,
       onClear,
       invalid = false,
@@ -228,7 +234,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 tabIndex={-1}
                 disabled={disabled}
                 data-testid="password-toggle"
-                aria-label={revealPwd ? '隐藏密码' : '显示密码'}
+                aria-label={revealPwd ? (hidePasswordLabel ?? '隐藏密码') : (showPasswordLabel ?? '显示密码')}
+                title={revealPwd ? (hidePasswordLabel ?? '隐藏密码') : (showPasswordLabel ?? '显示密码')}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={(e) => {
                   e.preventDefault()

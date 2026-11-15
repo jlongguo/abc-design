@@ -1,15 +1,15 @@
-import { BarChart as E, LineChart as F, PieChart as M, GaugeChart as $, RadarChart as A, ScatterChart as G } from "echarts/charts";
+import { BarChart as P, LineChart as E, PieChart as M, GaugeChart as $, RadarChart as A, ScatterChart as G } from "echarts/charts";
 import { TitleComponent as W, DatasetComponent as _, DataZoomComponent as k, GridComponent as H, LegendComponent as I, TooltipComponent as Y, MarkLineComponent as Z, MarkPointComponent as q } from "echarts/components";
 import { use as J, graphic as K, init as Q } from "echarts/core";
 import { graphic as he } from "echarts/core";
 import { CanvasRenderer as V } from "echarts/renderers";
-import { jsx as a, jsxs as b } from "react/jsx-runtime";
-import { useRef as T, useMemo as X, useEffect as L } from "react";
+import { jsx as s, jsxs as p } from "react/jsx-runtime";
+import { useRef as T, useMemo as X, useEffect as z } from "react";
 import { ABC_BRAND_PRESETS as O } from "@abc-design/tokens";
-import { useAbcConfig as U, Skeleton as g, EmptyState as w, Card as R, StatusTag as D } from "@abc-design/react";
+import { useAbcConfig as U, Skeleton as N, EmptyState as w, Card as R, StatusTag as D } from "@abc-design/react";
 J([
+  P,
   E,
-  F,
   M,
   $,
   A,
@@ -32,18 +32,18 @@ function B(e) {
   var n, t, r = "";
   if (typeof e == "string" || typeof e == "number") r += e;
   else if (typeof e == "object") if (Array.isArray(e)) {
-    var s = e.length;
-    for (n = 0; n < s; n++) e[n] && (t = B(e[n])) && (r && (r += " "), r += t);
+    var c = e.length;
+    for (n = 0; n < c; n++) e[n] && (t = B(e[n])) && (r && (r += " "), r += t);
   } else for (t in e) e[t] && (r && (r += " "), r += t);
   return r;
 }
 function y() {
-  for (var e, n, t = 0, r = "", s = arguments.length; t < s; t++) (e = arguments[t]) && (n = B(e)) && (r && (r += " "), r += n);
+  for (var e, n, t = 0, r = "", c = arguments.length; t < c; t++) (e = arguments[t]) && (n = B(e)) && (r && (r += " "), r += n);
   return r;
 }
 function te(e = "blue", n = !1) {
-  var s, m;
-  const t = ((s = O[e]) == null ? void 0 : s.scale[n ? 400 : 600]) ?? "#2563eb", r = ((m = O[e]) == null ? void 0 : m.scale[n ? 300 : 400]) ?? "#60a5fa";
+  var c, i;
+  const t = ((c = O[e]) == null ? void 0 : c.scale[n ? 400 : 600]) ?? "#2563eb", r = ((i = O[e]) == null ? void 0 : i.scale[n ? 300 : 400]) ?? "#60a5fa";
   return [
     t,
     "#10b981",
@@ -55,25 +55,25 @@ function te(e = "blue", n = !1) {
   ];
 }
 function re(e, n, t) {
-  const r = t ? "#334155" : "#e2e8f0", s = t ? "#94a3b8" : "#64748b", l = {
+  const r = t ? "#334155" : "#e2e8f0", c = t ? "#94a3b8" : "#64748b", l = {
     axisLine: { lineStyle: { color: r } },
-    axisLabel: { color: s, fontSize: 11 },
+    axisLabel: { color: c, fontSize: 11 },
     splitLine: { lineStyle: { color: t ? "rgba(51, 65, 85, 0.55)" : "rgba(226, 232, 240, 0.75)", type: "dashed" } },
-    nameTextStyle: { color: s }
-  }, c = (o) => {
-    if (o)
-      return Array.isArray(o) ? o.map((i) => ({
-        ...l,
-        ...i,
-        axisLine: { ...l.axisLine, ...i == null ? void 0 : i.axisLine },
-        axisLabel: { ...l.axisLabel, ...i == null ? void 0 : i.axisLabel },
-        splitLine: { ...l.splitLine, ...i == null ? void 0 : i.splitLine }
-      })) : {
+    nameTextStyle: { color: c }
+  }, u = (a) => {
+    if (a)
+      return Array.isArray(a) ? a.map((o) => ({
         ...l,
         ...o,
         axisLine: { ...l.axisLine, ...o == null ? void 0 : o.axisLine },
         axisLabel: { ...l.axisLabel, ...o == null ? void 0 : o.axisLabel },
         splitLine: { ...l.splitLine, ...o == null ? void 0 : o.splitLine }
+      })) : {
+        ...l,
+        ...a,
+        axisLine: { ...l.axisLine, ...a == null ? void 0 : a.axisLine },
+        axisLabel: { ...l.axisLabel, ...a == null ? void 0 : a.axisLabel },
+        splitLine: { ...l.splitLine, ...a == null ? void 0 : a.splitLine }
       };
   };
   return {
@@ -99,8 +99,8 @@ function re(e, n, t) {
       ...Array.isArray(e.legend) ? e.legend[0] : e.legend
     } : void 0,
     ...e,
-    xAxis: c(e.xAxis),
-    yAxis: c(e.yAxis)
+    xAxis: u(e.xAxis),
+    yAxis: u(e.yAxis)
   };
 }
 const ne = ({
@@ -108,99 +108,118 @@ const ne = ({
   height: n = 300,
   style: t,
   className: r,
-  notMerge: s = !1,
-  lazyUpdate: m = !1,
+  notMerge: c = !1,
+  lazyUpdate: i = !1,
   loading: l = !1,
-  empty: c = !1,
-  emptyDescription: o = "暂无图表统计数据",
-  onEvents: i,
-  onChartReady: p
+  empty: u = !1,
+  emptyDescription: a = "暂无图表统计数据",
+  onEvents: o,
+  onChartReady: h
 }) => {
-  const { resolvedTheme: h, theme: N } = U(), S = h === "dark", j = T(null), v = T(null), z = X(
-    () => re(e, N.brand, S),
-    [e, N.brand, S]
+  const { resolvedTheme: j, theme: C } = U(), v = j === "dark", L = T(null), m = T(null), x = X(
+    () => re(e, C.brand, v),
+    [e, C.brand, v]
   );
-  L(() => {
-    const f = j.current;
-    if (!f || l || c) return;
+  z(() => {
+    const f = L.current;
+    if (!f || l || u) return;
     const d = ee.init(f);
-    v.current = d, p == null || p(d);
-    let u = null;
+    m.current = d, h == null || h(d);
+    let b = null;
     if (typeof ResizeObserver < "u")
-      u = new ResizeObserver(() => {
+      b = new ResizeObserver(() => {
         d.resize();
-      }), u.observe(f);
+      }), b.observe(f);
     else {
-      const x = () => d.resize();
-      return window.addEventListener("resize", x), () => {
-        window.removeEventListener("resize", x), d.dispose(), v.current = null;
+      const S = () => d.resize();
+      return window.addEventListener("resize", S), () => {
+        window.removeEventListener("resize", S), d.dispose(), m.current = null;
       };
     }
     return () => {
-      u == null || u.disconnect(), d.dispose(), v.current = null;
+      b == null || b.disconnect(), d.dispose(), m.current = null;
     };
-  }, [l, c]), L(() => {
-    const f = v.current;
-    !f || l || c || f.setOption(z, { notMerge: s, lazyUpdate: m });
-  }, [z, s, m, l, c]), L(() => {
-    const f = v.current;
-    if (!f || !i) return;
-    const d = Object.entries(i);
-    for (const [u, x] of d)
-      f.on(u, (P) => x(P, f));
+  }, [l, u]), z(() => {
+    const f = m.current;
+    !f || l || u || f.setOption(x, { notMerge: c, lazyUpdate: i });
+  }, [x, c, i, l, u]), z(() => {
+    const f = m.current;
+    if (!f || !o) return;
+    const d = Object.entries(o);
+    for (const [b, S] of d)
+      f.on(b, (F) => S(F, f));
     return () => {
-      for (const [u] of d)
-        f.off(u);
+      for (const [b] of d)
+        f.off(b);
     };
-  }, [i]);
-  const C = {
+  }, [o]);
+  const g = {
     width: "100%",
     height: (t == null ? void 0 : t.height) ?? (typeof n == "number" ? `${n}px` : n),
     ...t
   };
-  return l ? /* @__PURE__ */ a("div", { className: y("flex items-center justify-center p-4", r), style: C, children: /* @__PURE__ */ a(g, { className: "h-full w-full rounded-[var(--abc-radius-md)]" }) }) : c ? /* @__PURE__ */ a("div", { className: y("flex items-center justify-center", r), style: C, children: /* @__PURE__ */ a(w, { title: "暂无图表数据", description: o }) }) : /* @__PURE__ */ a("div", { ref: j, className: y("min-w-0", r), style: C });
+  return l ? /* @__PURE__ */ s("div", { className: y("flex items-center justify-center p-4", r), style: g, children: /* @__PURE__ */ s(N, { className: "h-full w-full rounded-[var(--abc-radius-md)]" }) }) : u ? /* @__PURE__ */ s("div", { className: y("flex items-center justify-center", r), style: g, children: /* @__PURE__ */ s(w, { title: "暂无图表数据", description: a }) }) : /* @__PURE__ */ s("div", { ref: L, className: y("min-w-0", r), style: g });
 }, ue = ne, me = ({
   title: e,
-  value: n,
-  prefix: t,
-  suffix: r,
-  trend: s,
-  trendLabel: m = "较上周期",
-  icon: l,
-  footer: c,
-  loading: o = !1,
-  className: i
+  label: n,
+  value: t,
+  prefix: r,
+  suffix: c,
+  trend: i,
+  trendLabel: l = "较上周期",
+  icon: u,
+  footer: a,
+  hint: o,
+  tone: h,
+  size: j,
+  loading: C = !1,
+  className: v
 }) => {
-  if (o)
-    return /* @__PURE__ */ a(R, { className: i, children: /* @__PURE__ */ b("div", { className: "space-y-3", children: [
-      /* @__PURE__ */ a(g, { className: "h-4 w-24" }),
-      /* @__PURE__ */ a(g, { className: "h-8 w-36" }),
-      /* @__PURE__ */ a(g, { className: "h-3.5 w-28" })
+  const L = e ?? n, m = a ?? o, x = j === "lg", g = h === "surface";
+  if (C)
+    return /* @__PURE__ */ s(R, { className: v, children: /* @__PURE__ */ p("div", { className: "space-y-3", children: [
+      /* @__PURE__ */ s(N, { className: "h-4 w-24" }),
+      /* @__PURE__ */ s(N, { className: "h-8 w-36" }),
+      /* @__PURE__ */ s(N, { className: "h-3.5 w-28" })
     ] }) });
-  const p = s === void 0 ? "neutral" : s > 0 ? "success" : s < 0 ? "danger" : "neutral", h = s === void 0 ? null : `${s > 0 ? "+" : ""}${s.toFixed(1)}%`;
-  return /* @__PURE__ */ b(
+  const f = i === void 0 ? "neutral" : i > 0 ? "success" : i < 0 ? "danger" : "neutral", d = i === void 0 ? null : `${i > 0 ? "+" : ""}${i.toFixed(1)}%`;
+  return /* @__PURE__ */ p(
     R,
     {
       hoverable: !0,
-      className: y("relative overflow-hidden transition-all", i),
+      className: y(
+        "relative overflow-hidden transition-all",
+        g && "bg-[var(--abc-bg-surface)] border-[var(--abc-border)]",
+        x ? "p-5" : "p-4",
+        v
+      ),
       children: [
-        /* @__PURE__ */ b("div", { className: "flex items-start justify-between gap-3", children: [
-          /* @__PURE__ */ b("div", { className: "min-w-0 space-y-1.5", children: [
-            /* @__PURE__ */ a("div", { className: "text-xs font-medium text-[var(--abc-fg-muted)]", children: e }),
-            /* @__PURE__ */ b("div", { className: "flex items-baseline gap-1 font-mono text-2xl font-bold tracking-tight text-[var(--abc-fg)] tabular-nums", children: [
-              t && /* @__PURE__ */ a("span", { className: "text-sm font-medium text-[var(--abc-fg-muted)]", children: t }),
-              /* @__PURE__ */ a("span", { children: n }),
-              r && /* @__PURE__ */ a("span", { className: "text-xs font-normal text-[var(--abc-fg-muted)]", children: r })
-            ] })
+        /* @__PURE__ */ p("div", { className: "flex items-start justify-between gap-3", children: [
+          /* @__PURE__ */ p("div", { className: "min-w-0 space-y-1.5", children: [
+            /* @__PURE__ */ s("div", { className: "text-xs font-medium text-[var(--abc-fg-muted)]", children: L }),
+            /* @__PURE__ */ p(
+              "div",
+              {
+                className: y(
+                  "flex items-baseline gap-1 font-mono font-bold tracking-tight text-[var(--abc-fg)] tabular-nums",
+                  x ? "text-3xl" : "text-2xl"
+                ),
+                children: [
+                  r && /* @__PURE__ */ s("span", { className: "text-sm font-medium text-[var(--abc-fg-muted)]", children: r }),
+                  /* @__PURE__ */ s("span", { children: t }),
+                  c && /* @__PURE__ */ s("span", { className: "text-xs font-normal text-[var(--abc-fg-muted)]", children: c })
+                ]
+              }
+            )
           ] }),
-          l && /* @__PURE__ */ a("div", { className: "flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]", children: l })
+          u && /* @__PURE__ */ s("div", { className: "flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]", children: u })
         ] }),
-        (h || c) && /* @__PURE__ */ b("div", { className: "mt-3 flex items-center justify-between gap-2 border-t border-[var(--abc-border-subtle)] pt-2.5 text-xs", children: [
-          h ? /* @__PURE__ */ b("div", { className: "flex items-center gap-1.5", children: [
-            /* @__PURE__ */ a(D, { tone: p, children: h }),
-            /* @__PURE__ */ a("span", { className: "text-[var(--abc-fg-muted)]", children: m })
-          ] }) : /* @__PURE__ */ a("span", {}),
-          c && /* @__PURE__ */ a("div", { className: "text-[var(--abc-fg-muted)] truncate", children: c })
+        (d || m) && /* @__PURE__ */ p("div", { className: "mt-3 flex items-center justify-between gap-2 border-t border-[var(--abc-border-subtle)] pt-2.5 text-xs", children: [
+          d ? /* @__PURE__ */ p("div", { className: "flex items-center gap-1.5", children: [
+            /* @__PURE__ */ s(D, { tone: f, children: d }),
+            /* @__PURE__ */ s("span", { className: "text-[var(--abc-fg-muted)]", children: l })
+          ] }) : /* @__PURE__ */ s("span", {}),
+          m && /* @__PURE__ */ s("div", { className: "text-[var(--abc-fg-muted)] truncate", children: m })
         ] })
       ]
     }

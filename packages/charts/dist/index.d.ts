@@ -68,7 +68,9 @@ export declare const StatCard: default_2.FC<StatCardProps>;
 
 export declare interface StatCardProps {
     /** 指标标题 */
-    title: default_2.ReactNode;
+    title?: default_2.ReactNode;
+    /** title 语义别名 */
+    label?: default_2.ReactNode;
     /** 核心数值展示 */
     value: default_2.ReactNode;
     /** 数值前缀（如 ¥ / $） */
@@ -83,6 +85,12 @@ export declare interface StatCardProps {
     icon?: default_2.ReactNode;
     /** 底部补充信息或迷你趋势图插槽 */
     footer?: default_2.ReactNode;
+    /** footer 辅助说明别名 */
+    hint?: default_2.ReactNode;
+    /** 视觉色调别名 */
+    tone?: string;
+    /** 尺寸规格别名 */
+    size?: string;
     /** 加载骨架态 */
     loading?: boolean;
     className?: string;

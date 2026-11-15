@@ -4,7 +4,9 @@ import clsx from 'clsx'
 
 export interface StatCardProps {
   /** 指标标题 */
-  title: React.ReactNode
+  title?: React.ReactNode
+  /** title 语义别名 */
+  label?: React.ReactNode
   /** 核心数值展示 */
   value: React.ReactNode
   /** 数值前缀（如 ¥ / $） */
@@ -19,6 +21,12 @@ export interface StatCardProps {
   icon?: React.ReactNode
   /** 底部补充信息或迷你趋势图插槽 */
   footer?: React.ReactNode
+  /** footer 辅助说明别名 */
+  hint?: React.ReactNode
+  /** 视觉色调别名 */
+  tone?: string
+  /** 尺寸规格别名 */
+  size?: string
   /** 加载骨架态 */
   loading?: boolean
   className?: string
@@ -30,6 +38,7 @@ export interface StatCardProps {
  */
 export const StatCard: React.FC<StatCardProps> = ({
   title,
+  label,
   value,
   prefix,
   suffix,
@@ -37,9 +46,17 @@ export const StatCard: React.FC<StatCardProps> = ({
   trendLabel = '较上周期',
   icon,
   footer,
+  hint,
+  tone,
+  size,
   loading = false,
   className,
 }) => {
+  const displayTitle = title ?? label
+  const displayFooter = footer ?? hint
+  const isLarge = size === 'lg'
+  const isSurface = tone === 'surface'
+
   if (loading) {
     return (
       <Card className={className}>
@@ -60,12 +77,22 @@ export const StatCard: React.FC<StatCardProps> = ({
   return (
     <Card
       hoverable
-      className={clsx('relative overflow-hidden transition-all', className)}
+      className={clsx(
+        'relative overflow-hidden transition-all',
+        isSurface && 'bg-[var(--abc-bg-surface)] border-[var(--abc-border)]',
+        isLarge ? 'p-5' : 'p-4',
+        className
+      )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1.5">
-          <div className="text-xs font-medium text-[var(--abc-fg-muted)]">{title}</div>
-          <div className="flex items-baseline gap-1 font-mono text-2xl font-bold tracking-tight text-[var(--abc-fg)] tabular-nums">
+          <div className="text-xs font-medium text-[var(--abc-fg-muted)]">{displayTitle}</div>
+          <div
+            className={clsx(
+              'flex items-baseline gap-1 font-mono font-bold tracking-tight text-[var(--abc-fg)] tabular-nums',
+              isLarge ? 'text-3xl' : 'text-2xl'
+            )}
+          >
             {prefix && <span className="text-sm font-medium text-[var(--abc-fg-muted)]">{prefix}</span>}
             <span>{value}</span>
             {suffix && <span className="text-xs font-normal text-[var(--abc-fg-muted)]">{suffix}</span>}
@@ -78,7 +105,7 @@ export const StatCard: React.FC<StatCardProps> = ({
         )}
       </div>
 
-      {(trendText || footer) && (
+      {(trendText || displayFooter) && (
         <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--abc-border-subtle)] pt-2.5 text-xs">
           {trendText ? (
             <div className="flex items-center gap-1.5">
@@ -88,7 +115,7 @@ export const StatCard: React.FC<StatCardProps> = ({
           ) : (
             <span />
           )}
-          {footer && <div className="text-[var(--abc-fg-muted)] truncate">{footer}</div>}
+          {displayFooter && <div className="text-[var(--abc-fg-muted)] truncate">{displayFooter}</div>}
         </div>
       )}
     </Card>
