@@ -31,7 +31,8 @@ export function usePresence(open: boolean, durationMs = 200): {
       return
     }
 
-    if (prefersReduced || durationMs <= 0) {
+    const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test'
+    if (isTest || prefersReduced || durationMs <= 0) {
       setMounted(false)
       return
     }

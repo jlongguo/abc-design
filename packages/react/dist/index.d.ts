@@ -1078,6 +1078,8 @@ export declare interface DialogProps {
     closable?: boolean;
     /** 是否禁用关闭按钮（如表单提交中） */
     closeDisabled?: boolean;
+    /** 关闭按钮无障碍文案，默认 '关闭' */
+    closeLabel?: string;
     /** 标题内容 */
     title?: default_2.ReactNode;
     /** 副标题或辅助描述 */

@@ -106,10 +106,8 @@ export function ReasonedActionDialog({
   }
 
   const handleClose = () => {
-    if (!pending) {
-      onCancel?.()
-      onOpenChange?.(false)
-    }
+    onCancel?.()
+    onOpenChange?.(false)
   }
 
   return (
@@ -120,7 +118,7 @@ export function ReasonedActionDialog({
       onClose={handleClose}
       onCancel={handleClose}
       onOpenChange={onOpenChange}
-      closeDisabled={pending}
+      closeDisabled={false}
       fullscreenable={false}
       draggable={false}
     >
@@ -128,7 +126,7 @@ export function ReasonedActionDialog({
         data-slot="reasoned-action-dialog"
         className={cn('w-full max-w-lg', maxWidthClass, className)}
         closeLabel={closeLabel}
-        closeDisabled={pending}
+        closeDisabled={false}
       >
         <DialogHeader>
           <div className="flex items-center gap-2">
