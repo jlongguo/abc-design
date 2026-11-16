@@ -87,7 +87,7 @@ export const NotificationBanner = React.forwardRef<HTMLDivElement, NotificationB
       actionHint,
       action,
       onDismiss,
-      dismissLabel = '关闭通知',
+      dismissLabel = 'Dismiss notification',
       hideIcon = false,
       role,
       className,

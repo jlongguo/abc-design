@@ -1,8 +1,18 @@
-import React, { useId } from 'react'
+import React, { createContext, useContext, useId } from 'react'
 import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { useAbcMotion, useAbcSize } from '../../hooks'
 import { useControllableState } from '../../hooks/useControllableState'
 import { cn } from '../../utils/cn'
+
+interface TabsCompoundContextValue {
+  baseId: string
+  currentValue: string
+  onSelect: (nextValue: string) => void
+  size: AbcSize
+  motion: AbcMotionPreset
+}
+
+const TabsCompoundContext = createContext<TabsCompoundContextValue | null>(null)
 
 export interface TabItem<K extends string = string> {
   key: K
@@ -14,12 +24,14 @@ export interface TabItem<K extends string = string> {
 }
 
 export interface TabsProps<K extends string = string> {
-  items: TabItem<K>[]
+  items?: TabItem<K>[]
   activeKey?: K
   /** activeKey 受控别名 */
   value?: K
   defaultActiveKey?: K
+  defaultValue?: K
   onChange?: (key: K) => void
+  onValueChange?: (key: K) => void
   variant?: 'line' | 'pills' | 'segmented'
   size?: AbcSize
   motion?: AbcMotionPreset
@@ -27,19 +39,21 @@ export interface TabsProps<K extends string = string> {
   extra?: React.ReactNode
   className?: string
   panelClassName?: string
+  children?: React.ReactNode
 }
 
 /**
  * 响应式无障碍标签页组件
- * 遵循规范：单行不换行横向滚动、基于 [aria-selected="true"] 伪元素底边线提供非纯色形状指示、
- * 非激活面板采用 hidden="until-found" 并在内层子容器施加内边距避免空白占高。
+ * 同时支持声明式 items 模式与复合子组件 (TabsList / TabsTrigger / TabsContent) 模式
  */
 export function Tabs<K extends string = string>({
   items,
   activeKey,
   value,
   defaultActiveKey,
+  defaultValue,
   onChange,
+  onValueChange,
   variant = 'line',
   size,
   motion,
@@ -47,20 +61,44 @@ export function Tabs<K extends string = string>({
   extra,
   className,
   panelClassName,
+  children,
 }: TabsProps<K>) {
   const resolvedSize = useAbcSize(size, 'md')
   const resolvedMotion = useAbcMotion(motion)
   const baseId = useId()
+  const handleSelect = (next: K) => {
+    onChange?.(next)
+    onValueChange?.(next)
+  }
   const [currentKey, setCurrentKey] = useControllableState<K>({
     value: activeKey ?? value,
-    defaultValue: defaultActiveKey ?? (items[0]?.key as K) ?? ('' as K),
-    onChange,
+    defaultValue: defaultActiveKey ?? defaultValue ?? ((items?.[0]?.key as K) ?? ('' as K)),
+    onChange: handleSelect,
   })
 
+  if (!items && children !== undefined) {
+    return (
+      <TabsCompoundContext.Provider
+        value={{
+          baseId,
+          currentValue: String(currentKey ?? ''),
+          onSelect: (next) => setCurrentKey(next as K),
+          size: resolvedSize,
+          motion: resolvedMotion,
+        }}
+      >
+        <div data-slot="tabs" data-motion={resolvedMotion} className={cn('w-full', className)}>
+          {children}
+        </div>
+      </TabsCompoundContext.Provider>
+    )
+  }
+
+  const safeItems = items ?? []
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
-    const enabledItems = items.filter((item) => !item.disabled)
+    const enabledItems = safeItems.filter((item) => !item.disabled)
     if (enabledItems.length === 0) return
-    const currentEnabledIdx = enabledItems.findIndex((item) => item.key === items[index]?.key)
+    const currentEnabledIdx = enabledItems.findIndex((item) => item.key === safeItems[index]?.key)
     if (e.key === 'ArrowRight') {
       e.preventDefault()
       const next = enabledItems[(currentEnabledIdx + 1) % enabledItems.length]
@@ -73,7 +111,7 @@ export function Tabs<K extends string = string>({
     }
   }
 
-  const hasAnyPanelContent = items.some((item) => item.children !== undefined)
+  const hasAnyPanelContent = safeItems.some((item) => item.children !== undefined)
 
   const paddingBySize =
     resolvedSize === 'xs'
@@ -106,7 +144,7 @@ export function Tabs<K extends string = string>({
                 : 'gap-1'
           )}
         >
-          {items.map((item, idx) => {
+          {safeItems.map((item, idx) => {
             const selected = item.key === currentKey
             const tabId = `${baseId}-tab-${item.key}`
             return (
@@ -166,7 +204,7 @@ export function Tabs<K extends string = string>({
 
       {hasAnyPanelContent && (
         <div>
-          {items.map((item) => {
+          {safeItems.map((item) => {
             const selected = item.key === currentKey
             const tabId = `${baseId}-tab-${item.key}`
             return (
@@ -190,5 +228,91 @@ export function Tabs<K extends string = string>({
     </div>
   )
 }
+
+export interface TabsListProps extends React.HTMLAttributes<HTMLDivElement> {}
+
+export const TabsList = React.forwardRef<HTMLDivElement, TabsListProps>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      role="tablist"
+      data-slot="tabs-list"
+      className={cn(
+        'inline-flex items-center gap-1 rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-muted)] p-1 text-[var(--abc-fg-muted)]',
+        className
+      )}
+      {...props}
+    />
+  )
+)
+TabsList.displayName = 'TabsList'
+
+export interface TabsTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  value: string
+}
+
+export const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(
+  ({ value, className, children, onClick, disabled, ...props }, ref) => {
+    const ctx = useContext(TabsCompoundContext)
+    const selected = ctx?.currentValue === value
+    const tabId = ctx ? `${ctx.baseId}-tab-${value}` : undefined
+
+    return (
+      <button
+        ref={ref}
+        id={tabId}
+        type="button"
+        role="tab"
+        data-slot="tabs-trigger"
+        data-state={selected ? 'active' : 'inactive'}
+        aria-selected={selected}
+        disabled={disabled}
+        onClick={(e) => {
+          onClick?.(e)
+          if (!disabled) ctx?.onSelect(value)
+        }}
+        className={cn(
+          'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--abc-radius-sm)] px-3 py-1.5 text-xs font-medium transition-all cursor-pointer select-none',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)] disabled:pointer-events-none disabled:opacity-50',
+          selected
+            ? 'bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] shadow-2xs'
+            : 'text-[var(--abc-fg-muted)] hover:text-[var(--abc-fg)]',
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </button>
+    )
+  }
+)
+TabsTrigger.displayName = 'TabsTrigger'
+
+export interface TabsContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  value: string
+}
+
+export const TabsContent = React.forwardRef<HTMLDivElement, TabsContentProps>(
+  ({ value, className, children, ...props }, ref) => {
+    const ctx = useContext(TabsCompoundContext)
+    const selected = !ctx || ctx.currentValue === value
+    const tabId = ctx ? `${ctx.baseId}-tab-${value}` : undefined
+
+    return (
+      <div
+        ref={ref}
+        role="tabpanel"
+        data-slot="tabs-content"
+        aria-labelledby={tabId}
+        hidden={!selected}
+        className={cn('mt-2 focus-visible:outline-none', !selected && 'hidden', className)}
+        {...props}
+      >
+        {selected ? children : null}
+      </div>
+    )
+  }
+)
+TabsContent.displayName = 'TabsContent'
 
 export default Tabs

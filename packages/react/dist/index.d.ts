@@ -7,6 +7,7 @@ import { AbcPageTransition } from '@abc-design/tokens';
 import { AbcRadius } from '@abc-design/tokens';
 import { AbcResolvedTheme } from '@abc-design/tokens';
 import { AbcSize } from '@abc-design/tokens';
+import { AbcSurfaceProfile } from '@abc-design/tokens';
 import { AbcThemeConfig } from '@abc-design/tokens';
 import { AbcThemeMode } from '@abc-design/tokens';
 import { AbcTreeFieldNames } from '@abc-design/core';
@@ -20,6 +21,7 @@ import { default as default_2 } from 'react';
 import { ErrorInfo } from 'react';
 import { JSX } from 'react';
 import { JSXElementConstructor } from 'react';
+import { LucideIcon } from 'lucide-react';
 import * as React_2 from 'react';
 import { ReactElement } from 'react';
 import { ReactNode } from 'react';
@@ -203,6 +205,7 @@ export declare interface AbcContextValue {
     setCustomBrandColor: (hex?: string) => void;
     setDensity: (density: AbcDensity) => void;
     setRadius: (radius: AbcRadius) => void;
+    setSurface: (surface: AbcSurfaceProfile) => void;
     setFontScale: (scale: AbcFontScale) => void;
     setVisualMode: (mode: AbcVisualMode) => void;
     setComponentSize: (size?: AbcSize) => void;
@@ -310,6 +313,8 @@ export declare interface AbcProviderProps {
     defaultWatermarkEnabled?: boolean;
     /** 是否持久化用户主题偏好到 localStorage（默认开启） */
     persist?: boolean;
+    /** 自定义主题配置在 localStorage 中的存储键名（区分不同产品切面，如 admin vs console） */
+    storageKey?: string;
     /** 自定义 Toast 适配器（不传则使用内置零依赖 ToastContainer / AbcToastViewport） */
     toastAdapter?: AbcToastAdapter;
     /** 全局 ToastContainer 属性配置（如挂载位置、最大数量、动效预设等） */
@@ -885,6 +890,36 @@ export declare type CascaderSingleValue = Array<string | number>;
 
 export declare type CascaderValue = CascaderSingleValue | CascaderMultipleValue;
 
+/** 可勾选胶囊标签 (CheckableTag) */
+export declare const CheckableTag: default_2.ForwardRefExoticComponent<CheckableTagProps & default_2.RefAttributes<HTMLInputElement>>;
+
+/** 声明式多选胶囊标签组 (CheckableTagGroup) */
+export declare function CheckableTagGroup<T extends string = string>({ options, value, values, onValueChange, onValuesChange, mono, size, className, ...props }: CheckableTagGroupProps<T>): default_2.JSX.Element;
+
+export declare interface CheckableTagGroupProps<T extends string = string> extends Omit<default_2.HTMLAttributes<HTMLDivElement>, 'onChange'> {
+    options: ReadonlyArray<T | CheckableTagOption<T>>;
+    value?: ReadonlyArray<T>;
+    values?: ReadonlyArray<T>;
+    onValueChange?: (next: T[]) => void;
+    onValuesChange?: (next: T[]) => void;
+    mono?: boolean;
+    size?: 'sm' | 'md';
+}
+
+export declare interface CheckableTagOption<T extends string = string> {
+    value: T;
+    label?: default_2.ReactNode;
+    disabled?: boolean;
+}
+
+export declare interface CheckableTagProps extends Omit<default_2.InputHTMLAttributes<HTMLInputElement>, 'type' | 'size'> {
+    label?: default_2.ReactNode;
+    onCheckedChange?: (checked: boolean) => void;
+    mono?: boolean;
+    size?: 'sm' | 'md';
+    labelClassName?: string;
+}
+
 /** 复选框组件（支持四档尺寸、动效规格、半选态 indeterminate、辅助描述与键盘无障碍操作） */
 export declare const Checkbox: default_2.ForwardRefExoticComponent<CheckboxProps & default_2.RefAttributes<HTMLInputElement>>;
 
@@ -894,11 +929,13 @@ export declare interface CheckboxProps extends Omit<default_2.InputHTMLAttribute
     defaultChecked?: boolean;
     indeterminate?: boolean;
     onChange?: (checked: boolean, e: default_2.ChangeEvent<HTMLInputElement>) => void;
+    onCheckedChange?: (checked: boolean) => void;
     disabled?: boolean;
     size?: AbcSize;
     motion?: AbcMotionPreset;
     label?: default_2.ReactNode;
     description?: default_2.ReactNode;
+    wrapperClassName?: string;
     className?: string;
 }
 
@@ -951,6 +988,40 @@ export declare function clearToasts(): void;
 
 /** 合并条件类名并自动消解 Tailwind 工具类冲突 */
 export declare function cn(...inputs: ClassValue[]): string;
+
+/**
+ * 统一深色终端/代码块展示组件 (CodeBlock)
+ */
+export declare function CodeBlock({ code, title, language, copyable, copyLabel, copiedLabel, copyAriaLabel, headerAction, preClassName, maxHeightClassName, showLineNumbers, wrapLongLines, className, children, ...props }: CodeBlockProps): React_2.JSX.Element;
+
+export declare interface CodeBlockProps extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'title'> {
+    /** 代码文本内容（同时作为一键复制的数据源） */
+    code: string;
+    /** 顶部标题或接口路径说明 */
+    title?: React_2.ReactNode;
+    /** 语言或格式标识（如 bash / json / ts） */
+    language?: string;
+    /** 是否显示一键复制按钮，默认开启 */
+    copyable?: boolean;
+    /** 未复制时的按钮文案 */
+    copyLabel?: string;
+    /** 复制成功后的按钮文案 */
+    copiedLabel?: string;
+    /** 复制按钮的无障碍名称 */
+    copyAriaLabel?: string;
+    /** 顶部右侧附加操作区插槽 */
+    headerAction?: React_2.ReactNode;
+    /** pre 元素附加样式（如高度限制 max-h-96） */
+    preClassName?: string;
+    /** pre 元素最大高度限制类名（兼容别名） */
+    maxHeightClassName?: string;
+    /** 是否展示行号列（仅在未传自定义 children 时生效） */
+    showLineNumbers?: boolean;
+    /** 是否允许长行自动折行 */
+    wrapLongLines?: boolean;
+    /** 自定义渲染子节点 */
+    children?: React_2.ReactNode;
+}
 
 /**
  * 原生 <details> + <summary> 手风琴/折叠面板 (Collapse)
@@ -1089,6 +1160,28 @@ export declare const ConfirmProvider: default_2.FC<{
     children: default_2.ReactNode;
 }>;
 
+export declare function ContextQuickBar({ badge, title, contextTags, actions, className, ...props }: ContextQuickBarProps): React_2.JSX.Element;
+
+export declare interface ContextQuickBarAction {
+    key?: string;
+    href: string;
+    label: React_2.ReactNode;
+}
+
+export declare interface ContextQuickBarProps extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'title'> {
+    badge: React_2.ReactNode;
+    title: React_2.ReactNode;
+    contextTags?: ContextQuickBarTag[];
+    actions: ContextQuickBarAction[];
+}
+
+export declare interface ContextQuickBarTag {
+    key?: string;
+    text?: React_2.ReactNode;
+    label?: React_2.ReactNode;
+    value?: React_2.ReactNode;
+}
+
 export declare type ControlSize = AbcSize | 'default';
 
 export declare const CopyableCode: React_2.ForwardRefExoticComponent<CopyableCodeProps & React_2.RefAttributes<HTMLSpanElement>>;
@@ -1145,6 +1238,9 @@ export declare interface CopyButtonProps extends default_2.ButtonHTMLAttributes<
     copyLabel?: string;
     copiedLabel?: string;
     successDuration?: number;
+    iconOnly?: boolean;
+    onCopySuccess?: () => void;
+    onCopyError?: () => void;
 }
 
 /**
@@ -1175,6 +1271,8 @@ export declare const CrudTable: typeof ProTable;
 
 /** 游标流式分页器（专用于 CDP 抓包、高频作业队列等无深总数的大数据场景） */
 export declare const CursorPagination: default_2.FC<PaginationProps>;
+
+export declare type CursorPaginationProps = PaginationProps;
 
 /** 危险操作按钮样式 */
 export declare const dangerButtonClass = "inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md,0.5rem)] bg-[var(--abc-danger)] hover:opacity-90 active:opacity-95 px-3.5 py-1.5 text-xs font-medium text-white transition-all shadow-2xs active:scale-[0.99] disabled:opacity-45 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer select-none";
@@ -1334,7 +1432,9 @@ export declare const DEFAULT_ABC_LAYOUT_SETTINGS: AbcLayoutSettings;
 
 export declare const DENSITY_CELL_PY: Record<AbcTableDensity, string>;
 
-export declare interface DescriptionItem {
+export declare const DescriptionItem: React_2.ForwardRefExoticComponent<DescriptionItemProps & React_2.RefAttributes<HTMLDivElement>>;
+
+declare interface DescriptionItem_2 {
     key?: string;
     label: default_2.ReactNode;
     children: default_2.ReactNode;
@@ -1389,7 +1489,7 @@ export declare const Descriptions: default_2.FC<DescriptionsProps>;
 export declare interface DescriptionsProps {
     title?: default_2.ReactNode;
     extra?: default_2.ReactNode;
-    items: DescriptionItem[];
+    items: DescriptionItem_2[];
     column?: 1 | 2 | 3 | 4;
     bordered?: boolean;
     size?: AbcSize;
@@ -1435,7 +1535,9 @@ export declare function DialogFooter({ className, children, ...props }: default_
 
 export declare function DialogHeader({ className, children, ...props }: default_2.HTMLAttributes<HTMLDivElement>): default_2.JSX.Element;
 
-export declare interface DialogProps {
+export declare interface DialogProps extends Omit<default_2.DialogHTMLAttributes<HTMLDialogElement>, 'title' | 'open' | 'onClose' | 'onCancel' | 'children'> {
+    /** 允许透传自定义 data-* 属性至原生 <dialog> 节点 */
+    [dataAttr: `data-${string}`]: string | number | boolean | undefined;
     /** 控制模态框显隐（兼容 open / visible / isOpen 三种命名习惯） */
     open?: boolean;
     visible?: boolean;
@@ -1494,7 +1596,7 @@ export declare interface DialogProps {
  */
 export declare type DialogSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl';
 
-export declare function DialogTitle({ className, children, id, ...props }: default_2.HTMLAttributes<HTMLHeadingElement>): default_2.JSX.Element;
+export declare const DialogTitle: default_2.ForwardRefExoticComponent<default_2.HTMLAttributes<HTMLHeadingElement> & default_2.RefAttributes<HTMLHeadingElement>>;
 
 /** 字典驱动下拉框（通过 AbcProvider.dictAdapter 解耦具体业务接口） */
 export declare const DictSelect: default_2.FC<DictSelectProps>;
@@ -1585,8 +1687,11 @@ export declare interface DrawerProps {
     /** 平级并排展示模式下的向左推移间距（默认 560px） */
     adjacentOffset?: number;
     bodyClassName?: string;
+    panelClassName?: string;
     className?: string;
     role?: string;
+    'aria-label'?: string;
+    'aria-labelledby'?: string;
 }
 
 export declare type DrawerSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
@@ -1601,6 +1706,26 @@ export declare function DrawerTitle({ className, ...props }: default_2.HTMLAttri
  */
 export declare const Dropdown: default_2.FC<DropdownProps>;
 
+/**
+ * 复合下拉菜单容器 (DropdownMenu)
+ */
+export declare function DropdownMenu({ open: controlledOpen, defaultOpen, onOpenChange, children, }: DropdownMenuProps): default_2.JSX.Element;
+
+declare interface DropdownMenuCompoundItemProps extends default_2.ButtonHTMLAttributes<HTMLButtonElement> {
+    inset?: boolean;
+}
+
+export declare const DropdownMenuContent: default_2.ForwardRefExoticComponent<DropdownMenuContentProps & default_2.RefAttributes<HTMLDivElement>>;
+
+declare interface DropdownMenuContentProps extends default_2.HTMLAttributes<HTMLDivElement> {
+    align?: 'start' | 'end';
+    sideOffset?: number;
+}
+
+export declare const DropdownMenuGroup: default_2.FC<default_2.HTMLAttributes<HTMLDivElement>>;
+
+export declare const DropdownMenuItem: default_2.ForwardRefExoticComponent<DropdownMenuCompoundItemProps & default_2.RefAttributes<HTMLButtonElement>>;
+
 export declare interface DropdownMenuItem {
     key: string;
     label: default_2.ReactNode;
@@ -1611,6 +1736,27 @@ export declare interface DropdownMenuItem {
     divider?: boolean;
     dividerAbove?: boolean;
     onClick?: () => void;
+}
+
+export declare const DropdownMenuLabel: default_2.ForwardRefExoticComponent<default_2.HTMLAttributes<HTMLDivElement> & {
+    inset?: boolean;
+} & default_2.RefAttributes<HTMLDivElement>>;
+
+declare interface DropdownMenuProps {
+    open?: boolean;
+    defaultOpen?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    children: default_2.ReactNode;
+}
+
+export declare const DropdownMenuSeparator: default_2.ForwardRefExoticComponent<default_2.HTMLAttributes<HTMLDivElement> & default_2.RefAttributes<HTMLDivElement>>;
+
+export declare const DropdownMenuShortcut: default_2.FC<default_2.HTMLAttributes<HTMLSpanElement>>;
+
+export declare const DropdownMenuTrigger: default_2.ForwardRefExoticComponent<DropdownMenuTriggerProps & default_2.RefAttributes<HTMLButtonElement>>;
+
+declare interface DropdownMenuTriggerProps extends default_2.ButtonHTMLAttributes<HTMLButtonElement> {
+    asChild?: boolean;
 }
 
 export declare interface DropdownProps {
@@ -1658,6 +1804,12 @@ export declare interface DurationQuotaInputProps extends QuotaUnitInputBaseProps
 }
 
 export declare type DurationUnit = 's' | 'm' | 'h' | 'd';
+
+declare interface EmojiTextSegment {
+    type: 'text' | 'emoji';
+    value: string;
+    srText?: string;
+}
 
 /** 空状态占位组件（支持多尺寸层级与一键重置筛选交互） */
 export declare const EmptyState: default_2.FC<EmptyStateProps>;
@@ -1722,6 +1874,12 @@ declare interface ErrorBoundaryState {
     error: Error | null;
     errorInfo: ErrorInfo | null;
 }
+
+export declare function extractLeadingEmojiToken(text: string): {
+    prefix: string;
+    token: string | null;
+    rest: string;
+};
 
 /**
  * 通用多文件拖拽上传与校验列表组件 (FileUpload)
@@ -1851,13 +2009,15 @@ export declare type FormDrawerDialogSummaryRenderProps = ProFormContainerSummary
 
 /**
  * 标准表单项包装容器
- * 统一标签字重、必填星号、错误提示与辅助说明间距
+ * 既支持包裹自定义控件 children，也支持直接作为带 Label / Hint / Error 的独立输入框使用
  */
-export declare const FormField: default_2.FC<FormFieldProps>;
+export declare const FormField: default_2.ForwardRefExoticComponent<FormFieldProps & default_2.RefAttributes<HTMLInputElement>>;
 
-export declare interface FormFieldProps {
+export declare interface FormFieldProps extends Omit<InputProps, 'size' | 'error'> {
     /** 字段名称标签 */
     label?: default_2.ReactNode;
+    /** 标签右侧附加内容（兼容 extra 语义别名） */
+    labelExtra?: default_2.ReactNode;
     /** 关联表单控件的 htmlFor ID */
     htmlFor?: string;
     /** 是否必填标识 */
@@ -1865,9 +2025,11 @@ export declare interface FormFieldProps {
     /** 标签右侧悬浮说明提示 */
     tooltip?: default_2.ReactNode;
     /** 校验错误提示文本 */
-    error?: string;
+    error?: default_2.ReactNode;
     /** 底部辅助说明信息 */
     helperText?: default_2.ReactNode;
+    /** 辅助说明文本（传入独立输入模式时渲染于输入框上方并关联 aria-describedby） */
+    hint?: default_2.ReactNode;
     /** 右上角附加信息（如字数统计、快捷填充链接） */
     extra?: default_2.ReactNode;
     /** 排版方向 */
@@ -1876,8 +2038,12 @@ export declare interface FormFieldProps {
     size?: AbcSize;
     /** 组件交互动效规格 */
     motion?: AbcMotionPreset;
+    /** 暗色背景外观（用于认证页等深色容器） */
+    dark?: boolean;
+    /** 外层容器附加类名 */
+    containerClassName?: string;
     className?: string;
-    children: default_2.ReactNode;
+    children?: default_2.ReactNode;
 }
 
 export declare function getNestedValue(obj: any, path: string | string[] | undefined): any;
@@ -1910,21 +2076,47 @@ export declare interface HeaderColumnFilterPopoverProps {
     onApply: (nextValue: any) => void;
 }
 
+/**
+ * 模块聚合子导航栏 (HubNavBar)
+ */
+export declare function HubNavBar({ badge, layerBadge, badgeTone, layerTone, title, meta, navLabel, variant, children, className, ...props }: HubNavBarProps): React_2.JSX.Element;
+
+export declare interface HubNavBarProps extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'title'> {
+    badge?: React_2.ReactNode;
+    layerBadge?: React_2.ReactNode;
+    badgeTone?: 'indigo' | 'slate' | 'primary' | 'dark';
+    layerTone?: 'indigo' | 'slate' | 'primary' | 'dark';
+    title?: React_2.ReactNode;
+    meta?: React_2.ReactNode;
+    navLabel?: string;
+    variant?: 'compact' | 'layered' | 'pill';
+    children: React_2.ReactNode;
+}
+
+export declare function hubNavTabClassName(active: boolean, variant?: 'compact' | 'layered' | 'pill'): string;
+
 export declare const Icon: default_2.FC<IconProps>;
 
 export declare const ICON_CATALOG: IconItem[];
 
 /**
- * 图标文字组合徽标 (IconBadge)
+ * 图标徽标组件 (IconBadge)
  */
-export declare function IconBadge({ icon, label, variant, size, className, ...props }: IconBadgeProps): React_2.JSX.Element;
+export declare function IconBadge({ token, icon, label, variant, tone, size, iconSize, iconClassName, srText, className, ...props }: IconBadgeProps): React_2.JSX.Element;
 
 export declare interface IconBadgeProps extends React_2.HTMLAttributes<HTMLSpanElement> {
+    token?: string;
     icon?: React_2.ReactNode;
-    label: React_2.ReactNode;
+    label?: React_2.ReactNode;
     variant?: 'default' | 'success' | 'warning' | 'error' | 'info';
-    size?: 'xs' | 'sm' | 'md';
+    tone?: IconBadgeTone;
+    size?: 'xs' | 'sm' | 'md' | 'lg';
+    iconSize?: number;
+    iconClassName?: string;
+    srText?: string;
 }
+
+export declare type IconBadgeTone = 'indigo' | 'emerald' | 'violet' | 'sky' | 'amber' | 'cyan' | 'fuchsia' | 'rose' | 'teal' | 'slate';
 
 export declare interface IconItem {
     name: string;
@@ -2091,6 +2283,8 @@ export declare interface InputProps extends Omit<default_2.InputHTMLAttributes<H
     hidePasswordLabel?: string;
     /** 是否展示底部字数统计 */
     showCount?: boolean;
+    /** 清空按钮的无障碍标签 */
+    clearLabel?: string;
     onClear?: () => void;
     invalid?: boolean;
     wrapperClassName?: string;
@@ -2222,6 +2416,26 @@ export declare interface LoadingStateCardProps extends React_2.HTMLAttributes<HT
     size?: 'sm' | 'md';
 }
 
+/**
+ * 通用双语切换器组件 (LocaleSwitcher)
+ */
+export declare const LocaleSwitcher: React_2.ForwardRefExoticComponent<LocaleSwitcherProps & React_2.RefAttributes<HTMLButtonElement>>;
+
+export declare interface LocaleSwitcherProps extends Omit<React_2.ButtonHTMLAttributes<HTMLButtonElement>, 'onChange'> {
+    /** 当前语言代码（如 'zh-CN' | 'zh' | 'en'） */
+    locale: string;
+    /** 切换语言回调（toggle 模式） */
+    onToggle?: () => void;
+    /** 直接选择指定语言回调（segmented 模式优先调用） */
+    onSelectLocale?: (nextLocale: 'en' | 'zh') => void;
+    /** 展示模式：单按钮切换 ('toggle') 或分段双按钮组 ('segmented') */
+    mode?: 'toggle' | 'segmented';
+    /** 是否使用暗色外观 */
+    dark?: boolean;
+    /** 无障碍标题 */
+    label?: string;
+}
+
 export declare interface LogEntry {
     seq?: number;
     level?: string;
@@ -2320,6 +2534,11 @@ export declare interface NotificationBannerProps extends Omit<React_2.HTMLAttrib
 
 export declare type NotificationVariant = 'error' | 'warning' | 'success' | 'info';
 
+/** 页码偏移分页器（英文默认 Prev/Next 标签兼容别名） */
+export declare const OffsetPagination: default_2.FC<OffsetPaginationProps>;
+
+export declare type OffsetPaginationProps = PaginationProps;
+
 /**
  * 一次性敏感密钥/凭证展示弹窗 (OneTimeSecretDialog)
  * 专用于只下发一次的 API Key、Token、临时密码，强制提醒管理员及时安全保存
@@ -2373,8 +2592,40 @@ export declare interface PageContainerProps {
     children: default_2.ReactNode;
 }
 
+/**
+ * 通用页面头部组件 (PageHeader)
+ */
+export declare function PageHeader({ backLink, eyebrow, title, badge, description, action, actions, className, ...props }: PageHeaderProps): React_2.JSX.Element;
+
 /** 页面顶部标题栏容器样式 */
 export declare const pageHeaderClass = "flex flex-col sm:flex-row sm:items-center justify-between gap-3";
+
+export declare interface PageHeaderProps extends Omit<React_2.HTMLAttributes<HTMLElement>, 'title'> {
+    backLink?: React_2.ReactNode;
+    eyebrow?: React_2.ReactNode;
+    title: React_2.ReactNode;
+    badge?: React_2.ReactNode;
+    description?: React_2.ReactNode;
+    action?: React_2.ReactNode;
+    actions?: React_2.ReactNode;
+}
+
+/**
+ * 统一页面卡片区块容器 (PageSection / Section)
+ */
+declare function PageSection({ title, badge, description, action, children, className, contentClassName, noPadding, ...props }: PageSectionProps): React_2.JSX.Element;
+export { PageSection }
+export { PageSection as Section }
+
+export declare interface PageSectionProps extends Omit<React_2.HTMLAttributes<HTMLElement>, 'title'> {
+    title?: React_2.ReactNode;
+    badge?: React_2.ReactNode;
+    description?: React_2.ReactNode;
+    action?: React_2.ReactNode;
+    contentClassName?: string;
+    noPadding?: boolean;
+    children: React_2.ReactNode;
+}
 
 /** 页面副标题说明样式 */
 export declare const pageSubTitleClass = "text-xs text-[var(--abc-fg-muted)] mt-0.5";
@@ -2406,6 +2657,8 @@ export declare interface PaginationCursorMeta {
     hasNext?: boolean;
     /** 游标模式：是否包含上一页数据 */
     hasPrev?: boolean;
+    /** 游标模式：是否有上一页（兼容别名） */
+    hasPrevious?: boolean;
     /** 下一页游标标识符 */
     nextCursor?: string | null;
     /** 上一页游标标识符 */
@@ -2414,10 +2667,16 @@ export declare interface PaginationCursorMeta {
     currentCursor?: string | null;
     /** 已加载累计记录数 */
     loadedCount?: number;
+    /** 当前页记录数（兼容别名） */
+    count?: number;
+    /** 当前页记录数（兼容别名） */
+    currentCount?: number;
     /** 点击下一页游标回调 */
     onNext?: () => void;
     /** 点击上一页游标回调 */
     onPrev?: () => void;
+    /** 点击上一页回调（兼容别名） */
+    onPrevious?: () => void;
     /** 重置游标返回第一批/最新数据 */
     onResetCursor?: () => void;
 }
@@ -2429,6 +2688,8 @@ export declare interface PaginationProps extends Partial<PaginationCursorMeta> {
     currentPage?: number;
     page?: number;
     pageSize?: number;
+    /** 每页条数（兼容别名） */
+    limit?: number;
     /** 每页条数（数字）或控件尺寸规格（xs/sm/md/lg） */
     size?: number | AbcSize;
     /** 分页器控件尺寸规格（避免与数字型 pageSize 冲突时的显式指定入口） */
@@ -2436,11 +2697,22 @@ export declare interface PaginationProps extends Partial<PaginationCursorMeta> {
     motion?: AbcMotionPreset;
     total?: number;
     pageSizeOptions?: number[];
+    /** 可选每页大小列表（兼容别名） */
+    limitOptions?: readonly number[];
     onChange?: (page: number, pageSize: number) => void;
     onPageChange?: (page: number) => void;
     onSizeChange?: (size: number) => void;
     onPageSizeChange?: (size: number) => void;
+    /** 每页大小变更回调（兼容别名） */
+    onLimitChange?: (limit: number) => void;
     showTotal?: boolean | ((total: number) => default_2.ReactNode);
+    /** 左侧汇总文案（兼容别名） */
+    summaryText?: default_2.ReactNode;
+    /** 页码状态文案（兼容别名） */
+    pageStatusText?: default_2.ReactNode;
+    rowsPerPageLabel?: string;
+    prevLabel?: default_2.ReactNode;
+    nextLabel?: default_2.ReactNode;
     showQuickJumper?: boolean;
     className?: string;
     loading?: boolean;
@@ -3017,7 +3289,7 @@ export declare function ProFloatingBatchBar<T = Record<string, any>>({ selectedK
     motion?: AbcMotionPreset;
 }): default_2.JSX.Element | null;
 
-export declare function ProFormContainer({ title, description, triggerLabel, triggerIcon, triggerVariant, mode, size, maxWidthClass, footer, open: controlledOpen, onOpenChange, summarySlot, emptySummaryHint, headerActions, modalHeaderActions, inlineInTestEnv, renderInlineContainer, renderSummaryContainer, className, children, }: ProFormContainerProps): default_2.JSX.Element;
+export declare function ProFormContainer({ title, description, triggerLabel, triggerIcon, triggerVariant, mode, size, maxWidthClass, footer, open: controlledOpen, onOpenChange, summarySlot, emptySummaryHint, headerActions, modalHeaderActions, inlineInTestEnv, renderInlineContainer, renderSummaryContainer, closeLabel, className, children, }: ProFormContainerProps): default_2.JSX.Element;
 
 export declare interface ProFormContainerInlineRenderProps {
     title: string;
@@ -3066,6 +3338,8 @@ export declare interface ProFormContainerProps {
     renderInlineContainer?: (props: ProFormContainerInlineRenderProps) => default_2.ReactNode;
     /** 自定义浏览器环境摘要卡片容器渲染函数 */
     renderSummaryContainer?: (props: ProFormContainerSummaryRenderProps) => default_2.ReactNode;
+    /** 抽屉或弹窗关闭按钮无障碍文案 */
+    closeLabel?: string;
     /** 外层附加类名 */
     className?: string;
     /** 表单主体内容 */
@@ -3142,6 +3416,22 @@ export declare interface ProFormWatchSubscription {
  * 线性与 SVG 环形进度条 (Progress)
  */
 export declare const Progress: default_2.FC<ProgressProps>;
+
+/**
+ * 统一语义进度条 (ProgressBar)
+ * 支持阈值自动变色 (auto) 与规范化 ARIA progressbar 属性
+ */
+export declare const ProgressBar: default_2.ForwardRefExoticComponent<ProgressBarProps & default_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface ProgressBarProps extends Omit<default_2.HTMLAttributes<HTMLDivElement>, 'children'> {
+    value?: number | null;
+    max?: number;
+    size?: 'sm' | 'md' | 'lg';
+    variant?: 'default' | 'success' | 'warning' | 'danger' | 'auto';
+    dangerThreshold?: number;
+    warningThreshold?: number;
+    fillClassName?: string;
+}
 
 declare type ProgressListener = (event: {
     action: 'start' | 'done' | 'set';
@@ -3795,6 +4085,22 @@ export declare interface RadioGroupProps {
     className?: string;
 }
 
+/**
+ * 零依赖复合下拉选择器 (RadixSelect / SelectTrigger / SelectValue / SelectContent / SelectItem)
+ */
+export declare function RadixSelect({ value, defaultValue, onValueChange, disabled, open: controlledOpen, defaultOpen, onOpenChange, children, }: RadixSelectProps): default_2.JSX.Element;
+
+export declare interface RadixSelectProps {
+    value?: string;
+    defaultValue?: string;
+    onValueChange?: (value: string) => void;
+    disabled?: boolean;
+    open?: boolean;
+    defaultOpen?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    children: default_2.ReactNode;
+}
+
 export declare function ReadErrorBanner({ message, code, status, requestId, onRetry, retryLabel, pendingLabel, retryAriaLabel, pending, action, ...props }: ReadErrorBannerProps): React_2.JSX.Element;
 
 export declare interface ReadErrorBannerProps extends Omit<NotificationBannerProps, 'action' | 'variant'> {
@@ -3893,6 +4199,10 @@ export declare function resolveFieldKey(field: {
     name?: string;
 }): string;
 
+export declare function resolveSemanticLucideIcon(token?: string | null): LucideIcon;
+
+export declare function resolveStatusBadgeVariant(status: string): StatusBadgeVariant;
+
 /**
  * 企业级结果与异常状态反馈页 (Result: 403 / 404 / 500 / 成功 / 失败)
  */
@@ -3915,14 +4225,17 @@ export declare type ResultStatus = 'success' | 'info' | 'warning' | 'error' | '4
 export declare function resumeToast(id: string): void;
 
 /**
- * 富图标文本解析组件 (RichIconText)
- * 兼容 `[icon:xxx]` 占位符解析
+ * 智能矢量图标文本解析组件 (RichIconText)
  */
-export declare function RichIconText({ text, iconSize, preserveSrToken, className, ...props }: RichIconTextProps): React_2.JSX.Element;
+export declare function RichIconText({ text, token, icon, iconSize, size, iconClassName, preserveSrToken, className, children, ...props }: RichIconTextProps): React_2.JSX.Element;
 
 export declare interface RichIconTextProps extends React_2.HTMLAttributes<HTMLSpanElement> {
-    text: string;
+    text?: string;
+    token?: string;
+    icon?: string;
     iconSize?: number;
+    size?: number;
+    iconClassName?: string;
     preserveSrToken?: boolean;
 }
 
@@ -3971,6 +4284,12 @@ export declare interface SegmentedOption<T extends string | number> {
 
 export declare const Select: default_2.ForwardRefExoticComponent<SelectProps & default_2.RefAttributes<HTMLSelectElement>>;
 
+export declare const SelectContent: default_2.ForwardRefExoticComponent<SelectContentProps & default_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface SelectContentProps extends default_2.HTMLAttributes<HTMLDivElement> {
+    position?: 'popper' | 'item-aligned';
+}
+
 /**
  * 声明式单选快捷字段封装 (SelectField)
  * 提供直接面向字符串的 onValueChange 回调与触发器/弹层类名透传
@@ -3982,7 +4301,7 @@ export declare interface SelectFieldProps {
     defaultValue?: string;
     onValueChange?: (val: string) => void;
     onChange?: (val: any) => void;
-    options: Array<{
+    options: ReadonlyArray<{
         value: string | number;
         label: default_2.ReactNode;
         disabled?: boolean;
@@ -4003,6 +4322,17 @@ export declare interface SelectFieldProps {
     size?: SelectSize;
 }
 
+export declare const SelectGroup: default_2.FC<default_2.HTMLAttributes<HTMLDivElement>>;
+
+export declare const SelectItem: default_2.ForwardRefExoticComponent<SelectItemProps & default_2.RefAttributes<HTMLButtonElement>>;
+
+export declare interface SelectItemProps extends default_2.ButtonHTMLAttributes<HTMLButtonElement> {
+    value: string;
+    disabled?: boolean;
+}
+
+export declare const SelectLabel: default_2.ForwardRefExoticComponent<default_2.HTMLAttributes<HTMLDivElement> & default_2.RefAttributes<HTMLDivElement>>;
+
 export declare interface SelectOption {
     label: default_2.ReactNode;
     value: string | number;
@@ -4012,7 +4342,7 @@ export declare interface SelectOption {
 }
 
 export declare interface SelectProps extends Omit<default_2.SelectHTMLAttributes<HTMLSelectElement>, 'size' | 'onChange' | 'value' | 'defaultValue' | 'onBlur' | 'onKeyDown'> {
-    options?: SelectOption[];
+    options?: ReadonlyArray<SelectOption>;
     value?: string | number | Array<string | number>;
     defaultValue?: string | number | Array<string | number>;
     onChange?: (valOrEvent: any) => void;
@@ -4047,7 +4377,41 @@ export declare interface SelectProps extends Omit<default_2.SelectHTMLAttributes
     children?: default_2.ReactNode;
 }
 
+export declare const SelectSeparator: default_2.ForwardRefExoticComponent<default_2.HTMLAttributes<HTMLDivElement> & default_2.RefAttributes<HTMLDivElement>>;
+
 export declare type SelectSize = ControlSize | 'ghost';
+
+export declare const SelectTrigger: default_2.ForwardRefExoticComponent<SelectTriggerProps & default_2.RefAttributes<HTMLButtonElement>>;
+
+export declare interface SelectTriggerProps extends default_2.ButtonHTMLAttributes<HTMLButtonElement> {
+}
+
+export declare function SelectValue({ placeholder }: {
+    placeholder?: default_2.ReactNode;
+}): default_2.JSX.Element;
+
+/**
+ * 矢量语义图标组件 (SemanticIcon)
+ */
+export declare function SemanticIcon({ token, icon, size, strokeWidth, className, srText, ...props }: SemanticIconProps): React_2.JSX.Element;
+
+export declare interface SemanticIconProps extends Omit<React_2.SVGProps<SVGSVGElement>, 'ref'> {
+    token?: string;
+    icon?: string;
+    size?: number;
+    strokeWidth?: number;
+    srText?: string;
+}
+
+/**
+ * 语义分割线组件 (Separator)
+ */
+export declare const Separator: React_2.ForwardRefExoticComponent<SeparatorProps & React_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface SeparatorProps extends React_2.HTMLAttributes<HTMLDivElement> {
+    orientation?: 'horizontal' | 'vertical';
+    decorative?: boolean;
+}
 
 /** 经典侧边栏树形菜单渲染器（支持深浅双色、四档尺寸与动效、折叠 Portal 悬浮子菜单与平滑网格手风琴展开） */
 export declare const SidebarNav: default_2.FC<{
@@ -4126,6 +4490,51 @@ export declare interface SliderVerifyProps {
 /** 智能双模分页器（自动根据是否提供 total 或游标属性平滑降级切换） */
 export declare const SmartPagination: default_2.FC<PaginationProps>;
 
+export declare interface SonnerCompatToastItem {
+    id: string | number;
+    renderFn?: (id: string | number) => React_2.ReactNode;
+    title?: React_2.ReactNode;
+    description?: React_2.ReactNode;
+    variant?: 'default' | 'success' | 'error' | 'warning' | 'info';
+    duration?: number;
+    delete?: boolean;
+}
+
+/**
+ * 零三方依赖的 Sonner 兼容命令式 Toast 适配器
+ */
+export declare const sonnerToast: ((title: React_2.ReactNode, opts?: {
+    id?: string | number;
+    description?: React_2.ReactNode;
+    duration?: number;
+}) => string | number) & {
+    custom: (renderFn: (id: string | number) => React_2.ReactNode, opts?: {
+        id?: string | number;
+        duration?: number;
+    }) => string | number;
+    success: (title: React_2.ReactNode, opts?: {
+        id?: string | number;
+        description?: React_2.ReactNode;
+        duration?: number;
+    }) => string | number;
+    error: (title: React_2.ReactNode, opts?: {
+        id?: string | number;
+        description?: React_2.ReactNode;
+        duration?: number;
+    }) => string | number;
+    warning: (title: React_2.ReactNode, opts?: {
+        id?: string | number;
+        description?: React_2.ReactNode;
+        duration?: number;
+    }) => string | number;
+    info: (title: React_2.ReactNode, opts?: {
+        id?: string | number;
+        description?: React_2.ReactNode;
+        duration?: number;
+    }) => string | number;
+    dismiss: (id?: string | number) => void;
+};
+
 export declare type SortDirection = 'asc' | 'desc' | null;
 
 /** 弹性间距编排容器 */
@@ -4160,6 +4569,59 @@ export declare interface SpotlightCardProps extends default_2.HTMLAttributes<HTM
     motion?: AbcMotionPreset;
     hoverable?: boolean;
 }
+
+/**
+ * 统一指标与键值摘要卡片组件 (StatCard)
+ * 零三方图表依赖，兼容嵌套在 <dl> 描述列表与网格布局中
+ */
+export declare const StatCard: React_2.FC<StatCardProps>;
+
+export declare interface StatCardProps extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'title'> {
+    /** 指标或属性名称（渲染为语义化的 dt 标签，兼容嵌入 dl 描述列表） */
+    label: React_2.ReactNode;
+    /** 指标主数值或内容（渲染为 dd 标签） */
+    value: React_2.ReactNode;
+    /** 左侧装饰图标 */
+    icon?: React_2.ReactNode;
+    /** 底部辅助说明或次要提示 */
+    hint?: React_2.ReactNode;
+    /** 右上角徽标或附加标签 */
+    badge?: React_2.ReactNode;
+    /** 数值右侧趋势或对比说明 */
+    trend?: React_2.ReactNode;
+    /** 数值是否使用等宽字体（默认开启以保证 tabular-nums 垂直对齐） */
+    mono?: boolean;
+    /** 卡片语义色调 */
+    tone?: StatCardTone;
+    /** 尺寸规格 */
+    size?: StatCardSize;
+    /** 数值容器附加类名 */
+    valueClassName?: string;
+    /** 卡片底部扩展插槽（如进度条或补充指标） */
+    children?: React_2.ReactNode;
+}
+
+export declare type StatCardSize = 'sm' | 'default' | 'lg';
+
+export declare type StatCardTone = 'default' | 'surface' | 'primary' | 'success' | 'warning' | 'danger';
+
+export declare const STATUS_VARIANTS: Record<string, StatusBadgeVariant>;
+
+/**
+ * 统一语义状态徽章组件 (StatusBadge)
+ */
+export declare function StatusBadge({ status, label, variant, dot, pulse, humanize, className, ...props }: StatusBadgeProps): React_2.JSX.Element;
+
+export declare interface StatusBadgeProps extends Omit<React_2.HTMLAttributes<HTMLSpanElement>, 'children'> {
+    status: string;
+    label?: React_2.ReactNode;
+    variant?: StatusBadgeVariant;
+    dot?: boolean;
+    pulse?: boolean;
+    humanize?: boolean;
+}
+
+export declare type StatusBadgeVariant = NonNullable<BadgeProps['variant']>;
 
 /** 语义化状态标签（兼容 tone / status / color 与 text / label / children） */
 export declare const StatusTag: default_2.FC<StatusTagProps>;
@@ -4214,22 +4676,29 @@ export declare interface StepsProps {
 
 export declare type StepStatus = 'wait' | 'process' | 'finish' | 'error';
 
-/** 拨动开关组件（支持四档尺寸规格、动效规格、异步 loading 防重入态与旧尺寸别名兼容） */
+export declare function stripLeadingEmoji(text: string): string;
+
+/** 拨动开关组件（支持四档尺寸规格、动效规格、异步 loading 防重入态、无障碍标签描述与旧尺寸别名兼容） */
 export declare const Switch: default_2.FC<SwitchProps>;
 
 export declare interface SwitchProps {
+    id?: string;
     checked?: boolean;
     defaultChecked?: boolean;
     onChange?: (checked: boolean) => void;
+    onCheckedChange?: (checked: boolean) => void;
     disabled?: boolean;
     loading?: boolean;
     size?: AbcSize | 'small' | 'default';
     motion?: AbcMotionPreset;
+    label?: default_2.ReactNode;
+    description?: default_2.ReactNode;
     checkedLabel?: default_2.ReactNode;
     uncheckedLabel?: default_2.ReactNode;
     checkedChildren?: default_2.ReactNode;
     unCheckedChildren?: default_2.ReactNode;
     ariaLabel?: string;
+    'aria-label'?: string;
     className?: string;
 }
 
@@ -4421,18 +4890,30 @@ export declare const TableRow: React_2.ForwardRefExoticComponent<React_2.HTMLAtt
 
 /**
  * 响应式无障碍标签页组件
- * 遵循规范：单行不换行横向滚动、基于 [aria-selected="true"] 伪元素底边线提供非纯色形状指示、
- * 非激活面板采用 hidden="until-found" 并在内层子容器施加内边距避免空白占高。
+ * 同时支持声明式 items 模式与复合子组件 (TabsList / TabsTrigger / TabsContent) 模式
  */
-export declare function Tabs<K extends string = string>({ items, activeKey, value, defaultActiveKey, onChange, variant, size, motion, ariaLabel, extra, className, panelClassName, }: TabsProps<K>): default_2.JSX.Element;
+export declare function Tabs<K extends string = string>({ items, activeKey, value, defaultActiveKey, defaultValue, onChange, onValueChange, variant, size, motion, ariaLabel, extra, className, panelClassName, children, }: TabsProps<K>): default_2.JSX.Element;
+
+export declare const TabsContent: default_2.ForwardRefExoticComponent<TabsContentProps & default_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface TabsContentProps extends default_2.HTMLAttributes<HTMLDivElement> {
+    value: string;
+}
+
+export declare const TabsList: default_2.ForwardRefExoticComponent<TabsListProps & default_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface TabsListProps extends default_2.HTMLAttributes<HTMLDivElement> {
+}
 
 export declare interface TabsProps<K extends string = string> {
-    items: TabItem<K>[];
+    items?: TabItem<K>[];
     activeKey?: K;
     /** activeKey 受控别名 */
     value?: K;
     defaultActiveKey?: K;
+    defaultValue?: K;
     onChange?: (key: K) => void;
+    onValueChange?: (key: K) => void;
     variant?: 'line' | 'pills' | 'segmented';
     size?: AbcSize;
     motion?: AbcMotionPreset;
@@ -4440,6 +4921,13 @@ export declare interface TabsProps<K extends string = string> {
     extra?: default_2.ReactNode;
     className?: string;
     panelClassName?: string;
+    children?: default_2.ReactNode;
+}
+
+export declare const TabsTrigger: default_2.ForwardRefExoticComponent<TabsTriggerProps & default_2.RefAttributes<HTMLButtonElement>>;
+
+export declare interface TabsTriggerProps extends default_2.ButtonHTMLAttributes<HTMLButtonElement> {
+    value: string;
 }
 
 /**
@@ -4547,6 +5035,29 @@ export declare interface TimelineProps {
 export declare const toast: AbcToastMethods;
 
 /**
+ * 结构化诊断通知卡片 (ToastCard)
+ */
+export declare function ToastCard({ id, variant, title, message, code, status, requestId, actionHint, durationMs, paused, requestIdLabel, copyIdLabel, copiedIdLabel, dismissLabel, onDismiss, }: ToastCardProps): React_2.JSX.Element;
+
+export declare interface ToastCardProps {
+    id: string;
+    variant: NotificationVariant;
+    title: string;
+    message: string;
+    code?: string;
+    status?: number;
+    requestId?: string;
+    actionHint?: string;
+    durationMs: number | null;
+    paused?: boolean;
+    requestIdLabel?: string;
+    copyIdLabel?: string;
+    copiedIdLabel?: string;
+    dismissLabel?: string;
+    onDismiss: (id: string) => void;
+}
+
+/**
  * ToastContainer — 企业级轻量通知挂载容器
  * 支持 6 种视口定位、悬停倒计时暂停、图文/操作卡片排版、Portal 目标自定义与多容器隔离
  */
@@ -4624,6 +5135,37 @@ export declare interface ToastContainerProps {
     onDismiss?: (id: string) => void;
 }
 
+/**
+ * 零外部依赖的 Toaster 视口组件
+ * 支持多通知叠放顶栏一键全部清除与 custom ToastCard 渲染
+ */
+export declare function Toaster({ position, visibleToasts, activeCount, onClearAll, clearAllLabel, clearAllThreshold, className, }: ToasterProps): React_2.ReactPortal | null;
+
+export declare interface ToasterProps {
+    position?: 'top-right' | 'top-left' | 'top-center' | 'bottom-right' | 'bottom-left' | 'bottom-center';
+    visibleToasts?: number;
+    gap?: number;
+    expand?: boolean;
+    richColors?: boolean;
+    theme?: 'light' | 'dark' | 'system';
+    offset?: number | string | {
+        top?: number;
+        right?: number;
+        bottom?: number;
+        left?: number;
+    };
+    toastOptions?: {
+        unstyled?: boolean;
+        classNames?: Record<string, string>;
+    };
+    activeCount?: number;
+    onClearAll?: () => void;
+    clearAllLabel?: string;
+    stackCountLabel?: (count: number) => string;
+    clearAllThreshold?: number;
+    className?: string;
+}
+
 export declare interface ToastItem extends ToastOptions {
     id: string;
     tone: ToastTone;
@@ -4680,6 +5222,8 @@ export declare interface ToastOptions {
 export declare type ToastPosition = 'top-right' | 'top-left' | 'top-center' | 'bottom-right' | 'bottom-left' | 'bottom-center';
 
 export declare type ToastTone = 'success' | 'error' | 'warning' | 'info' | 'loading' | 'danger';
+
+export declare function tokenizeEmojiSegments(input: string, preserveSrToken?: boolean): EmojiTextSegment[];
 
 export declare const TONE_ICONS: Record<string, default_2.ReactNode>;
 
@@ -5023,13 +5567,15 @@ export declare function useDraftStorage<T extends Record<string, unknown>>(stora
  * 视口感知的浮层坐标计算与碰撞翻转引擎
  * 自动监听窗口缩放、任意嵌套滚动容器滚动及浮层自身尺寸变化，实时翻转越界方向并修正 transform-origin。
  */
-export declare function useFloatingPosition({ open, triggerRef, floatingRef, placement, offset, matchWidth, viewportPadding, }: UseFloatingPositionOptions): FloatingPositionResult;
+export declare function useFloatingPosition({ open, triggerRef, fallbackTriggerRef, floatingRef, placement, offset, matchWidth, viewportPadding, rightAnchorOnOverflow, }: UseFloatingPositionOptions): FloatingPositionResult;
 
 export declare interface UseFloatingPositionOptions {
     /** 浮层是否处于挂载可见周期 */
     open: boolean;
     /** 触发器元素引用 */
     triggerRef: default_2.RefObject<HTMLElement | null>;
+    /** 当主 triggerRef 在 JSDOM 中未 mock 返回零矩形时回退测量的备用引用（如外层 wrapper） */
+    fallbackTriggerRef?: default_2.RefObject<HTMLElement | null>;
     /** 浮层面板元素引用 */
     floatingRef: default_2.RefObject<HTMLElement | null>;
     /** 期望弹出方位 */
@@ -5040,6 +5586,8 @@ export declare interface UseFloatingPositionOptions {
     matchWidth?: boolean;
     /** 距离视口边缘的安全留白像素（默认 8） */
     viewportPadding?: number;
+    /** 当触发器贴近右边缘导致左侧对齐会溢出视口时，改用 style.right 右对齐展开 */
+    rightAnchorOnOverflow?: boolean;
 }
 
 /** 读取 ABC Design 上下文（若未包裹 AbcProvider，返回 null） */
@@ -5096,6 +5644,13 @@ export declare interface UseProTableOptions<T = any> extends ProTableApiOptions<
     params?: Record<string, any>;
 }
 
+/**
+ * 订阅当前活跃的自定义 Toast 队列状态
+ */
+export declare function useSonner(): {
+    toasts: SonnerCompatToastItem[];
+};
+
 export declare const useTableApi: typeof useProTableApi;
 
 /**
@@ -5138,6 +5693,23 @@ export declare interface WatermarkProps extends Omit<default_2.HTMLAttributes<HT
     opacity?: number;
     children?: default_2.ReactNode;
     className?: string;
+}
+
+export declare interface WorkflowBannerStep {
+    step: string | number;
+    title: React_2.ReactNode;
+    description: React_2.ReactNode;
+}
+
+export declare function WorkflowStepBanner({ badge, title, extra, steps, collapsible, defaultCollapsed, className, ...props }: WorkflowStepBannerProps): React_2.JSX.Element;
+
+export declare interface WorkflowStepBannerProps extends Omit<React_2.HTMLAttributes<HTMLElement>, 'title'> {
+    badge: React_2.ReactNode;
+    title: React_2.ReactNode;
+    extra?: React_2.ReactNode;
+    steps: WorkflowBannerStep[];
+    collapsible?: boolean;
+    defaultCollapsed?: boolean;
 }
 
 

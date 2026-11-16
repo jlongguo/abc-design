@@ -31,7 +31,13 @@ export function useDialog() {
  */
 export type DialogSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl'
 
-export interface DialogProps {
+export interface DialogProps
+  extends Omit<
+    React.DialogHTMLAttributes<HTMLDialogElement>,
+    'title' | 'open' | 'onClose' | 'onCancel' | 'children'
+  > {
+  /** 允许透传自定义 data-* 属性至原生 <dialog> 节点 */
+  [dataAttr: `data-${string}`]: string | number | boolean | undefined
   /** 控制模态框显隐（兼容 open / visible / isOpen 三种命名习惯） */
   open?: boolean
   visible?: boolean
@@ -126,6 +132,7 @@ export const Dialog: React.FC<DialogProps> = ({
   onFullscreenChange,
   motion,
   className,
+  ...dialogHtmlProps
 }) => {
   const isOpen = open ?? visible ?? isOpenProp ?? false
   const resolvedMotion = useAbcMotion(motion)
@@ -136,6 +143,14 @@ export const Dialog: React.FC<DialogProps> = ({
   const dialogRef = useRef<HTMLDialogElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const pressedOutsideRef = useRef(false)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+  const restorePreviousFocus = useCallback(() => {
+    const prev = previousFocusRef.current
+    previousFocusRef.current = null
+    if (prev && prev.isConnected && typeof prev.focus === 'function') {
+      prev.focus({ preventScroll: true })
+    }
+  }, [])
   const handleClose = useCallback(() => {
     if (closeDisabled) return
     if (onClose) {
@@ -173,6 +188,13 @@ export const Dialog: React.FC<DialogProps> = ({
     const dialogEl = dialogRef.current
     if (!dialogEl) return
 
+    if (!previousFocusRef.current && typeof document !== 'undefined') {
+      const active = document.activeElement
+      if (active instanceof HTMLElement && !dialogEl.contains(active)) {
+        previousFocusRef.current = active
+      }
+    }
+
     let usedNativeModal = false
     if (typeof dialogEl.showModal === 'function') {
       if (!dialogEl.open) {
@@ -187,6 +209,17 @@ export const Dialog: React.FC<DialogProps> = ({
       }
     } else {
       dialogEl.setAttribute('open', '')
+    }
+
+    // 兼容 jsdom 或 showModal 未移动焦点的场景，自动聚焦弹窗关闭按钮/首个交互元素
+    if (isOpen && typeof document !== 'undefined' && !dialogEl.contains(document.activeElement)) {
+      const focusTarget =
+        dialogEl.querySelector<HTMLElement>('[autofocus]') ??
+        dialogEl.querySelector<HTMLElement>('[data-dialog-close]:not([disabled])') ??
+        dialogEl.querySelector<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      focusTarget?.focus({ preventScroll: true })
     }
 
     const handleCancel = (e: Event) => {
@@ -217,18 +250,20 @@ export const Dialog: React.FC<DialogProps> = ({
           dialogEl.removeAttribute('open')
         }
       }
+      restorePreviousFocus()
     }
-  }, [isMounted])
+  }, [isMounted, restorePreviousFocus])
 
-  // 关闭时复位拖拽偏移与非受控全屏态
+  // 关闭时复位拖拽偏移与非受控全屏态，并立即归还焦点
   useEffect(() => {
     if (!isOpen) {
       setOffset({ x: 0, y: 0 })
       if (controlledFullscreen === undefined) {
         setInternalFullscreen(false)
       }
+      restorePreviousFocus()
     }
-  }, [isOpen, controlledFullscreen])
+  }, [isOpen, controlledFullscreen, restorePreviousFocus])
 
   // 判断指针坐标是否落在面板矩形外部（防止框选文字拖拽至遮罩松手时误关弹窗，并豁免挂载在 dialog 顶层内的浮层）
   const isPointerOutsidePanel = (e: React.PointerEvent<HTMLDialogElement>): boolean => {
@@ -285,11 +320,13 @@ export const Dialog: React.FC<DialogProps> = ({
 
   return createPortal(
     <dialog
+      {...dialogHtmlProps}
       ref={dialogRef}
       data-motion={resolvedMotion}
       aria-labelledby={titleId}
       aria-describedby={description ? descId : undefined}
       style={{
+        ...dialogHtmlProps.style,
         display: isOpen ? 'flex' : 'none',
         position: 'fixed',
         inset: 0,
@@ -390,6 +427,7 @@ export const Dialog: React.FC<DialogProps> = ({
                 {closable && (
                   <button
                     type="button"
+                    data-dialog-close=""
                     aria-label={closeLabel}
                     title={closeLabel}
                     disabled={closeDisabled}
@@ -458,6 +496,7 @@ export function DialogContent({
       {isClosable && (
         <button
           type="button"
+          data-dialog-close=""
           aria-label={closeLabel}
           title={closeLabel}
           disabled={isDisabled}
@@ -500,14 +539,27 @@ export function DialogFooter({ className, children, ...props }: React.HTMLAttrib
   )
 }
 
-export function DialogTitle({ className, children, id, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+export const DialogTitle = React.forwardRef<
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, children, id, ...props }, ref) => {
   const ctx = useDialog()
   return (
-    <h2 id={id ?? ctx?.titleId} data-slot="dialog-title" className={cn('text-base font-semibold leading-none tracking-tight text-[var(--abc-fg)]', className)} {...props}>
+    <h2
+      ref={ref}
+      id={id ?? ctx?.titleId}
+      data-slot="dialog-title"
+      className={cn(
+        'text-base font-semibold leading-none tracking-tight text-[var(--abc-fg)]',
+        className
+      )}
+      {...props}
+    >
       {children}
     </h2>
   )
-}
+})
+DialogTitle.displayName = 'DialogTitle'
 
 export function DialogDescription({ className, children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (

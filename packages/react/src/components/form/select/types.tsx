@@ -1,6 +1,7 @@
 import type { AbcMotionPreset } from '@abc-design/tokens'
 import React from 'react'
 import { RichIconText } from '../../display/IconBadge'
+import { tokenizeEmojiSegments } from '../../display/semanticIcons'
 import type { ControlSize } from '../Input'
 
 export interface SelectOption {
@@ -76,7 +77,7 @@ export interface SelectProps
     React.SelectHTMLAttributes<HTMLSelectElement>,
     'size' | 'onChange' | 'value' | 'defaultValue' | 'onBlur' | 'onKeyDown'
   > {
-  options?: SelectOption[]
+  options?: ReadonlyArray<SelectOption>
   value?: string | number | Array<string | number>
   defaultValue?: string | number | Array<string | number>
   onChange?: (valOrEvent: any) => void
@@ -127,8 +128,18 @@ export const MULTI_SIZE_H: Record<ControlSize, string> = {
   lg: 'min-h-[var(--abc-control-h-lg)] text-sm',
 }
 
+function isTextOnlyLabel(node: React.ReactNode): boolean {
+  if (node === null || node === undefined || typeof node === 'boolean') return true
+  if (typeof node === 'string' || typeof node === 'number') return true
+  if (Array.isArray(node)) return node.every(isTextOnlyLabel)
+  return false
+}
+
 export function renderOptionContent(opt: ParsedSelectOption, preserveSrToken = true): React.ReactNode {
-  if (opt.textLabel.includes('[icon:')) {
+  const hasRichEmoji =
+    isTextOnlyLabel(opt.label) &&
+    tokenizeEmojiSegments(opt.textLabel, preserveSrToken).some((seg) => seg.type === 'emoji')
+  if (opt.textLabel.includes('[icon:') || hasRichEmoji) {
     return (
       <RichIconText
         text={opt.textLabel}

@@ -208,7 +208,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   const handleRemove = (uid: string) => {
     rawFilesRef.current.delete(uid)
-    updateFiles(files.filter((item) => item.uid !== uid))
+    updateFiles(latestFilesRef.current.filter((item) => item.uid !== uid))
     setValidationError(null)
   }
 
@@ -216,7 +216,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     const raw = rawFilesRef.current.get(uid)
     if (!raw) return
     updateFiles(
-      files.map((item) =>
+      latestFilesRef.current.map((item) =>
         item.uid === uid ? { ...item, status: 'uploading', percent: 25, error: undefined } : item
       )
     )

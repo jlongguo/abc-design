@@ -351,8 +351,10 @@ export const Cascader: React.FC<CascaderProps> = ({
       setActivePath([...activePath.slice(0, focusedCol), nextOpt.value])
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      const prevOpt = colOptions[(curIdx - 1 + colOptions.length) % colOptions.length]
-      setActivePath([...activePath.slice(0, focusedCol), prevOpt.value])
+      if (colOptions.length === 0) return
+      const prevIdx = curIdx <= 0 ? colOptions.length - 1 : curIdx - 1
+      const prevOpt = colOptions[prevIdx]
+      if (prevOpt) setActivePath([...activePath.slice(0, focusedCol), prevOpt.value])
     } else if (e.key === 'ArrowRight') {
       e.preventDefault()
       const current = colOptions[Math.max(0, curIdx)]

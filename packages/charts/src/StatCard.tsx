@@ -2,7 +2,7 @@ import React from 'react'
 import { Card, Skeleton, StatusTag } from '@abc-design/react'
 import clsx from 'clsx'
 
-export interface StatCardProps {
+export interface StatCardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title' | 'prefix'> {
   /** 指标标题 */
   title?: React.ReactNode
   /** title 语义别名 */
@@ -13,12 +13,14 @@ export interface StatCardProps {
   prefix?: React.ReactNode
   /** 数值后缀（如 % / 次 / GB） */
   suffix?: React.ReactNode
-  /** 环比/同比趋势百分比（正数渲染上升绿标，负数渲染下降红标，0 渲染中性灰标） */
-  trend?: number
+  /** 环比/同比趋势百分比或自定义趋势节点 */
+  trend?: number | React.ReactNode
   /** 趋势对比说明文字（如“较昨日”） */
   trendLabel?: React.ReactNode
   /** 右上角装饰图标 */
   icon?: React.ReactNode
+  /** 右上角状态徽章 */
+  badge?: React.ReactNode
   /** 底部补充信息或迷你趋势图插槽 */
   footer?: React.ReactNode
   /** footer 辅助说明别名 */
@@ -27,8 +29,13 @@ export interface StatCardProps {
   tone?: string
   /** 尺寸规格别名 */
   size?: string
+  /** 数值是否使用等宽字体 */
+  mono?: boolean
+  /** 数值附加样式类名 */
+  valueClassName?: string
   /** 加载骨架态 */
   loading?: boolean
+  children?: React.ReactNode
   className?: string
 }
 
@@ -45,12 +52,17 @@ export const StatCard: React.FC<StatCardProps> = ({
   trend,
   trendLabel = '较上周期',
   icon,
+  badge,
   footer,
   hint,
   tone,
   size,
+  mono = true,
+  valueClassName,
   loading = false,
+  children,
   className,
+  ...restProps
 }) => {
   const displayTitle = title ?? label
   const displayFooter = footer ?? hint
@@ -69,28 +81,39 @@ export const StatCard: React.FC<StatCardProps> = ({
     )
   }
 
+  const numericTrend = typeof trend === 'number' ? trend : undefined
   const trendTone =
-    trend === undefined ? 'neutral' : trend > 0 ? 'success' : trend < 0 ? 'danger' : 'neutral'
+    numericTrend === undefined
+      ? 'neutral'
+      : numericTrend > 0
+        ? 'success'
+        : numericTrend < 0
+          ? 'danger'
+          : 'neutral'
   const trendText =
-    trend === undefined ? null : `${trend > 0 ? '+' : ''}${trend.toFixed(1)}%`
+    numericTrend === undefined ? null : `${numericTrend > 0 ? '+' : ''}${numericTrend.toFixed(1)}%`
 
   return (
     <Card
       hoverable
+      data-slot="stat-card"
       className={clsx(
         'relative overflow-hidden transition-all',
         isSurface && 'bg-[var(--abc-bg-surface)] border-[var(--abc-border)]',
         isLarge ? 'p-5' : 'p-4',
         className
       )}
+      {...restProps}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1.5">
           <div className="text-xs font-medium text-[var(--abc-fg-muted)]">{displayTitle}</div>
           <div
             className={clsx(
-              'flex items-baseline gap-1 font-mono font-bold tracking-tight text-[var(--abc-fg)] tabular-nums',
-              isLarge ? 'text-3xl' : 'text-2xl'
+              'flex items-baseline gap-1 font-bold tracking-tight text-[var(--abc-fg)] tabular-nums',
+              mono && 'font-mono',
+              isLarge ? 'text-3xl' : 'text-2xl',
+              valueClassName
             )}
           >
             {prefix && <span className="text-sm font-medium text-[var(--abc-fg-muted)]">{prefix}</span>}
@@ -98,26 +121,34 @@ export const StatCard: React.FC<StatCardProps> = ({
             {suffix && <span className="text-xs font-normal text-[var(--abc-fg-muted)]">{suffix}</span>}
           </div>
         </div>
-        {icon && (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]">
-            {icon}
+        {badge || icon ? (
+          <div className="flex shrink-0 items-center gap-2">
+            {badge}
+            {icon && (
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]">
+                {icon}
+              </div>
+            )}
           </div>
-        )}
+        ) : null}
       </div>
 
-      {(trendText || displayFooter) && (
+      {(trendText || (trend !== undefined && typeof trend !== 'number') || displayFooter) && (
         <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--abc-border-subtle)] pt-2.5 text-xs">
           {trendText ? (
             <div className="flex items-center gap-1.5">
               <StatusTag tone={trendTone}>{trendText}</StatusTag>
               <span className="text-[var(--abc-fg-muted)]">{trendLabel}</span>
             </div>
+          ) : trend !== undefined && typeof trend !== 'number' ? (
+            <div className="flex items-center gap-1.5 text-[var(--abc-fg-muted)]">{trend}</div>
           ) : (
             <span />
           )}
           {displayFooter && <div className="text-[var(--abc-fg-muted)] truncate">{displayFooter}</div>}
         </div>
       )}
+      {children}
     </Card>
   )
 }

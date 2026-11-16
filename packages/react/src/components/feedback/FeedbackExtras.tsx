@@ -247,6 +247,95 @@ export const Progress: React.FC<ProgressProps> = ({
   )
 }
 
+export interface ProgressBarProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'> {
+  value?: number | null
+  max?: number
+  size?: 'sm' | 'md' | 'lg'
+  variant?: 'default' | 'success' | 'warning' | 'danger' | 'auto'
+  dangerThreshold?: number
+  warningThreshold?: number
+  fillClassName?: string
+}
+
+/**
+ * 统一语义进度条 (ProgressBar)
+ * 支持阈值自动变色 (auto) 与规范化 ARIA progressbar 属性
+ */
+export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
+  (
+    {
+      className,
+      fillClassName,
+      value,
+      max = 100,
+      size = 'sm',
+      variant = 'auto',
+      dangerThreshold = 90,
+      warningThreshold = 100,
+      'aria-valuetext': ariaValueText,
+      ...props
+    },
+    ref
+  ) => {
+    const percentage =
+      value == null || !Number.isFinite(value) || max <= 0
+        ? null
+        : Math.min(100, Math.max(0, Math.round((value / max) * 100)))
+
+    const resolvedVariant: 'default' | 'success' | 'warning' | 'danger' =
+      variant === 'auto'
+        ? percentage !== null && percentage >= dangerThreshold
+          ? 'danger'
+          : percentage !== null && percentage >= warningThreshold
+            ? 'warning'
+            : 'default'
+        : variant
+
+    const trackHeight = size === 'lg' ? 'h-3' : size === 'md' ? 'h-2' : 'h-1.5'
+    const fillBg =
+      resolvedVariant === 'danger'
+        ? 'bg-[var(--abc-danger)]'
+        : resolvedVariant === 'warning'
+          ? 'bg-[var(--abc-warning)]'
+          : resolvedVariant === 'success'
+            ? 'bg-[var(--abc-success)]'
+            : 'bg-[var(--abc-primary)]'
+
+    return (
+      <div
+        ref={ref}
+        role="progressbar"
+        data-slot="progress-bar"
+        aria-valuemin={0}
+        aria-valuemax={max}
+        aria-valuenow={percentage ?? undefined}
+        aria-valuetext={
+          ariaValueText ??
+          (percentage === null ? 'Quota usage unavailable or unlimited' : `${percentage}% used`)
+        }
+        className={cn(
+          'w-full overflow-clip rounded-full bg-[var(--abc-bg-subtle)] shadow-[inset_0_1px_2px_rgb(0_0_0/0.06)]',
+          trackHeight,
+          className
+        )}
+        {...props}
+      >
+        {percentage !== null && (
+          <div
+            className={cn(
+              'h-full rounded-full transition-all duration-300 ease-out motion-reduce:transition-none',
+              fillBg,
+              fillClassName
+            )}
+            style={{ width: `${percentage}%` }}
+          />
+        )}
+      </div>
+    )
+  }
+)
+ProgressBar.displayName = 'ProgressBar'
+
 /* ==================== 3. Result 页面状态反馈组件 ==================== */
 
 export type ResultStatus = 'success' | 'info' | 'warning' | 'error' | '403' | '404' | '500'

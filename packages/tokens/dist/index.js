@@ -1,11 +1,12 @@
-import { ABC_BRAND_PRESETS, ABC_DENSITY_PRESETS, ABC_MOTION_PRESETS, ABC_RADIUS_PRESETS, ABC_SIZE_PRESETS, } from './presets';
-export { ABC_BRAND_PRESETS, ABC_DENSITY_PRESETS, ABC_MOTION_PRESETS, ABC_RADIUS_PRESETS, ABC_SIZE_PRESETS, };
+import { ABC_BRAND_PRESETS, ABC_DENSITY_PRESETS, ABC_MOTION_PRESETS, ABC_RADIUS_PRESETS, ABC_SIZE_PRESETS, ABC_SURFACE_PRESETS, } from './presets';
+export { ABC_BRAND_PRESETS, ABC_DENSITY_PRESETS, ABC_MOTION_PRESETS, ABC_RADIUS_PRESETS, ABC_SIZE_PRESETS, ABC_SURFACE_PRESETS, };
 /** 默认企业级主题配置 */
 export const DEFAULT_ABC_THEME = {
     mode: 'system',
     brand: 'blue',
     density: 'default',
     radius: 'md',
+    surface: 'enterprise',
     fontScale: 'md',
     visualMode: 'default',
     motion: 'smooth',
@@ -73,6 +74,7 @@ export function applyAbcThemeToDocument(config) {
     root.setAttribute('data-abc-brand', config.brand);
     root.setAttribute('data-abc-density', config.density);
     root.setAttribute('data-abc-radius', config.radius);
+    root.setAttribute('data-abc-surface', config.surface ?? 'enterprise');
     root.setAttribute('data-abc-font-scale', config.fontScale ?? 'md');
     root.setAttribute('data-abc-visual', config.visualMode ?? 'default');
     root.setAttribute('data-abc-size', config.componentSize ?? 'sm');

@@ -22,6 +22,8 @@ export type AbcPageTransition = 'fade-slide' | 'fade' | 'zoom' | 'slide-left' | 
 export type AbcFontScale = 'sm' | 'md' | 'lg';
 /** 无障碍与特殊视觉色彩模式 */
 export type AbcVisualMode = 'default' | 'color-weak' | 'gray';
+/** 视觉表面质感人格档位：enterprise（内部运营严谨实色态） | spotlight（外部消费/开发者云产品聚光微光态） */
+export type AbcSurfaceProfile = 'enterprise' | 'spotlight';
 /** 品牌色板阶梯结构 */
 export interface AbcPaletteScale {
     label: string;
@@ -66,5 +68,10 @@ export declare const ABC_MOTION_PRESETS: Record<AbcMotionPreset, {
     label: string;
     description: string;
     durationBase: string;
+}>;
+/** 视觉表面质感人格规格说明（区分内部高密度运营台与外部消费级/开发者云工作台） */
+export declare const ABC_SURFACE_PRESETS: Record<AbcSurfaceProfile, {
+    label: string;
+    description: string;
 }>;
 //# sourceMappingURL=presets.d.ts.map

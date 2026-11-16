@@ -150,10 +150,12 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     const { style, actualSide, portalContainer } = useFloatingPosition({
       open: isMounted,
       triggerRef,
+      fallbackTriggerRef: rootRef,
       floatingRef: listboxRef,
       placement: 'bottomLeft',
       offset: 4,
       matchWidth,
+      rightAnchorOnOverflow: true,
     })
 
     const effectivePortalContainer = containerProp ?? portalContainer
@@ -400,6 +402,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             name={name}
             title={title}
             aria-label={ariaLabel}
+            aria-hidden={open ? 'true' : undefined}
             aria-invalid={nativeSelectRest['aria-invalid'] ?? (isInvalid || undefined)}
             disabled={disabled}
             multiple={multiple || undefined}
@@ -473,19 +476,30 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             size === 'ghost'
               ? 'h-auto w-auto border-transparent bg-transparent p-0 text-xs text-[var(--abc-fg)] shadow-none focus:outline-none'
               : cn(
-                  'w-full px-2.5 py-1',
+                  !hideChevron ? 'w-full pl-2.5 py-1' : 'w-full px-2.5 py-1',
                   baseFieldControlClass,
                   multiple ? MULTI_SIZE_H[resolvedSize] : SINGLE_SIZE_H[resolvedSize],
                   open && 'border-[var(--abc-primary)] ring-2 ring-[var(--abc-ring)]',
                   isInvalid && 'border-[var(--abc-danger)]',
                   disabled && 'opacity-65 cursor-not-allowed bg-[var(--abc-bg-muted)]'
                 ),
-            className
+            !hideChevron && size !== 'ghost' && className
+              ? className.replace(/\bpx-(\S+)/g, 'pl-$1')
+              : className,
+            !hideChevron && size !== 'ghost' && (size === 'sm' ? 'pr-7' : 'pr-8')
           )}
         >
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
             {selectedItems.length === 0 ? (
-              <span className="truncate text-[var(--abc-fg-placeholder)]">{resolvedPlaceholder}</span>
+              isLegacyChildrenMode ? (
+                <output aria-hidden="true" className="truncate text-[var(--abc-fg-placeholder)]">
+                  {resolvedPlaceholder}
+                </output>
+              ) : (
+                <span className="truncate text-[var(--abc-fg-placeholder)]">
+                  {resolvedPlaceholder}
+                </span>
+              )
             ) : multiple ? (
               selectedItems.map((item) => (
                 <span
@@ -511,6 +525,12 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                   )}
                 </span>
               ))
+            ) : isLegacyChildrenMode ? (
+              <output aria-hidden="true" className="truncate text-[var(--abc-fg)]">
+                {selectedItems[0]?.option
+                  ? renderOptionContent(selectedItems[0].option, false)
+                  : selectedItems[0]?.label}
+              </output>
             ) : (
               <span className="truncate text-[var(--abc-fg)]">
                 {selectedItems[0]?.option
@@ -559,9 +579,9 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
               data-placement={actualSide}
               aria-multiselectable={multiple || undefined}
               onMouseDown={(e) => e.stopPropagation()}
-              style={style}
+              style={{ ...style, pointerEvents: 'auto' }}
               className={cn(
-                'z-[1500] max-w-[min(480px,calc(100vw-16px))] overflow-hidden rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] shadow-[var(--abc-shadow-popover)]',
+                'pointer-events-auto z-[1500] max-w-[min(480px,calc(100vw-16px))] overflow-hidden rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] shadow-[var(--abc-shadow-popover)]',
                 matchWidth ? 'min-w-full' : 'min-w-[140px]',
                 isVisible ? 'abc-animate-popover-in' : 'abc-animate-popover-out',
                 effectiveDropdownClass
@@ -623,6 +643,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                           id={`${selectId}-opt-${idx}`}
                           type="button"
                           role="option"
+                          data-slot="select-option"
                           aria-selected={isChecked}
                           disabled={opt.disabled}
                           onMouseEnter={() => {

@@ -81,6 +81,8 @@ export interface ProFormContainerProps {
   renderInlineContainer?: (props: ProFormContainerInlineRenderProps) => React.ReactNode
   /** 自定义浏览器环境摘要卡片容器渲染函数 */
   renderSummaryContainer?: (props: ProFormContainerSummaryRenderProps) => React.ReactNode
+  /** 抽屉或弹窗关闭按钮无障碍文案 */
+  closeLabel?: string
   /** 外层附加类名 */
   className?: string
   /** 表单主体内容 */
@@ -121,14 +123,16 @@ export function ProFormContainer({
   inlineInTestEnv,
   renderInlineContainer,
   renderSummaryContainer,
+  closeLabel,
   className,
   children,
 }: ProFormContainerProps) {
   const isTest =
     inlineInTestEnv ??
-    ((typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
-      (typeof import.meta !== 'undefined' &&
-        Boolean((import.meta as unknown as { env?: { MODE?: string } }).env?.MODE === 'test')))
+    (controlledOpen === undefined &&
+      ((typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
+        (typeof import.meta !== 'undefined' &&
+          Boolean((import.meta as unknown as { env?: { MODE?: string } }).env?.MODE === 'test'))))
 
   const [internalOpen, setInternalOpen] = useState(false)
   const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen
@@ -267,6 +271,7 @@ export function ProFormContainer({
           title={title}
           description={description}
           footer={footer ?? modalHeaderActions}
+          closeLabel={closeLabel}
           className={maxWidthClass}
         >
           {children}

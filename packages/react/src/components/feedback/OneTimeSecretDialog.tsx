@@ -45,27 +45,25 @@ export function OneTimeSecretDialog({
   secret,
   open,
   secretValue,
-  description = '此密钥仅显示一次。请在关闭前复制并安全存储。',
+  description = 'This secret is displayed only once. Please copy and store it securely before closing.',
   secretLabel,
   metadata = [],
   closeLabel = '关闭',
-  acknowledgeLabel = '我已妥善保存此密钥',
-  copyLabel = '复制密钥',
-  copiedLabel = '已复制',
-  copyErrorMessage = '剪贴板写入失败，请手动选择复制。',
+  acknowledgeLabel = 'I have saved this secret',
+  copyLabel = 'Copy Secret',
+  copiedLabel = 'Copied',
+  copyErrorMessage = 'Clipboard write failed. Please manually select and copy the secret above.',
   className,
   onClose,
 }: OneTimeSecretDialogProps) {
   const resolvedSecret = secret ?? secretValue ?? null
   const isOpen = open !== undefined ? open : Boolean(resolvedSecret)
   const [copied, setCopied] = React.useState(false)
-  const [acknowledged, setAcknowledged] = React.useState(false)
   const [copyError, setCopyError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     if (!isOpen) {
       setCopied(false)
-      setAcknowledged(false)
       setCopyError(null)
     }
   }, [isOpen])
@@ -162,18 +160,7 @@ export function OneTimeSecretDialog({
             </div>
           )}
 
-          {/* 强制勾选确认备份 */}
-          <label className="flex cursor-pointer items-start gap-2 pt-1 select-none">
-            <input
-              type="checkbox"
-              checked={acknowledged}
-              onChange={(e) => setAcknowledged(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-[var(--abc-border)] text-[var(--abc-primary)] focus:ring-[var(--abc-primary)] cursor-pointer"
-            />
-            <span className="text-xs text-[var(--abc-fg)] font-medium leading-tight">
-              {acknowledgeLabel}
-            </span>
-          </label>
+          {/* 确认已保存后直接关闭一次性弹窗 */}
         </div>
 
         <DialogFooter className="pt-2">
@@ -181,10 +168,9 @@ export function OneTimeSecretDialog({
             type="button"
             variant="primary"
             size="sm"
-            disabled={!acknowledged}
             onClick={onClose}
           >
-            {closeLabel}
+            {acknowledgeLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,8 +1,18 @@
 import React, { useEffect, useImperativeHandle, useRef, useState } from 'react'
-import MDEditor, { type MDEditorProps } from '@uiw/react-md-editor'
+import MDEditor from '@uiw/react-md-editor'
+import '@uiw/react-md-editor/markdown-editor.css'
 import { useAbcConfig } from '@abc-design/react'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+
+/** 透传底层 Markdown 编辑器的附加属性，避免宿主应用强耦合第三方类型声明 */
+export interface MarkdownPassthroughProps {
+  textareaProps?: Omit<
+    React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+    'value' | 'defaultValue' | 'onChange' | 'onScroll'
+  >
+  [key: string]: unknown
+}
 
 export interface MarkdownEditorProps {
   /** 编辑器内容（Markdown 文本） */
@@ -23,11 +33,8 @@ export interface MarkdownEditorProps {
   disabled?: boolean
   /** 自定义外层容器样式类名 */
   className?: string
-  /** 透传底层 @uiw/react-md-editor 的扩展属性 */
-  editorProps?: Omit<
-    MDEditorProps,
-    'value' | 'onChange' | 'height' | 'preview' | 'hideToolbar'
-  >
+  /** 透传底层 Markdown 编辑器的扩展属性 */
+  editorProps?: MarkdownPassthroughProps
 }
 
 export interface MarkdownEditorHandle {

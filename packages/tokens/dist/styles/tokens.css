@@ -90,7 +90,11 @@
     --abc-header-h: 54px;
     --abc-tabbar-h: 38px;
 
-    /* 阴影层次 */
+    /* 阴影与表面材质层次（默认 enterprise 纯平企业风） */
+    --abc-ambient-glow: transparent;
+    --abc-surface-highlight: none;
+    --abc-glass-bg: var(--abc-bg-surface);
+    --abc-glass-blur: 0px;
     --abc-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04);
     --abc-shadow-popover: 0 12px 32px -6px rgba(15, 23, 42, 0.14), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
     --abc-shadow-dialog: 0 24px 56px -12px rgba(15, 23, 42, 0.28);
@@ -397,6 +401,57 @@
     --abc-hover-lift: -3px;
     --abc-hover-scale: 1.015;
   }
+
+  /* ==================== 2 档表面质感人格（enterprise 内部运营态 vs spotlight 外部消费/开发者云产品态） ==================== */
+  :root[data-abc-surface="spotlight"] {
+    --abc-bg-canvas: #f5f7fc;
+    --abc-bg-surface: #ffffff;
+    --abc-bg-elevated: #ffffff;
+    --abc-bg-muted: #eef2f9;
+    --abc-bg-subtle: #e7edf7;
+    --abc-border: rgba(213, 223, 236, 0.9);
+    --abc-border-strong: #bfcde0;
+    --abc-ambient-glow: color-mix(in srgb, var(--abc-brand-500) 7.5%, transparent);
+    --abc-surface-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.78);
+    --abc-glass-bg: color-mix(in srgb, var(--abc-bg-surface) 82%, transparent);
+    --abc-glass-blur: 14px;
+    --abc-shadow-card: 0 1px 2px rgba(11, 18, 32, 0.04), 0 4px 14px -4px rgba(11, 18, 32, 0.05);
+    --abc-shadow-popover: 0 14px 36px -6px rgba(11, 18, 32, 0.14), 0 4px 12px -2px rgba(11, 18, 32, 0.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root[data-abc-surface="spotlight"]:not([data-abc-theme="light"]) {
+      --abc-bg-canvas: #090c13;
+      --abc-bg-surface: #111622;
+      --abc-bg-elevated: #171e2e;
+      --abc-bg-muted: #0d121c;
+      --abc-bg-subtle: #192132;
+      --abc-border: rgba(38, 49, 68, 0.88);
+      --abc-border-strong: #33425b;
+      --abc-ambient-glow: color-mix(in srgb, var(--abc-brand-500) 13%, transparent);
+      --abc-surface-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+      --abc-glass-bg: color-mix(in srgb, #111622 80%, transparent);
+      --abc-glass-blur: 16px;
+      --abc-shadow-card: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px -6px rgba(0, 0, 0, 0.45);
+      --abc-shadow-popover: 0 20px 44px -8px rgba(0, 0, 0, 0.62);
+    }
+  }
+
+  :root[data-abc-surface="spotlight"]:is([data-abc-theme="dark"], .dark) {
+    --abc-bg-canvas: #090c13;
+    --abc-bg-surface: #111622;
+    --abc-bg-elevated: #171e2e;
+    --abc-bg-muted: #0d121c;
+    --abc-bg-subtle: #192132;
+    --abc-border: rgba(38, 49, 68, 0.88);
+    --abc-border-strong: #33425b;
+    --abc-ambient-glow: color-mix(in srgb, var(--abc-brand-500) 13%, transparent);
+    --abc-surface-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+    --abc-glass-bg: color-mix(in srgb, #111622 80%, transparent);
+    --abc-glass-blur: 16px;
+    --abc-shadow-card: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px -6px rgba(0, 0, 0, 0.45);
+    --abc-shadow-popover: 0 20px 44px -8px rgba(0, 0, 0, 0.62);
+  }
 }
 
 /* ==================== 基础排版与无损滚动条降级 ==================== */
@@ -407,6 +462,12 @@
     margin: 0;
     font-family: var(--abc-font-sans);
     background-color: var(--abc-bg-canvas);
+    background-image: radial-gradient(
+      ellipse 80% 260px at 50% -40px,
+      var(--abc-ambient-glow),
+      transparent 75%
+    );
+    background-repeat: no-repeat;
     color: var(--abc-fg);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

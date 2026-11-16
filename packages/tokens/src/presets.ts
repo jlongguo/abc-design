@@ -33,6 +33,9 @@ export type AbcFontScale = 'sm' | 'md' | 'lg'
 /** 无障碍与特殊视觉色彩模式 */
 export type AbcVisualMode = 'default' | 'color-weak' | 'gray'
 
+/** 视觉表面质感人格档位：enterprise（内部运营严谨实色态） | spotlight（外部消费/开发者云产品聚光微光态） */
+export type AbcSurfaceProfile = 'enterprise' | 'spotlight'
+
 /** 品牌色板阶梯结构 */
 export interface AbcPaletteScale {
   label: string
@@ -211,4 +214,19 @@ export const ABC_MOTION_PRESETS: Record<
   subtle: { label: '克制微动', description: '轻量化高速阻尼，无回弹高效率', durationBase: '140ms' },
   smooth: { label: '丝滑阻尼', description: '标准企业级物理缓动曲线', durationBase: '220ms' },
   spring: { label: '灵动弹簧', description: '带物理过冲感的高阶弹性微交互', durationBase: '280ms' },
+}
+
+/** 视觉表面质感人格规格说明（区分内部高密度运营台与外部消费级/开发者云工作台） */
+export const ABC_SURFACE_PRESETS: Record<
+  AbcSurfaceProfile,
+  { label: string; description: string }
+> = {
+  enterprise: {
+    label: '企业严谨 (Enterprise)',
+    description: '纯平实色高对比画布与清晰实线边界，适合内部运营、审批与财务对账后台',
+  },
+  spotlight: {
+    label: '消费聚光 (Spotlight)',
+    description: '顶部品牌环境微光、黑曜石深邃暗色阶、1px 微高光描边与毛玻璃浮层，适合外部开发者与 SaaS 控制台',
+  },
 }

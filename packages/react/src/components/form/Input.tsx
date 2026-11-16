@@ -56,6 +56,8 @@ export interface InputProps
   hidePasswordLabel?: string
   /** 是否展示底部字数统计 */
   showCount?: boolean
+  /** 清空按钮的无障碍标签 */
+  clearLabel?: string
   onClear?: () => void
   invalid?: boolean
   wrapperClassName?: string
@@ -83,6 +85,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       showPasswordLabel,
       hidePasswordLabel,
       showCount = false,
+      clearLabel = '清空输入',
       onClear,
       invalid = false,
       id,
@@ -227,7 +230,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 type="button"
                 tabIndex={-1}
                 data-testid="input-clear"
-                aria-label="清空输入"
+                aria-label={clearLabel}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={handleClear}
                 className="inline-flex shrink-0 items-center justify-center rounded-full p-0.5 text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
@@ -241,6 +244,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 tabIndex={-1}
                 disabled={disabled}
                 data-testid="password-toggle"
+                aria-pressed={revealPwd}
                 aria-label={revealPwd ? (hidePasswordLabel ?? '隐藏密码') : (showPasswordLabel ?? '显示密码')}
                 title={revealPwd ? (hidePasswordLabel ?? '隐藏密码') : (showPasswordLabel ?? '显示密码')}
                 onMouseDown={(e) => e.preventDefault()}

@@ -168,6 +168,28 @@ export const Tooltip: React.FC<TooltipProps> = ({
   )
 }
 
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCompoundItem,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+} from './DropdownMenuCompound'
+
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+}
+export const DropdownMenuItem = DropdownMenuCompoundItem
+
 export interface DropdownMenuItem {
   key: string
   label: React.ReactNode

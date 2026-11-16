@@ -12,11 +12,13 @@ export interface CheckboxProps
   defaultChecked?: boolean
   indeterminate?: boolean
   onChange?: (checked: boolean, e: React.ChangeEvent<HTMLInputElement>) => void
+  onCheckedChange?: (checked: boolean) => void
   disabled?: boolean
   size?: AbcSize
   motion?: AbcMotionPreset
   label?: React.ReactNode
   description?: React.ReactNode
+  wrapperClassName?: string
   className?: string
 }
 
@@ -50,11 +52,13 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
       defaultChecked = false,
       indeterminate = false,
       onChange,
+      onCheckedChange,
       disabled = false,
       size,
       motion,
       label,
       description,
+      wrapperClassName,
       className,
       ...rest
     },
@@ -82,13 +86,13 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
 
     return (
       <label
-        htmlFor={id}
         data-motion={resolvedMotion}
         className={cn(
           'inline-flex text-[var(--abc-fg-secondary)] select-none',
           CHECKBOX_LABEL_TEXT[resolvedSize],
           hasContent ? 'items-start gap-2' : 'items-center justify-center',
           disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+          wrapperClassName,
           className
         )}
       >
@@ -104,6 +108,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
             ref={innerRef}
             id={id}
             type="checkbox"
+            data-slot="checkbox"
             checked={isChecked}
             disabled={disabled}
             onChange={(e) => {
@@ -111,6 +116,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
               const next = e.target.checked
               setIsChecked(next)
               onChange?.(next, e)
+              onCheckedChange?.(next)
             }}
             className="peer sr-only"
           />
@@ -148,18 +154,23 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
 Checkbox.displayName = 'Checkbox'
 
 export interface SwitchProps {
+  id?: string
   checked?: boolean
   defaultChecked?: boolean
   onChange?: (checked: boolean) => void
+  onCheckedChange?: (checked: boolean) => void
   disabled?: boolean
   loading?: boolean
   size?: AbcSize | 'small' | 'default'
   motion?: AbcMotionPreset
+  label?: React.ReactNode
+  description?: React.ReactNode
   checkedLabel?: React.ReactNode
   uncheckedLabel?: React.ReactNode
   checkedChildren?: React.ReactNode
   unCheckedChildren?: React.ReactNode
   ariaLabel?: string
+  'aria-label'?: string
   className?: string
 }
 
@@ -184,44 +195,57 @@ const SWITCH_THUMB_OFF: Record<AbcSize, string> = {
   lg: 'h-5.5 w-5.5 translate-x-0.5',
 }
 
-/** 拨动开关组件（支持四档尺寸规格、动效规格、异步 loading 防重入态与旧尺寸别名兼容） */
+/** 拨动开关组件（支持四档尺寸规格、动效规格、异步 loading 防重入态、无障碍标签描述与旧尺寸别名兼容） */
 export const Switch: React.FC<SwitchProps> = ({
+  id: externalId,
   checked,
   defaultChecked = false,
   onChange,
+  onCheckedChange,
   disabled = false,
   loading = false,
   size,
   motion,
+  label,
+  description,
   checkedLabel,
   uncheckedLabel,
   checkedChildren,
   unCheckedChildren,
   ariaLabel,
+  'aria-label': ariaLabelAttr,
   className,
 }) => {
   const mappedPropSize: AbcSize | undefined =
     size === 'small' ? 'sm' : size === 'default' ? 'md' : size
   const resolvedSize = useAbcSize(mappedPropSize, 'md')
   const resolvedMotion = useAbcMotion(motion)
+  const generatedId = useId()
+  const switchId = externalId || generatedId
 
   const [isOn, setIsOn] = useControllableState({
     value: checked,
     defaultValue: defaultChecked,
-    onChange,
+    onChange: (next) => {
+      onChange?.(next)
+      onCheckedChange?.(next)
+    },
   })
 
   const isDisabled = Boolean(disabled || loading)
   const onText = checkedLabel ?? checkedChildren
   const offText = uncheckedLabel ?? unCheckedChildren
 
-  return (
+  const control = (
     <button
+      id={switchId}
       type="button"
       role="switch"
       aria-checked={isOn}
-      aria-label={ariaLabel}
+      aria-label={ariaLabelAttr ?? ariaLabel}
+      aria-labelledby={!ariaLabelAttr && !ariaLabel && label ? `${switchId}-label` : undefined}
       disabled={isDisabled}
+      data-slot="switch"
       data-motion={resolvedMotion}
       onClick={() => {
         if (!isDisabled) setIsOn(!isOn)
@@ -251,6 +275,30 @@ export const Switch: React.FC<SwitchProps> = ({
         <span className="sr-only">{isOn ? onText : offText}</span>
       )}
     </button>
+  )
+
+  if (!label && !description) {
+    return control
+  }
+
+  return (
+    <div className="flex items-start gap-2.5">
+      {control}
+      <div className="flex flex-col">
+        {label ? (
+          <label
+            id={`${switchId}-label`}
+            htmlFor={switchId}
+            className="text-sm font-medium text-[var(--abc-fg)] cursor-pointer"
+          >
+            {label}
+          </label>
+        ) : null}
+        {description ? (
+          <span className="text-xs text-[var(--abc-fg-muted)]">{description}</span>
+        ) : null}
+      </div>
+    </div>
   )
 }
 
@@ -417,3 +465,139 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
     </div>
   )
 }
+
+export interface CheckableTagProps
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type' | 'size'> {
+  label?: React.ReactNode
+  onCheckedChange?: (checked: boolean) => void
+  mono?: boolean
+  size?: 'sm' | 'md'
+  labelClassName?: string
+}
+
+/** 可勾选胶囊标签 (CheckableTag) */
+export const CheckableTag = React.forwardRef<HTMLInputElement, CheckableTagProps>(
+  (
+    {
+      checked = false,
+      disabled = false,
+      label,
+      children,
+      mono = true,
+      size = 'md',
+      className,
+      labelClassName,
+      onChange,
+      onCheckedChange,
+      ...props
+    },
+    ref
+  ) => (
+    <label
+      data-slot="checkable-tag"
+      data-state={checked ? 'checked' : 'unchecked'}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-md border font-medium transition-all duration-150 select-none',
+        'focus-within:outline-none focus-within:ring-2 focus-within:ring-[var(--abc-ring)]',
+        size === 'sm' ? 'px-2 py-1 text-[11px]' : 'px-2.5 py-1.5 text-xs',
+        mono && 'font-mono',
+        checked
+          ? 'border-[var(--abc-primary)]/40 bg-[var(--abc-primary-soft)] text-[var(--abc-primary)] shadow-2xs'
+          : 'border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] hover:bg-[var(--abc-bg-subtle)]',
+        disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer active:scale-[0.98]',
+        labelClassName,
+        className
+      )}
+    >
+      <input
+        ref={ref}
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        className="sr-only"
+        onChange={(event) => {
+          onChange?.(event)
+          onCheckedChange?.(event.target.checked)
+        }}
+        {...props}
+      />
+      <Check
+        aria-hidden="true"
+        strokeWidth={2.75}
+        className={cn(
+          'shrink-0 transition-all duration-150',
+          checked
+            ? 'size-3.5 scale-100 opacity-100 text-[var(--abc-primary)]'
+            : 'size-0 scale-0 opacity-0'
+        )}
+      />
+      <span>{children ?? label}</span>
+    </label>
+  )
+)
+CheckableTag.displayName = 'CheckableTag'
+
+export interface CheckableTagOption<T extends string = string> {
+  value: T
+  label?: React.ReactNode
+  disabled?: boolean
+}
+
+export interface CheckableTagGroupProps<T extends string = string>
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> {
+  options: ReadonlyArray<T | CheckableTagOption<T>>
+  value?: ReadonlyArray<T>
+  values?: ReadonlyArray<T>
+  onValueChange?: (next: T[]) => void
+  onValuesChange?: (next: T[]) => void
+  mono?: boolean
+  size?: 'sm' | 'md'
+}
+
+/** 声明式多选胶囊标签组 (CheckableTagGroup) */
+export function CheckableTagGroup<T extends string = string>({
+  options,
+  value,
+  values,
+  onValueChange,
+  onValuesChange,
+  mono = true,
+  size = 'md',
+  className,
+  ...props
+}: CheckableTagGroupProps<T>) {
+  const activeValues = value ?? values ?? []
+  const handleChange = onValueChange ?? onValuesChange ?? (() => {})
+  return (
+    <div
+      data-slot="checkable-tag-group"
+      className={cn('flex flex-wrap gap-2', className)}
+      {...props}
+    >
+      {options.map((raw) => {
+        const option: CheckableTagOption<T> =
+          typeof raw === 'string' ? { value: raw, label: raw } : raw
+        const isChecked = activeValues.includes(option.value)
+        return (
+          <CheckableTag
+            key={option.value}
+            checked={isChecked}
+            disabled={option.disabled}
+            mono={mono}
+            size={size}
+            onCheckedChange={(checked) => {
+              if (checked) {
+                handleChange([...activeValues, option.value])
+              } else {
+                handleChange(activeValues.filter((item) => item !== option.value))
+              }
+            }}
+          >
+            {option.label ?? option.value}
+          </CheckableTag>
+        )
+      })}
+    </div>
+  )
+}
+

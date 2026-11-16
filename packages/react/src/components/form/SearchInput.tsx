@@ -21,7 +21,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
       containerClassName,
       wrapperClassName,
       onClear,
-      clearLabel = '清空搜索',
+      clearLabel = 'Clear search',
       size = 'sm',
       ...props
     },
@@ -33,6 +33,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           ref={ref}
           size={size}
           allowClear={Boolean(onClear)}
+          clearLabel={clearLabel}
           onClear={onClear}
           prefix={
             <Search

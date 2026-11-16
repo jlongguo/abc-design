@@ -19,6 +19,8 @@ export interface UseFloatingPositionOptions {
   open: boolean
   /** 触发器元素引用 */
   triggerRef: React.RefObject<HTMLElement | null>
+  /** 当主 triggerRef 在 JSDOM 中未 mock 返回零矩形时回退测量的备用引用（如外层 wrapper） */
+  fallbackTriggerRef?: React.RefObject<HTMLElement | null>
   /** 浮层面板元素引用 */
   floatingRef: React.RefObject<HTMLElement | null>
   /** 期望弹出方位 */
@@ -29,6 +31,8 @@ export interface UseFloatingPositionOptions {
   matchWidth?: boolean
   /** 距离视口边缘的安全留白像素（默认 8） */
   viewportPadding?: number
+  /** 当触发器贴近右边缘导致左侧对齐会溢出视口时，改用 style.right 右对齐展开 */
+  rightAnchorOnOverflow?: boolean
 }
 
 export interface FloatingPositionResult {
@@ -104,17 +108,20 @@ function resolveTransformOrigin(
 export function useFloatingPosition({
   open,
   triggerRef,
+  fallbackTriggerRef,
   floatingRef,
   placement = 'bottomLeft',
   offset = 6,
   matchWidth = false,
   viewportPadding = 8,
+  rightAnchorOnOverflow = false,
 }: UseFloatingPositionOptions): FloatingPositionResult {
   const { side: preferredSide, align } = parsePlacement(placement)
 
   const [state, setState] = useState<{
     top: number
-    left: number
+    left?: number
+    right?: number
     minWidth?: number
     actualSide: FloatingSide
     arrowOffset: number
@@ -123,6 +130,7 @@ export function useFloatingPosition({
   }>(() => ({
     top: 0,
     left: 0,
+    right: undefined,
     minWidth: undefined,
     actualSide: preferredSide,
     arrowOffset: 16,
@@ -133,7 +141,16 @@ export function useFloatingPosition({
   const update = useCallback(() => {
     if (typeof window === 'undefined' || !triggerRef.current) return
 
-    const triggerRect = triggerRef.current.getBoundingClientRect()
+    let triggerRect = triggerRef.current.getBoundingClientRect()
+    if (
+      triggerRect.width === 0 &&
+      triggerRect.height === 0 &&
+      triggerRect.top === 0 &&
+      triggerRect.left === 0 &&
+      fallbackTriggerRef?.current
+    ) {
+      triggerRect = fallbackTriggerRef.current.getBoundingClientRect()
+    }
     const floatEl = floatingRef.current
     const floatRect = floatEl?.getBoundingClientRect()
 
@@ -230,14 +247,26 @@ export function useFloatingPosition({
     // 钳制到安全视口内，防止贴边截断
     const maxLeft = Math.max(pad, vw - floatW - pad)
     const maxTop = Math.max(pad, vh - floatH - pad)
-    const clampedLeft = Math.min(Math.max(pad, left), maxLeft)
+    const effectiveOverflowW = Math.max(floatW, triggerRect.width, 220)
+    const anchorRight =
+      rightAnchorOnOverflow &&
+      (actualSide === 'top' || actualSide === 'bottom') &&
+      align === 'start' &&
+      triggerRect.left + effectiveOverflowW + pad > vw
+    const computedRight = anchorRight
+      ? Math.round(Math.max(pad, vw - triggerRect.right) * 10) / 10
+      : undefined
+    const clampedLeft = anchorRight
+      ? undefined
+      : Math.round(Math.min(Math.max(pad, left), maxLeft) * 10) / 10
     const clampedTop = Math.min(Math.max(pad, top), maxTop)
 
     // 计算箭头指向触发器中心点的相对偏移
+    const effectiveLeft = clampedLeft ?? Math.max(pad, vw - (computedRight ?? pad) - floatW)
     const arrowOffset =
       actualSide === 'top' || actualSide === 'bottom'
         ? Math.min(
-            Math.max(10, triggerRect.left + triggerRect.width / 2 - clampedLeft),
+            Math.max(10, triggerRect.left + triggerRect.width / 2 - effectiveLeft),
             Math.max(10, floatW - 10)
           )
         : Math.min(
@@ -245,14 +274,15 @@ export function useFloatingPosition({
             Math.max(10, floatH - 10)
           )
 
-    const transformOrigin = resolveTransformOrigin(actualSide, align)
+    const transformOrigin = resolveTransformOrigin(actualSide, anchorRight ? 'end' : align)
     const minWidth = matchWidth ? Math.round(triggerRect.width) : undefined
 
     setState((prev) => {
       if (
         prev.positioned &&
         Math.abs(prev.top - clampedTop) < 0.5 &&
-        Math.abs(prev.left - clampedLeft) < 0.5 &&
+        prev.left === clampedLeft &&
+        prev.right === computedRight &&
         prev.minWidth === minWidth &&
         prev.actualSide === actualSide &&
         Math.abs(prev.arrowOffset - arrowOffset) < 0.5 &&
@@ -262,7 +292,8 @@ export function useFloatingPosition({
       }
       return {
         top: Math.round(clampedTop * 10) / 10,
-        left: Math.round(clampedLeft * 10) / 10,
+        left: clampedLeft,
+        right: computedRight,
         minWidth,
         actualSide,
         arrowOffset: Math.round(arrowOffset),
@@ -270,7 +301,7 @@ export function useFloatingPosition({
         positioned: true,
       }
     })
-  }, [triggerRef, floatingRef, preferredSide, align, offset, matchWidth, viewportPadding])
+  }, [triggerRef, fallbackTriggerRef, floatingRef, preferredSide, align, offset, matchWidth, viewportPadding, rightAnchorOnOverflow])
 
   useIsomorphicLayoutEffect(() => {
     if (!open) {
@@ -316,7 +347,8 @@ export function useFloatingPosition({
     style: {
       position: 'fixed',
       top: `${state.top}px`,
-      left: `${state.left}px`,
+      left: state.left !== undefined ? `${state.left}px` : undefined,
+      right: state.right !== undefined ? `${state.right}px` : undefined,
       minWidth: state.minWidth ? `${state.minWidth}px` : undefined,
       transformOrigin: state.transformOrigin,
       // 尚未完成首帧同步坐标测算前先隐藏，防止残影在 (0, 0) 或上次位置闪现一帧

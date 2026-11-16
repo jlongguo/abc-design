@@ -1,49 +1,49 @@
-import { BarChart as P, LineChart as E, PieChart as M, GaugeChart as $, RadarChart as A, ScatterChart as G } from "echarts/charts";
-import { TitleComponent as W, DatasetComponent as _, DataZoomComponent as k, GridComponent as H, LegendComponent as I, TooltipComponent as Y, MarkLineComponent as Z, MarkPointComponent as q } from "echarts/components";
-import { use as J, graphic as K, init as Q } from "echarts/core";
-import { graphic as he } from "echarts/core";
-import { CanvasRenderer as V } from "echarts/renderers";
-import { jsx as s, jsxs as p } from "react/jsx-runtime";
-import { useRef as T, useMemo as X, useEffect as z } from "react";
-import { ABC_BRAND_PRESETS as O } from "@abc-design/tokens";
-import { useAbcConfig as U, Skeleton as N, EmptyState as w, Card as R, StatusTag as D } from "@abc-design/react";
-J([
-  P,
-  E,
-  M,
+import { BarChart as $, LineChart as k, PieChart as A, GaugeChart as G, RadarChart as W, ScatterChart as _ } from "echarts/charts";
+import { TitleComponent as H, DatasetComponent as I, DataZoomComponent as Y, GridComponent as Z, LegendComponent as q, TooltipComponent as J, MarkLineComponent as K, MarkPointComponent as Q } from "echarts/components";
+import { use as V, graphic as X, init as U } from "echarts/core";
+import { graphic as ge } from "echarts/core";
+import { CanvasRenderer as w } from "echarts/renderers";
+import { jsx as s, jsxs as b } from "react/jsx-runtime";
+import { useRef as B, useMemo as D, useEffect as R } from "react";
+import { ABC_BRAND_PRESETS as F } from "@abc-design/tokens";
+import { useAbcConfig as ee, Skeleton as T, EmptyState as te, Card as P, StatusTag as re } from "@abc-design/react";
+V([
   $,
+  k,
   A,
   G,
   W,
   _,
-  k,
   H,
   I,
   Y,
   Z,
   q,
-  V
+  J,
+  K,
+  Q,
+  w
 ]);
-const ee = {
-  init: Q,
-  graphic: K
+const ne = {
+  init: U,
+  graphic: X
 };
-function B(e) {
+function E(e) {
   var n, t, r = "";
   if (typeof e == "string" || typeof e == "number") r += e;
   else if (typeof e == "object") if (Array.isArray(e)) {
     var c = e.length;
-    for (n = 0; n < c; n++) e[n] && (t = B(e[n])) && (r && (r += " "), r += t);
+    for (n = 0; n < c; n++) e[n] && (t = E(e[n])) && (r && (r += " "), r += t);
   } else for (t in e) e[t] && (r && (r += " "), r += t);
   return r;
 }
 function y() {
-  for (var e, n, t = 0, r = "", c = arguments.length; t < c; t++) (e = arguments[t]) && (n = B(e)) && (r && (r += " "), r += n);
+  for (var e, n, t = 0, r = "", c = arguments.length; t < c; t++) (e = arguments[t]) && (n = E(e)) && (r && (r += " "), r += n);
   return r;
 }
-function te(e = "blue", n = !1) {
+function se(e = "blue", n = !1) {
   var c, i;
-  const t = ((c = O[e]) == null ? void 0 : c.scale[n ? 400 : 600]) ?? "#2563eb", r = ((i = O[e]) == null ? void 0 : i.scale[n ? 300 : 400]) ?? "#60a5fa";
+  const t = ((c = F[e]) == null ? void 0 : c.scale[n ? 400 : 600]) ?? "#2563eb", r = ((i = F[e]) == null ? void 0 : i.scale[n ? 300 : 400]) ?? "#60a5fa";
   return [
     t,
     "#10b981",
@@ -54,7 +54,7 @@ function te(e = "blue", n = !1) {
     r
   ];
 }
-function re(e, n, t) {
+function ae(e, n, t) {
   const r = t ? "#334155" : "#e2e8f0", c = t ? "#94a3b8" : "#64748b", l = {
     axisLine: { lineStyle: { color: r } },
     axisLabel: { color: c, fontSize: 11 },
@@ -77,7 +77,7 @@ function re(e, n, t) {
       };
   };
   return {
-    color: e.color ?? te(n, t),
+    color: e.color ?? se(n, t),
     backgroundColor: "transparent",
     textStyle: {
       fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif",
@@ -103,7 +103,7 @@ function re(e, n, t) {
     yAxis: u(e.yAxis)
   };
 }
-const ne = ({
+const le = ({
   option: e,
   height: n = 300,
   style: t,
@@ -114,52 +114,52 @@ const ne = ({
   empty: u = !1,
   emptyDescription: a = "暂无图表统计数据",
   onEvents: o,
-  onChartReady: h
+  onChartReady: g
 }) => {
-  const { resolvedTheme: j, theme: C } = U(), v = j === "dark", L = T(null), m = T(null), x = X(
-    () => re(e, C.brand, v),
-    [e, C.brand, v]
+  const { resolvedTheme: j, theme: C } = ee(), L = j === "dark", N = B(null), p = B(null), S = D(
+    () => ae(e, C.brand, L),
+    [e, C.brand, L]
   );
-  z(() => {
-    const f = L.current;
+  R(() => {
+    const f = N.current;
     if (!f || l || u) return;
-    const d = ee.init(f);
-    m.current = d, h == null || h(d);
-    let b = null;
+    const m = ne.init(f);
+    p.current = m, g == null || g(m);
+    let d = null;
     if (typeof ResizeObserver < "u")
-      b = new ResizeObserver(() => {
-        d.resize();
-      }), b.observe(f);
+      d = new ResizeObserver(() => {
+        m.resize();
+      }), d.observe(f);
     else {
-      const S = () => d.resize();
-      return window.addEventListener("resize", S), () => {
-        window.removeEventListener("resize", S), d.dispose(), m.current = null;
+      const v = () => m.resize();
+      return window.addEventListener("resize", v), () => {
+        window.removeEventListener("resize", v), m.dispose(), p.current = null;
       };
     }
     return () => {
-      b == null || b.disconnect(), d.dispose(), m.current = null;
+      d == null || d.disconnect(), m.dispose(), p.current = null;
     };
-  }, [l, u]), z(() => {
-    const f = m.current;
-    !f || l || u || f.setOption(x, { notMerge: c, lazyUpdate: i });
-  }, [x, c, i, l, u]), z(() => {
-    const f = m.current;
+  }, [l, u]), R(() => {
+    const f = p.current;
+    !f || l || u || f.setOption(S, { notMerge: c, lazyUpdate: i });
+  }, [S, c, i, l, u]), R(() => {
+    const f = p.current;
     if (!f || !o) return;
-    const d = Object.entries(o);
-    for (const [b, S] of d)
-      f.on(b, (F) => S(F, f));
+    const m = Object.entries(o);
+    for (const [d, v] of m)
+      f.on(d, (z) => v(z, f));
     return () => {
-      for (const [b] of d)
-        f.off(b);
+      for (const [d] of m)
+        f.off(d);
     };
   }, [o]);
-  const g = {
+  const h = {
     width: "100%",
     height: (t == null ? void 0 : t.height) ?? (typeof n == "number" ? `${n}px` : n),
     ...t
   };
-  return l ? /* @__PURE__ */ s("div", { className: y("flex items-center justify-center p-4", r), style: g, children: /* @__PURE__ */ s(N, { className: "h-full w-full rounded-[var(--abc-radius-md)]" }) }) : u ? /* @__PURE__ */ s("div", { className: y("flex items-center justify-center", r), style: g, children: /* @__PURE__ */ s(w, { title: "暂无图表数据", description: a }) }) : /* @__PURE__ */ s("div", { ref: L, className: y("min-w-0", r), style: g });
-}, ue = ne, me = ({
+  return l ? /* @__PURE__ */ s("div", { className: y("flex items-center justify-center p-4", r), style: h, children: /* @__PURE__ */ s(T, { className: "h-full w-full rounded-[var(--abc-radius-md)]" }) }) : u ? /* @__PURE__ */ s("div", { className: y("flex items-center justify-center", r), style: h, children: /* @__PURE__ */ s(te, { title: "暂无图表数据", description: a }) }) : /* @__PURE__ */ s("div", { ref: N, className: y("min-w-0", r), style: h });
+}, pe = le, ve = ({
   title: e,
   label: n,
   value: t,
@@ -168,41 +168,50 @@ const ne = ({
   trend: i,
   trendLabel: l = "较上周期",
   icon: u,
-  footer: a,
-  hint: o,
-  tone: h,
-  size: j,
-  loading: C = !1,
-  className: v
+  badge: a,
+  footer: o,
+  hint: g,
+  tone: j,
+  size: C,
+  mono: L = !0,
+  valueClassName: N,
+  loading: p = !1,
+  children: S,
+  className: h,
+  ...f
 }) => {
-  const L = e ?? n, m = a ?? o, x = j === "lg", g = h === "surface";
-  if (C)
-    return /* @__PURE__ */ s(R, { className: v, children: /* @__PURE__ */ p("div", { className: "space-y-3", children: [
-      /* @__PURE__ */ s(N, { className: "h-4 w-24" }),
-      /* @__PURE__ */ s(N, { className: "h-8 w-36" }),
-      /* @__PURE__ */ s(N, { className: "h-3.5 w-28" })
+  const m = e ?? n, d = o ?? g, v = C === "lg", z = j === "surface";
+  if (p)
+    return /* @__PURE__ */ s(P, { className: h, children: /* @__PURE__ */ b("div", { className: "space-y-3", children: [
+      /* @__PURE__ */ s(T, { className: "h-4 w-24" }),
+      /* @__PURE__ */ s(T, { className: "h-8 w-36" }),
+      /* @__PURE__ */ s(T, { className: "h-3.5 w-28" })
     ] }) });
-  const f = i === void 0 ? "neutral" : i > 0 ? "success" : i < 0 ? "danger" : "neutral", d = i === void 0 ? null : `${i > 0 ? "+" : ""}${i.toFixed(1)}%`;
-  return /* @__PURE__ */ p(
-    R,
+  const x = typeof i == "number" ? i : void 0, M = x === void 0 ? "neutral" : x > 0 ? "success" : x < 0 ? "danger" : "neutral", O = x === void 0 ? null : `${x > 0 ? "+" : ""}${x.toFixed(1)}%`;
+  return /* @__PURE__ */ b(
+    P,
     {
       hoverable: !0,
+      "data-slot": "stat-card",
       className: y(
         "relative overflow-hidden transition-all",
-        g && "bg-[var(--abc-bg-surface)] border-[var(--abc-border)]",
-        x ? "p-5" : "p-4",
-        v
+        z && "bg-[var(--abc-bg-surface)] border-[var(--abc-border)]",
+        v ? "p-5" : "p-4",
+        h
       ),
+      ...f,
       children: [
-        /* @__PURE__ */ p("div", { className: "flex items-start justify-between gap-3", children: [
-          /* @__PURE__ */ p("div", { className: "min-w-0 space-y-1.5", children: [
-            /* @__PURE__ */ s("div", { className: "text-xs font-medium text-[var(--abc-fg-muted)]", children: L }),
-            /* @__PURE__ */ p(
+        /* @__PURE__ */ b("div", { className: "flex items-start justify-between gap-3", children: [
+          /* @__PURE__ */ b("div", { className: "min-w-0 space-y-1.5", children: [
+            /* @__PURE__ */ s("div", { className: "text-xs font-medium text-[var(--abc-fg-muted)]", children: m }),
+            /* @__PURE__ */ b(
               "div",
               {
                 className: y(
-                  "flex items-baseline gap-1 font-mono font-bold tracking-tight text-[var(--abc-fg)] tabular-nums",
-                  x ? "text-3xl" : "text-2xl"
+                  "flex items-baseline gap-1 font-bold tracking-tight text-[var(--abc-fg)] tabular-nums",
+                  L && "font-mono",
+                  v ? "text-3xl" : "text-2xl",
+                  N
                 ),
                 children: [
                   r && /* @__PURE__ */ s("span", { className: "text-sm font-medium text-[var(--abc-fg-muted)]", children: r }),
@@ -212,27 +221,31 @@ const ne = ({
               }
             )
           ] }),
-          u && /* @__PURE__ */ s("div", { className: "flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]", children: u })
+          a || u ? /* @__PURE__ */ b("div", { className: "flex shrink-0 items-center gap-2", children: [
+            a,
+            u && /* @__PURE__ */ s("div", { className: "flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]", children: u })
+          ] }) : null
         ] }),
-        (d || m) && /* @__PURE__ */ p("div", { className: "mt-3 flex items-center justify-between gap-2 border-t border-[var(--abc-border-subtle)] pt-2.5 text-xs", children: [
-          d ? /* @__PURE__ */ p("div", { className: "flex items-center gap-1.5", children: [
-            /* @__PURE__ */ s(D, { tone: f, children: d }),
+        (O || i !== void 0 && typeof i != "number" || d) && /* @__PURE__ */ b("div", { className: "mt-3 flex items-center justify-between gap-2 border-t border-[var(--abc-border-subtle)] pt-2.5 text-xs", children: [
+          O ? /* @__PURE__ */ b("div", { className: "flex items-center gap-1.5", children: [
+            /* @__PURE__ */ s(re, { tone: M, children: O }),
             /* @__PURE__ */ s("span", { className: "text-[var(--abc-fg-muted)]", children: l })
-          ] }) : /* @__PURE__ */ s("span", {}),
-          m && /* @__PURE__ */ s("div", { className: "text-[var(--abc-fg-muted)] truncate", children: m })
-        ] })
+          ] }) : i !== void 0 && typeof i != "number" ? /* @__PURE__ */ s("div", { className: "flex items-center gap-1.5 text-[var(--abc-fg-muted)]", children: i }) : /* @__PURE__ */ s("span", {}),
+          d && /* @__PURE__ */ s("div", { className: "text-[var(--abc-fg-muted)] truncate", children: d })
+        ] }),
+        S
       ]
     }
   );
 };
 export {
-  ne as AbcChart,
-  ue as Chart,
-  me as StatCard,
-  re as buildAbcBaseChartOption,
-  ne as default,
-  ee as echarts,
-  te as getAbcChartPalette,
-  he as graphic
+  le as AbcChart,
+  pe as Chart,
+  ve as StatCard,
+  ae as buildAbcBaseChartOption,
+  le as default,
+  ne as echarts,
+  se as getAbcChartPalette,
+  ge as graphic
 };
 //# sourceMappingURL=index.js.map

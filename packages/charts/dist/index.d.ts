@@ -66,7 +66,7 @@ export { graphic }
  */
 export declare const StatCard: default_2.FC<StatCardProps>;
 
-export declare interface StatCardProps {
+export declare interface StatCardProps extends Omit<default_2.HTMLAttributes<HTMLDivElement>, 'title' | 'prefix'> {
     /** 指标标题 */
     title?: default_2.ReactNode;
     /** title 语义别名 */
@@ -77,12 +77,14 @@ export declare interface StatCardProps {
     prefix?: default_2.ReactNode;
     /** 数值后缀（如 % / 次 / GB） */
     suffix?: default_2.ReactNode;
-    /** 环比/同比趋势百分比（正数渲染上升绿标，负数渲染下降红标，0 渲染中性灰标） */
-    trend?: number;
+    /** 环比/同比趋势百分比或自定义趋势节点 */
+    trend?: number | default_2.ReactNode;
     /** 趋势对比说明文字（如“较昨日”） */
     trendLabel?: default_2.ReactNode;
     /** 右上角装饰图标 */
     icon?: default_2.ReactNode;
+    /** 右上角状态徽章 */
+    badge?: default_2.ReactNode;
     /** 底部补充信息或迷你趋势图插槽 */
     footer?: default_2.ReactNode;
     /** footer 辅助说明别名 */
@@ -91,8 +93,13 @@ export declare interface StatCardProps {
     tone?: string;
     /** 尺寸规格别名 */
     size?: string;
+    /** 数值是否使用等宽字体 */
+    mono?: boolean;
+    /** 数值附加样式类名 */
+    valueClassName?: string;
     /** 加载骨架态 */
     loading?: boolean;
+    children?: default_2.ReactNode;
     className?: string;
 }
 

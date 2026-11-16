@@ -4,6 +4,7 @@ import {
   ABC_MOTION_PRESETS,
   ABC_RADIUS_PRESETS,
   ABC_SIZE_PRESETS,
+  ABC_SURFACE_PRESETS,
   type AbcBrandColor,
   type AbcDensity,
   type AbcFontScale,
@@ -13,6 +14,7 @@ import {
   type AbcRadius,
   type AbcResolvedTheme,
   type AbcSize,
+  type AbcSurfaceProfile,
   type AbcThemeMode,
   type AbcVisualMode,
 } from './presets'
@@ -23,6 +25,7 @@ export {
   ABC_MOTION_PRESETS,
   ABC_RADIUS_PRESETS,
   ABC_SIZE_PRESETS,
+  ABC_SURFACE_PRESETS,
   type AbcBrandColor,
   type AbcDensity,
   type AbcFontScale,
@@ -32,6 +35,7 @@ export {
   type AbcRadius,
   type AbcResolvedTheme,
   type AbcSize,
+  type AbcSurfaceProfile,
   type AbcThemeMode,
   type AbcVisualMode,
 }
@@ -42,6 +46,8 @@ export interface AbcThemeConfig {
   brand: AbcBrandColor
   density: AbcDensity
   radius: AbcRadius
+  /** 视觉表面质感人格：'enterprise'（内部运营后台默认） | 'spotlight'（外部开发者/消费级云工作台） */
+  surface?: AbcSurfaceProfile
   /** 可选自定义任意 HEX 品牌色（如 '#0ea5e9'），设置后通过 color-mix 自动合成 50-950 全色阶 */
   customBrandColor?: string
   /** 全局字号缩放比例（默认 'md'） */
@@ -60,6 +66,7 @@ export const DEFAULT_ABC_THEME: AbcThemeConfig = {
   brand: 'blue',
   density: 'default',
   radius: 'md',
+  surface: 'enterprise',
   fontScale: 'md',
   visualMode: 'default',
   motion: 'smooth',
@@ -132,6 +139,7 @@ export function applyAbcThemeToDocument(config: AbcThemeConfig): AbcResolvedThem
   root.setAttribute('data-abc-brand', config.brand)
   root.setAttribute('data-abc-density', config.density)
   root.setAttribute('data-abc-radius', config.radius)
+  root.setAttribute('data-abc-surface', config.surface ?? 'enterprise')
   root.setAttribute('data-abc-font-scale', config.fontScale ?? 'md')
   root.setAttribute('data-abc-visual', config.visualMode ?? 'default')
   root.setAttribute('data-abc-size', config.componentSize ?? 'sm')

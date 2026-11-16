@@ -173,6 +173,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         type={type}
         disabled={isDisabled}
+        aria-busy={loading || undefined}
+        data-slot="button"
         data-motion={resolvedMotion}
         className={computedClass}
         {...rest}

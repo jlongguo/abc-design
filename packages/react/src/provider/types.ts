@@ -8,6 +8,7 @@ import type {
   AbcRadius,
   AbcResolvedTheme,
   AbcSize,
+  AbcSurfaceProfile,
   AbcThemeConfig,
   AbcThemeMode,
   AbcVisualMode,
@@ -74,6 +75,7 @@ export interface AbcContextValue {
   setCustomBrandColor: (hex?: string) => void
   setDensity: (density: AbcDensity) => void
   setRadius: (radius: AbcRadius) => void
+  setSurface: (surface: AbcSurfaceProfile) => void
   setFontScale: (scale: AbcFontScale) => void
   setVisualMode: (mode: AbcVisualMode) => void
   setComponentSize: (size?: AbcSize) => void

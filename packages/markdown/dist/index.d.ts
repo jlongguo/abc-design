@@ -1,5 +1,4 @@
 import { default as default_2 } from 'react';
-import { MDEditorProps } from '@uiw/react-md-editor';
 
 /**
  * ABC Design 企业级 Markdown 编辑器 (@abc-design/markdown)
@@ -36,8 +35,14 @@ export declare interface MarkdownEditorProps {
     disabled?: boolean;
     /** 自定义外层容器样式类名 */
     className?: string;
-    /** 透传底层 @uiw/react-md-editor 的扩展属性 */
-    editorProps?: Omit<MDEditorProps, 'value' | 'onChange' | 'height' | 'preview' | 'hideToolbar'>;
+    /** 透传底层 Markdown 编辑器的扩展属性 */
+    editorProps?: MarkdownPassthroughProps;
+}
+
+/** 透传底层 Markdown 编辑器的附加属性，避免宿主应用强耦合第三方类型声明 */
+export declare interface MarkdownPassthroughProps {
+    textareaProps?: Omit<default_2.TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'defaultValue' | 'onChange' | 'onScroll'>;
+    [key: string]: unknown;
 }
 
 export { }

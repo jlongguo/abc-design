@@ -12,6 +12,7 @@ import {
   type AbcRadius,
   type AbcResolvedTheme,
   type AbcSize,
+  type AbcSurfaceProfile,
   type AbcThemeConfig,
   type AbcThemeMode,
   type AbcVisualMode,
@@ -45,6 +46,8 @@ export interface AbcProviderProps {
   defaultWatermarkEnabled?: boolean
   /** 是否持久化用户主题偏好到 localStorage（默认开启） */
   persist?: boolean
+  /** 自定义主题配置在 localStorage 中的存储键名（区分不同产品切面，如 admin vs console） */
+  storageKey?: string
   /** 自定义 Toast 适配器（不传则使用内置零依赖 ToastContainer / AbcToastViewport） */
   toastAdapter?: AbcToastAdapter
   /** 全局 ToastContainer 属性配置（如挂载位置、最大数量、动效预设等） */
@@ -63,11 +66,15 @@ export interface AbcProviderProps {
   defaultDrawerCascadeMode?: 'stack' | 'adjacent'
 }
 
-function readStoredTheme(fallback: AbcThemeConfig, persist: boolean): AbcThemeConfig {
+function readStoredTheme(
+  fallback: AbcThemeConfig,
+  persist: boolean,
+  storageKey = STORAGE_THEME_KEY
+): AbcThemeConfig {
   if (!persist || typeof window === 'undefined') return fallback
   try {
     const rawScheme = window.localStorage.getItem(STORAGE_SCHEME_KEY)
-    const rawJson = window.localStorage.getItem(STORAGE_THEME_KEY)
+    const rawJson = window.localStorage.getItem(storageKey)
     const parsed = rawJson ? (JSON.parse(rawJson) as Partial<AbcThemeConfig>) : {}
     const mode: AbcThemeMode =
       rawScheme === 'light' || rawScheme === 'dark'
@@ -78,6 +85,7 @@ function readStoredTheme(fallback: AbcThemeConfig, persist: boolean): AbcThemeCo
 
     const validSizes: AbcSize[] = ['xs', 'sm', 'md', 'lg']
     const validMotions: AbcMotionPreset[] = ['none', 'subtle', 'smooth', 'spring']
+    const validSurfaces: AbcSurfaceProfile[] = ['enterprise', 'spotlight']
     const resolvedSize =
       parsed.componentSize && validSizes.includes(parsed.componentSize)
         ? parsed.componentSize
@@ -86,6 +94,10 @@ function readStoredTheme(fallback: AbcThemeConfig, persist: boolean): AbcThemeCo
       parsed.motion && validMotions.includes(parsed.motion)
         ? parsed.motion
         : fallback.motion ?? 'smooth'
+    const resolvedSurface =
+      parsed.surface && validSurfaces.includes(parsed.surface)
+        ? parsed.surface
+        : fallback.surface ?? 'enterprise'
 
     return {
       mode,
@@ -93,6 +105,7 @@ function readStoredTheme(fallback: AbcThemeConfig, persist: boolean): AbcThemeCo
       customBrandColor: parsed.customBrandColor ?? fallback.customBrandColor,
       density: parsed.density ?? fallback.density,
       radius: parsed.radius ?? fallback.radius,
+      surface: resolvedSurface,
       fontScale: parsed.fontScale ?? fallback.fontScale ?? 'md',
       visualMode: parsed.visualMode ?? fallback.visualMode ?? 'default',
       componentSize: resolvedSize,
@@ -103,7 +116,11 @@ function readStoredTheme(fallback: AbcThemeConfig, persist: boolean): AbcThemeCo
   }
 }
 
-function persistThemeConfig(config: AbcThemeConfig, persist: boolean) {
+function persistThemeConfig(
+  config: AbcThemeConfig,
+  persist: boolean,
+  storageKey = STORAGE_THEME_KEY
+) {
   if (!persist || typeof window === 'undefined') return
   try {
     // 遵循 dark-mode-toggle 规范：回到 system 默认时移除 color-scheme 键，手动指定时写入字面量
@@ -112,7 +129,7 @@ function persistThemeConfig(config: AbcThemeConfig, persist: boolean) {
     } else {
       window.localStorage.setItem(STORAGE_SCHEME_KEY, config.mode)
     }
-    window.localStorage.setItem(STORAGE_THEME_KEY, JSON.stringify(config))
+    window.localStorage.setItem(storageKey, JSON.stringify(config))
   } catch {
     // 忽略隐私模式限制
   }
@@ -128,6 +145,7 @@ export const AbcProvider: React.FC<AbcProviderProps> = ({
   watermarkText,
   defaultWatermarkEnabled = false,
   persist = true,
+  storageKey = STORAGE_THEME_KEY,
   toastAdapter,
   toastContainerProps,
   uploadAdapter,
@@ -142,7 +160,9 @@ export const AbcProvider: React.FC<AbcProviderProps> = ({
     [defaultTheme]
   )
 
-  const [theme, setTheme] = useState<AbcThemeConfig>(() => readStoredTheme(mergedInitial, persist))
+  const [theme, setTheme] = useState<AbcThemeConfig>(() =>
+    readStoredTheme(mergedInitial, persist, storageKey)
+  )
   const [resolvedTheme, setResolvedTheme] = useState<AbcResolvedTheme>(() =>
     resolveAbcThemeMode(theme.mode)
   )
@@ -153,8 +173,8 @@ export const AbcProvider: React.FC<AbcProviderProps> = ({
   useEffect(() => {
     const resolved = applyAbcThemeToDocument(theme)
     setResolvedTheme(resolved)
-    persistThemeConfig(theme, persist)
-  }, [theme, persist])
+    persistThemeConfig(theme, persist, storageKey)
+  }, [theme, persist, storageKey])
 
   // 监听操作系统明暗变化（仅在 mode === 'system' 时跟随变化，绝不回溯清除用户已锁定的手动覆盖）
   useEffect(() => {
@@ -174,13 +194,13 @@ export const AbcProvider: React.FC<AbcProviderProps> = ({
   useEffect(() => {
     if (!persist || typeof window === 'undefined') return
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_THEME_KEY || e.key === STORAGE_SCHEME_KEY) {
-        setTheme(readStoredTheme(mergedInitial, true))
+      if (e.key === storageKey || e.key === STORAGE_SCHEME_KEY) {
+        setTheme(readStoredTheme(mergedInitial, true, storageKey))
       }
     }
     window.addEventListener('storage', handleStorage)
     return () => window.removeEventListener('storage', handleStorage)
-  }, [persist, mergedInitial])
+  }, [persist, mergedInitial, storageKey])
 
   const setThemeMode = useCallback(
     (mode: AbcThemeMode, origin?: { clientX: number; clientY: number }) => {
@@ -223,6 +243,10 @@ export const AbcProvider: React.FC<AbcProviderProps> = ({
     setTheme((prev) => ({ ...prev, radius }))
   }, [])
 
+  const setSurface = useCallback((surface: AbcSurfaceProfile) => {
+    setTheme((prev) => ({ ...prev, surface }))
+  }, [])
+
   const setFontScale = useCallback((fontScale: AbcFontScale) => {
     setTheme((prev) => ({ ...prev, fontScale }))
   }, [])
@@ -262,6 +286,7 @@ export const AbcProvider: React.FC<AbcProviderProps> = ({
       setCustomBrandColor,
       setDensity,
       setRadius,
+      setSurface,
       setFontScale,
       setVisualMode,
       setComponentSize,
@@ -290,6 +315,7 @@ export const AbcProvider: React.FC<AbcProviderProps> = ({
       setCustomBrandColor,
       setDensity,
       setRadius,
+      setSurface,
       setFontScale,
       setVisualMode,
       setComponentSize,
@@ -348,6 +374,9 @@ export function useAbcConfig(): AbcContextValue {
     },
     setRadius: (radius) => {
       applyAbcThemeToDocument({ ...DEFAULT_ABC_THEME, radius })
+    },
+    setSurface: (surface) => {
+      applyAbcThemeToDocument({ ...DEFAULT_ABC_THEME, surface })
     },
     setFontScale: (fontScale) => {
       applyAbcThemeToDocument({ ...DEFAULT_ABC_THEME, fontScale })

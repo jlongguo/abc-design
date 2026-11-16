@@ -71,8 +71,11 @@ export interface DrawerProps {
   /** 平级并排展示模式下的向左推移间距（默认 560px） */
   adjacentOffset?: number
   bodyClassName?: string
+  panelClassName?: string
   className?: string
   role?: string
+  'aria-label'?: string
+  'aria-labelledby'?: string
 }
 
 const DEFAULT_WIDTH_PX: Record<DrawerSize, number> = {
@@ -114,8 +117,11 @@ export const Drawer: React.FC<DrawerProps> = ({
   cascadeMode,
   adjacentOffset,
   bodyClassName,
+  panelClassName,
   className,
   role = 'dialog',
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
 }) => {
   const globalCascadeMode = useAbcDrawerCascadeMode(cascadeMode)
   const resolvedCascadeMode = cascadeMode ?? globalCascadeMode
@@ -273,8 +279,8 @@ export const Drawer: React.FC<DrawerProps> = ({
     <div
       role={role}
       aria-modal={role === 'dialog' ? 'true' : undefined}
-      aria-labelledby={title ? titleId : undefined}
-      aria-label={!title ? '侧边抽屉面板' : undefined}
+      aria-labelledby={ariaLabelledBy ?? (title ? titleId : undefined)}
+      aria-label={ariaLabel ?? (!title && !ariaLabelledBy ? '侧边抽屉面板' : undefined)}
       style={{ zIndex: 1020 + Math.max(0, stackIndex) * 10 }}
       className="fixed inset-0 flex overflow-hidden pointer-events-none"
     >
@@ -316,6 +322,7 @@ export const Drawer: React.FC<DrawerProps> = ({
             ? 'shadow-[-12px_0_28px_-6px_rgba(0,0,0,0.18)] border-l-2'
             : 'shadow-[var(--abc-shadow-dialog)]',
           placement === 'right' ? 'ml-auto border-l' : 'mr-auto border-r',
+          panelClassName,
           className
         )}
       >

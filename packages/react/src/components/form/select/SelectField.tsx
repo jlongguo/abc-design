@@ -7,7 +7,7 @@ export interface SelectFieldProps {
   defaultValue?: string
   onValueChange?: (val: string) => void
   onChange?: (val: any) => void
-  options: Array<{
+  options: ReadonlyArray<{
     value: string | number
     label: React.ReactNode
     disabled?: boolean
@@ -71,7 +71,7 @@ export function SelectField({
       dropdownClassName={contentClassName}
       size={size}
       placeholder={placeholder}
-      options={options}
+      options={[...options]}
     />
   )
 }
