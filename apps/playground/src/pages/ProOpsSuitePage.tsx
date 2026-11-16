@@ -3,15 +3,18 @@ import {
   Button,
   Card,
   CommandTriggerButton,
+  DataTable,
   Input,
   PageContainer,
   ProCommandPalette,
   ProFormContainer,
   ProLogViewer,
+  ProPageHeader,
   SelectField,
   StatusTag,
   Switch,
   abcToast,
+  useCursorStack,
   type LogEntry,
   type ProCommandActionItem,
   type ProCommandEntityMatcher,
@@ -30,6 +33,109 @@ import {
   Zap,
 } from 'lucide-react'
 import { ComponentDocPreview } from '../components/ComponentDocPreview'
+
+interface CursorDemoRow {
+  id: string
+  endpoint: string
+  status: string
+}
+
+const CURSOR_DEMO_PAGES: Record<string, { rows: CursorDemoRow[]; next: string | null }> = {
+  ROOT: {
+    rows: [
+      { id: 'del_01', endpoint: 'https://hooks.acme.dev/events', status: '200 OK' },
+      { id: 'del_02', endpoint: 'https://ops.internal/billing', status: '200 OK' },
+    ],
+    next: 'cursor_p2',
+  },
+  cursor_p2: {
+    rows: [
+      { id: 'del_03', endpoint: 'https://audit.corp/sink', status: '502 Bad Gateway' },
+    ],
+    next: null,
+  },
+}
+
+const ProPageHeaderAndDataTableSection: React.FC = () => {
+  const [tableLoading, setTableLoading] = useState(false)
+  const cursor = useCursorStack()
+  const pageKey = cursor.currentCursor ?? 'ROOT'
+  const currentPage = CURSOR_DEMO_PAGES[pageKey] ?? CURSOR_DEMO_PAGES.ROOT
+
+  return (
+    <ComponentDocPreview
+      title="ProPageHeader / DataTable / useCursorStack 企业中后台底座"
+      description="沉淀自管理台多页面统一页头与骨架表格：ProPageHeader 内置右侧操作说明抽屉及屏幕阅读器无障碍摘要；DataTable 支持结构化骨架行与双模游标分页栈。"
+      controls={
+        <div className="flex items-center gap-2">
+          <Button size="xs" variant="outline" onClick={() => setTableLoading((v) => !v)}>
+            {tableLoading ? '退出骨架加载态' : '预览骨架加载态'}
+          </Button>
+          <StatusTag tone="info">当前游标: {pageKey}</StatusTag>
+        </div>
+      }
+      code={`import { ProPageHeader, DataTable, useCursorStack } from '@abc-design/react'
+
+const cursor = useCursorStack()
+
+<ProPageHeader
+  title="Webhook 投递审计"
+  description="监控异步回调投递延迟与重试退避"
+  guide={{ badge: '排障指南', title: '投递排障流程', steps: [{ title: '核对签章' }] }}
+/>
+<DataTable
+  loading={loading}
+  columns={[{ key: 'endpoint', header: '回调地址', render: (r) => r.endpoint }]}
+  data={rows}
+  keyExtractor={(r) => r.id}
+  pagination={{
+    hasPrev: cursor.hasPrev,
+    hasMore: Boolean(nextCursor),
+    onPrevCursor: cursor.popCursor,
+    onNextCursor: () => nextCursor && cursor.pushCursor(nextCursor),
+  }}
+/>`}
+      apiRows={[
+        { prop: 'ProPageHeader.guide', type: 'ProPageGuide', description: '右侧滑出分步操作说明抽屉与 sr-only 语义摘要' },
+        { prop: 'DataTable.skeletonRows', type: 'number', defaultValue: '5', description: '加载态自动渲染的结构化骨架行数' },
+        { prop: 'useCursorStack()', type: '{ currentCursor, hasPrev, pushCursor, popCursor, resetCursor }', description: '单向游标历史栈，支持上一页出栈回溯' },
+      ]}
+    >
+      <div className="space-y-4">
+        <ProPageHeader
+          title="Webhook 投递监控"
+          description="实时追踪所有出站事件投递状态、响应码与重试历史"
+          tags={<StatusTag tone="success">实时同步</StatusTag>}
+          guide={{
+            badge: '运维指南',
+            title: '回调超时排查步骤',
+            steps: [
+              { title: '1. 检查目标端点签章校验', description: '确认 HMAC-SHA256 时间窗在 5 分钟内' },
+              { title: '2. 观察退避重试时间轴', description: '连续 5 次 5xx 将进入死信等待人工重放' },
+            ],
+          }}
+        />
+        <DataTable<CursorDemoRow>
+          loading={tableLoading}
+          skeletonRows={2}
+          columns={[
+            { key: 'id', header: '投递 ID', mono: true, render: (r) => r.id },
+            { key: 'endpoint', header: '回调地址', render: (r) => r.endpoint },
+            { key: 'status', header: '响应状态', render: (r) => <StatusTag tone={r.status.startsWith('2') ? 'success' : 'danger'}>{r.status}</StatusTag> },
+          ]}
+          data={currentPage.rows}
+          keyExtractor={(r) => r.id}
+          pagination={{
+            hasPrev: cursor.hasPrev,
+            hasMore: Boolean(currentPage.next),
+            onPrevCursor: cursor.popCursor,
+            onNextCursor: () => currentPage.next && cursor.pushCursor(currentPage.next),
+          }}
+        />
+      </div>
+    </ComponentDocPreview>
+  )
+}
 
 export interface ProOpsSuitePageProps {
   onJump?: (path: string) => void
@@ -536,6 +642,8 @@ export const ProOpsSuitePage: React.FC<ProOpsSuitePageProps> = ({ onJump }) => {
             </div>
           </ProFormContainer>
         </ComponentDocPreview>
+
+        <ProPageHeaderAndDataTableSection />
       </div>
     </PageContainer>
   )

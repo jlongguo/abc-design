@@ -147,12 +147,21 @@ export const StatusTag: React.FC<StatusTagProps> = ({
   )
 }
 
-export interface BadgeProps {
+export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   count?: number
   maxCount?: number
   dot?: boolean
   tone?: 'danger' | 'primary' | 'success'
-  variant?: 'default' | 'secondary' | 'outline' | 'destructive'
+  variant?:
+    | 'default'
+    | 'secondary'
+    | 'outline'
+    | 'destructive'
+    | 'success'
+    | 'warning'
+    | 'danger'
+    | 'info'
+    | 'neutral'
   size?: AbcSize
   motion?: AbcMotionPreset
   children?: React.ReactNode
@@ -170,19 +179,24 @@ export const Badge: React.FC<BadgeProps> = ({
   motion,
   children,
   className,
+  ...restProps
 }) => {
   const resolvedSize = useAbcSize(size, 'sm')
   const resolvedMotion = useAbcMotion(motion)
 
   if (variant) {
-    const variantClass =
-      variant === 'secondary'
-        ? 'border-transparent bg-[var(--abc-bg-subtle,#f1f5f9)] text-[var(--abc-fg-secondary,#64748b)]'
-        : variant === 'outline'
-          ? 'border-[var(--abc-border,#e2e8f0)] text-[var(--abc-fg,#0f172a)] bg-transparent'
-          : variant === 'destructive'
-            ? 'border-transparent bg-[var(--abc-danger,#ef4444)] text-white'
-            : 'border-transparent bg-[var(--abc-primary,#2563eb)] text-white'
+    const variantClassMap: Record<string, string> = {
+      default: 'border-transparent bg-[var(--abc-primary,#2563eb)] text-white',
+      secondary: 'border-transparent bg-[var(--abc-bg-subtle,#f1f5f9)] text-[var(--abc-fg-secondary,#64748b)]',
+      outline: 'border-[var(--abc-border,#e2e8f0)] text-[var(--abc-fg,#0f172a)] bg-transparent',
+      destructive: 'border-transparent bg-[var(--abc-danger,#ef4444)] text-white',
+      danger: TONE_STYLES.danger.tag,
+      success: TONE_STYLES.success.tag,
+      warning: TONE_STYLES.warning.tag,
+      info: TONE_STYLES.info.tag,
+      neutral: TONE_STYLES.neutral.tag,
+    }
+    const variantClass = variantClassMap[variant] ?? variantClassMap.default
 
     return (
       <span
@@ -192,6 +206,7 @@ export const Badge: React.FC<BadgeProps> = ({
           variantClass,
           className
         )}
+        {...restProps}
       >
         {children}
       </span>

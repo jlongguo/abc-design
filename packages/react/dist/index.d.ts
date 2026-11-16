@@ -563,6 +563,8 @@ export declare interface AuthLayoutProps {
     className?: string;
 }
 
+export declare const AUTO_OPTION_TONES: StatusTone[];
+
 /** 用户/租户头像组件（图片加载失败时自动回退至名称首字符） */
 export declare const Avatar: default_2.FC<AvatarProps>;
 
@@ -577,12 +579,12 @@ export declare interface AvatarProps {
 /** 数字/红点角标组件（兼具语义标签模式） */
 export declare const Badge: default_2.FC<BadgeProps>;
 
-export declare interface BadgeProps {
+export declare interface BadgeProps extends default_2.HTMLAttributes<HTMLSpanElement> {
     count?: number;
     maxCount?: number;
     dot?: boolean;
     tone?: 'danger' | 'primary' | 'success';
-    variant?: 'default' | 'secondary' | 'outline' | 'destructive';
+    variant?: 'default' | 'secondary' | 'outline' | 'destructive' | 'success' | 'warning' | 'danger' | 'info' | 'neutral';
     size?: AbcSize;
     motion?: AbcMotionPreset;
     children?: default_2.ReactNode;
@@ -946,6 +948,8 @@ export declare interface CollapsibleCardProps {
     children: default_2.ReactNode;
 }
 
+export declare const COLOR_ALIAS_TO_TONE: Record<string, StatusTone>;
+
 export declare type ColorSchemePreference = 'system' | 'light' | 'dark';
 
 export declare interface CommandActionItem {
@@ -1125,9 +1129,88 @@ export declare const CursorPagination: default_2.FC<PaginationProps>;
 export declare const dangerButtonClass = "inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md,0.5rem)] bg-[var(--abc-danger)] hover:opacity-90 active:opacity-95 px-3.5 py-1.5 text-xs font-medium text-white transition-all shadow-2xs active:scale-[0.99] disabled:opacity-45 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer select-none";
 
 /**
- * 企业级单日期选择器 (DatePicker)
- * 基于 @abc-design/core 42 格月历算法 + Portal 浮层定位，支持年/月四向切换、快捷预设与深色模式
+ * 轻量级通用数据表格 (DataTable)
+ * 内置结构化骨架态加载、空状态表头保留开关、键盘可访问行选择以及可选双模分页条。
  */
+export declare function DataTable<T>({ columns, data, rows, keyExtractor, rowKey, emptyNode, emptyTitle, emptyDescription, emptyAction, loading, skeletonRows, loadingStatusText, keepHeaderWhenEmpty, framed, onRowClick, selectedRowKey, scrollLabel, stickyHeader, density, pagination, caption, className, }: DataTableProps<T>): default_2.JSX.Element;
+
+export declare namespace DataTable {
+    var displayName: string;
+}
+
+export declare interface DataTableColumn<T> {
+    /** 列唯一标识 */
+    key: string;
+    /** 列标题（与 title 等价，兼容两种写法） */
+    header?: default_2.ReactNode;
+    /** 列标题别名 */
+    title?: default_2.ReactNode;
+    /** 单元格自定义渲染（与 cell 等价，兼容两种写法） */
+    render?: (item: T, index: number) => default_2.ReactNode;
+    /** 单元格自定义渲染别名 */
+    cell?: (item: T, index: number) => default_2.ReactNode;
+    /** 对齐方式 */
+    align?: 'left' | 'center' | 'right';
+    /** 是否使用等宽字体展示单元格 */
+    mono?: boolean;
+    /** 固定宽度或 Tailwind 宽度类名 */
+    width?: string | number;
+    /** 最小宽度或 Tailwind 最小宽度类名 */
+    minWidth?: string | number;
+    /** 单元格额外样式类 */
+    className?: string;
+    /** 单元格内容额外样式类（className 别名） */
+    cellClassName?: string;
+    /** 表头额外样式类 */
+    headerClassName?: string;
+}
+
+export declare interface DataTableProps<T> {
+    /** 列定义 */
+    columns: DataTableColumn<T>[];
+    /** 数据行（与 rows 等价，兼容两种写法） */
+    data?: T[];
+    /** 数据行别名 */
+    rows?: T[];
+    /** 行主键提取函数（与 rowKey 等价） */
+    keyExtractor?: (item: T, index: number) => string | number;
+    /** 行主键提取函数别名 */
+    rowKey?: (item: T, index: number) => string | number;
+    /** 空状态自定义节点（传入后覆盖 emptyTitle / emptyDescription） */
+    emptyNode?: default_2.ReactNode;
+    /** 默认空状态主标题 */
+    emptyTitle?: default_2.ReactNode;
+    /** 默认空状态副标题 */
+    emptyDescription?: default_2.ReactNode;
+    /** 默认空状态底部操作区 */
+    emptyAction?: default_2.ReactNode;
+    /** 加载中状态（展示结构化骨架行并广播 aria-live 状态） */
+    loading?: boolean;
+    /** 骨架行数（默认 5） */
+    skeletonRows?: number;
+    /** 屏幕阅读器加载态提示文案 */
+    loadingStatusText?: string;
+    /** 空数据时是否保留表头（默认 false） */
+    keepHeaderWhenEmpty?: boolean;
+    /** 是否渲染外框与背景卡片（默认 true） */
+    framed?: boolean;
+    /** 行点击回调（自动启用键盘 Enter / Space 激活支持） */
+    onRowClick?: (item: T) => void;
+    /** 当前选中行主键值 */
+    selectedRowKey?: string | number | null;
+    /** 横向滚动区域的无障碍标签 */
+    scrollLabel?: string;
+    /** 是否开启吸顶表头 */
+    stickyHeader?: boolean;
+    /** 表格行距密度 */
+    density?: 'compact' | 'comfortable' | 'relaxed' | AbcSize;
+    /** 可选集成底部分页条（支持页码 / 游标双模 SmartPagination） */
+    pagination?: PaginationProps;
+    /** 表格语义标题（sr-only） */
+    caption?: string;
+    className?: string;
+}
+
 export declare const DatePicker: default_2.ForwardRefExoticComponent<DatePickerProps & default_2.RefAttributes<HTMLDivElement>>;
 
 export declare interface DatePickerProps {
@@ -1154,6 +1237,10 @@ export declare interface DatePickerShortcut {
     value: string | (() => string);
 }
 
+/**
+ * 企业级单日期选择器 (DatePicker)
+ * 基于 @abc-design/core 42 格月历算法 + Portal 浮层定位，支持年/月四向切换、快捷预设与深色模式
+ */
 export declare interface DateRange {
     start: string;
     end: string;
@@ -1164,10 +1251,6 @@ export declare type DateRangeInput = DateRangeTuple | {
     end?: string;
 } | null;
 
-/**
- * 企业级双月联动日期区间选择器 (DateRangePicker)
- * 支持双日历面板范围悬停高亮、反向点击自动排序、常用预设胶囊及 { start, end } / [start, end] 多态数据格式
- */
 export declare const DateRangePicker: default_2.ForwardRefExoticComponent<DateRangePickerProps & default_2.RefAttributes<HTMLDivElement>>;
 
 export declare interface DateRangePickerProps {
@@ -1197,6 +1280,8 @@ export declare interface DateRangeShortcut {
 export declare type DateRangeTuple = [string, string];
 
 export declare const DEFAULT_ABC_LAYOUT_SETTINGS: AbcLayoutSettings;
+
+export declare const DENSITY_CELL_PY: Record<AbcTableDensity, string>;
 
 export declare interface DescriptionItem {
     key?: string;
@@ -1587,6 +1672,11 @@ declare interface ErrorBoundaryState {
     errorInfo: ErrorInfo | null;
 }
 
+export declare const FILTER_HIGHLIGHT_SWATCHES: {
+    color: string;
+    label: string;
+}[];
+
 /** 搜索筛选卡片样式 */
 export declare const filterCardClass = "rounded-[var(--abc-radius-lg,0.75rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] p-4 shadow-[var(--abc-shadow-card)]";
 
@@ -1628,6 +1718,14 @@ export declare interface FilterToolbarProps extends React_2.HTMLAttributes<HTMLD
 }
 
 export declare function findBreadcrumbChain(items: AbcMenuItem[], pathname: string, acc?: AbcMenuItem[]): AbcMenuItem[];
+
+export declare interface FlattenedRow<T> {
+    record: T;
+    key: string | number;
+    rowIdx: number;
+    depth: number;
+    hasTreeChildren: boolean;
+}
 
 export declare function flattenNodeText(node: default_2.ReactNode): string;
 
@@ -1689,9 +1787,6 @@ export declare interface FormFieldProps {
     children: default_2.ReactNode;
 }
 
-/**
- * 安全解析对象的嵌套属性路径（支持 'a.b.c' 或 ['a', 'b', 'c']）
- */
 export declare function getNestedValue(obj: any, path: string | string[] | undefined): any;
 
 /**
@@ -2271,6 +2366,8 @@ export declare interface ParsedSelectOption {
     group?: string;
 }
 
+export declare function parseNumericWidth(w?: number | string, fallback?: number): number;
+
 export declare function parseSelectChildren(children: default_2.ReactNode, groupLabel?: string): ParsedSelectOption[];
 
 /** 暂停指定 Toast 的自动关闭倒计时 */
@@ -2360,7 +2457,7 @@ export declare interface ProActionButtonConfig<T = Record<string, any>> {
     onClick?: (record: T) => void | Promise<any>;
 }
 
-export declare function ProColumnSettingsPopover<T = Record<string, any>>({ columns, searchableFieldNames, settings, hasActionColumn, defaultActionWidth, motion, onToggleVisible, onSetAllVisible, onSetFixed, onSetWidth, onSetOrder, onSetSearchVisible, onReset, }: ProColumnSettingsPopoverProps<T>): default_2.JSX.Element;
+export declare function ProColumnSettingsPopover<T = Record<string, any>>({ columns, searchableFieldNames, settings, hasActionColumn, defaultActionWidth, motion, onToggleVisible, onSetAllVisible, onSetFixed, onSetWidth, onSetOrder, onSetSearchVisible, onReset, }: ProColumnSettingsPopoverProps<T>): JSX.Element;
 
 export declare interface ProColumnSettingsPopoverProps<T = Record<string, any>> {
     columns: AbcColumn<T>[];
@@ -3071,6 +3168,70 @@ export declare interface ProMultiImageUploadProps {
     onChange: (val: string) => void;
 }
 
+export declare interface ProPageGuide {
+    /** 抽屉头部徽章文案（如 "工作流指南" / "Guide"） */
+    badge?: default_2.ReactNode;
+    /** 指南主标题 */
+    title: default_2.ReactNode;
+    /** 指南副标题 */
+    subtitle?: default_2.ReactNode;
+    /** 分步说明列表 */
+    steps: ProPageGuideStep[];
+    /** 底部总结提示或注意事项 */
+    summary?: default_2.ReactNode;
+    /** 自定义扩展区 */
+    extra?: default_2.ReactNode;
+}
+
+export declare interface ProPageGuideStep {
+    /** 步骤编号标签（省略时自动按 1, 2, 3... 递增） */
+    step?: string | number;
+    /** 步骤标题 */
+    title: default_2.ReactNode;
+    /** 步骤详细说明 */
+    description?: default_2.ReactNode;
+}
+
+/**
+ * 企业级页面头部组件 (ProPageHeader)
+ * 集成语义化标题区、面包屑/状态徽标、右侧操作栏，以及标准化的右侧滑出“页面操作说明”抽屉与无障碍折叠摘要。
+ */
+export declare const ProPageHeader: default_2.FC<ProPageHeaderProps>;
+
+export declare interface ProPageHeaderProps {
+    /** 页面主标题 */
+    title?: default_2.ReactNode;
+    /** 副标题或简要描述 */
+    description?: default_2.ReactNode;
+    /** 可选面包屑导航栏 */
+    breadcrumb?: default_2.ReactNode;
+    /** 标题旁辅助状态标签 */
+    tags?: default_2.ReactNode;
+    /** 右侧主操作按钮区 */
+    actions?: default_2.ReactNode;
+    /** 页面操作说明指南配置，开启后提供右侧滑出说明抽屉与屏幕阅读器语义摘要 */
+    guide?: ProPageGuide;
+    /** 操作说明入口按钮文案（默认 "操作说明"） */
+    guideButtonLabel?: default_2.ReactNode;
+    /** 操作说明抽屉标题（省略时使用 guide.title 或 "操作说明"） */
+    guideDrawerTitle?: default_2.ReactNode;
+    /** 操作说明抽屉关闭按钮文案（默认 "关闭"） */
+    guideCloseLabel?: default_2.ReactNode;
+    /** 操作说明抽屉宽度（默认 480） */
+    guideDrawerWidth?: number | string;
+    /** 受控打开状态 */
+    guideOpen?: boolean;
+    /** 默认打开状态 */
+    defaultGuideOpen?: boolean;
+    /** 抽屉开关回调 */
+    onGuideOpenChange?: (open: boolean) => void;
+    /** 是否隐藏操作说明入口 */
+    hideGuide?: boolean;
+    /** 头部下方扩展槽位（常用于 Tab 切换条或指标汇总带） */
+    children?: default_2.ReactNode;
+    className?: string;
+}
+
 export declare const ProRowActionsOverflow: default_2.FC<{
     actions: ResolvedRowActionItem[];
     maxInline?: number;
@@ -3127,11 +3288,7 @@ export declare interface ProSearchFieldConfig {
     __fromFieldSchema?: boolean;
 }
 
-/**
- * Schema 驱动的企业级全功能 CRUD 数据表格 (ProTable / ProCrudTable)
- * 完整统一声明式 API 引擎、响应式联动表单、列驱动搜索/详情、树表懒加载与拖拽排序
- */
-export declare function ProTable<T extends Record<string, any> = any, Q extends Record<string, any> = Record<string, any>, F extends Record<string, any> = Record<string, any>>({ storageKey: propStorageKey, tableId, title, subTitle, columns, fields, searchFields: propSearchFields, formFields: propFormFields, formSchema, defaultFormValues, dialogTitle, dialogSize, formLayout, draftConfig, dataSource, loading: propLoading, request, api: apiProp, defaultQuery, onListLoaded, rowKey, defaultPageSize, pageSizeOptions, hidePagination, pagination, renderPagination, selectedRowKey, onRowClick, onRow, searchVariant, onSearchChange, onSearchSubmit, onSearchReset, headerFilterMode: controlledHeaderFilterMode, onHeaderFilterModeChange, showHeaderFilterToggle: propShowHeaderFilterToggle, clientFilter: initialClientFilter, showClientFilterSwitch, defaultSearchCollapsed, autoRefresh, autoRefreshConfig, refetchInterval, exportable, showExport, onExport, showImport, onImport, syncToUrl, viewable, showView, viewTitle, viewSize, renderViewExtra, renderViewFooter, onNavigate, formContainer, formColumns, showAdd, addButtonText, showEdit, showDelete, showBatchDelete, rowActions, actionButtons, actionColumnWidth, maxInlineActions, rowSelection, showRowSelection, selectedRowKeys: controlledSelectedRowKeys, onRowSelectionChange, batchActions, renderBatchActions, treeData, expandable, sortable, columnSettingsEnabled, maxHeight, autoFitHeight, permissions, permission, hasPermission: customHasPermission, toolbarButtons, toolbarExtra, renderToolbarExtra, headerExtra, renderExtra, cardExtra, renderCardExtra, renderSearchExtra, renderFormExtra, renderCustomForm, onRefreshRef, onAddWithValuesRef, openEditRef, onAdd, onEdit, onDelete, onBeforeAdd, onBeforeEdit, onBeforeSubmit, onBeforeDelete, onBeforeBatchDelete, onAfterSave, onAfterDelete, onAfterBatchDelete, motion, onSaveRecord, onDeleteRecords, }: ProTableProps<T, Q, F>): default_2.JSX.Element;
+export declare function ProTable<T extends Record<string, any> = Record<string, any>, Q extends Record<string, any> = Record<string, any>, F extends Record<string, any> = Record<string, any>>(props: ProTableProps<T, Q, F>): JSX.Element;
 
 export declare type ProTableApiInput<T = any> = ((params: any) => Promise<any>) | ProTableApiOptions<T>;
 
@@ -3713,11 +3870,6 @@ export declare interface SegmentedOption<T extends string | number> {
     badge?: React_2.ReactNode;
 }
 
-/**
- * 企业级选择器组件
- * 统一融合声明式 options 模式与原生 <option> children 平滑迁移模式，
- * 内置多选胶囊、拼音首字母检索、Top-Layer 弹窗防遮挡 Portal 及无障碍键盘导航。
- */
 export declare const Select: default_2.ForwardRefExoticComponent<SelectProps & default_2.RefAttributes<HTMLSelectElement>>;
 
 /**
@@ -4059,12 +4211,7 @@ export declare const TableCell: React_2.ForwardRefExoticComponent<React_2.TdHTML
 /** 数据表体单元格样式 */
 export declare const tableCellClass = "px-4 py-3 text-xs text-[var(--abc-fg-secondary)]";
 
-/**
- * 企业级核心数据表格引擎 (TableCore)
- * 支持多列累加粘性左/右固定列、表头右键快捷菜单、拖拽调节列宽、拖拽交换列序、
- * 排序、表头气泡/内联双模筛选、可展开子面板与树形数据、语义化 valueType 渲染及键盘可访问滚动区
- */
-export declare function TableCore<T extends Record<string, any> = Record<string, any>>({ columns, data, dataSource, rowKey, loading, density, selectedKeys, onSelectionChange, rowSelection, sortState, onSortChange, headerFilterMode, headerFilters, onHeaderFilterChange, headerFilterRender, activeFilterKeys, activeFilterLabels, filterHighlightColor, onFilterHighlightColorChange, allColumns, hiddenColumnKeys, onToggleColumnVisible, columnWidths, onColumnResize, resizable, motion, columnFixed, onColumnPin, onColumnHide, onResetColumns, onColumnReorder, expandable, treeData, rowDraggable, draggable, onRowDragEnd, onDragEnd, onRowView, activeRowKey, onRowClick, onRow, onEmptyReset, maxHeight, ariaLabel, emptyText, className, }: TableCoreProps<T>): default_2.JSX.Element;
+export declare function TableCore<T extends Record<string, any> = Record<string, any>>(props: TableCoreProps<T>): JSX.Element;
 
 export declare interface TableCoreProps<T = Record<string, any>> {
     columns: AbcColumn<T>[];
@@ -4549,7 +4696,7 @@ export declare interface TreeSelectChangeExtra {
  * 声明式快捷表单字段封装 (TreeSelectField)
  * 对齐 SelectField 参数风格，支持触发器与弹层类名分离透传
  */
-export declare function TreeSelectField({ triggerClassName, contentClassName, ...props }: TreeSelectFieldProps): default_2.JSX.Element;
+export declare function TreeSelectField({ triggerClassName, contentClassName, ...props }: TreeSelectFieldProps): JSX.Element;
 
 export declare interface TreeSelectFieldProps extends Omit<TreeSelectProps, 'className' | 'dropdownClassName'> {
     triggerClassName?: string;
@@ -4700,6 +4847,25 @@ export declare interface UseControllableStateParams<T> {
 export declare const useCrudTable: typeof useProTable;
 
 export declare type UseCrudTableOptions<T = any> = UseProTableOptions<T>;
+
+/**
+ * 游标分页历史栈 hook
+ * 适配基于 next_cursor / has_more 的前向游标接口，零额外依赖实现“上一页 / 下一页 / 重置”。
+ */
+export declare function useCursorStack(initialCursor?: string | null): UseCursorStackReturn;
+
+export declare interface UseCursorStackReturn {
+    /** 当前激活的游标值（首页通常为 null） */
+    currentCursor: string | null;
+    /** 是否存在可回退的上一页游标 */
+    hasPrev: boolean;
+    /** 翻入下一页时压入新的游标 */
+    pushCursor: (nextCursor: string) => void;
+    /** 回退到上一页游标 */
+    popCursor: () => void;
+    /** 查询条件/筛选重置时清空游标历史栈回到首页 */
+    resetCursor: () => void;
+}
 
 export declare function useDialog(): DialogContextValue | null;
 
