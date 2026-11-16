@@ -89,10 +89,11 @@ const cursor = useCursorStack()
   data={rows}
   keyExtractor={(r) => r.id}
   pagination={{
+    mode: 'cursor',
     hasPrev: cursor.hasPrev,
-    hasMore: Boolean(nextCursor),
-    onPrevCursor: cursor.popCursor,
-    onNextCursor: () => nextCursor && cursor.pushCursor(nextCursor),
+    hasNext: Boolean(nextCursor),
+    onPrev: cursor.popCursor,
+    onNext: () => nextCursor && cursor.pushCursor(nextCursor),
   }}
 />`}
       apiRows={[
@@ -126,10 +127,12 @@ const cursor = useCursorStack()
           data={currentPage.rows}
           keyExtractor={(r) => r.id}
           pagination={{
+            mode: 'cursor',
             hasPrev: cursor.hasPrev,
-            hasMore: Boolean(currentPage.next),
-            onPrevCursor: cursor.popCursor,
-            onNextCursor: () => currentPage.next && cursor.pushCursor(currentPage.next),
+            hasNext: Boolean(currentPage.next),
+            onPrev: cursor.popCursor,
+            onNext: () => currentPage.next && cursor.pushCursor(currentPage.next),
+            onResetCursor: cursor.resetCursor,
           }}
         />
       </div>

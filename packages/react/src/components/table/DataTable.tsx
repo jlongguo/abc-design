@@ -218,6 +218,7 @@ export function DataTable<T>({
                       className={cn(cellPadClass, ALIGN_CLASS[column.align ?? 'left'])}
                     >
                       <Skeleton
+                        aria-hidden="true"
                         className={cn(
                           'h-4',
                           colIdx === 0 ? 'w-3/4' : colIdx === columns.length - 1 ? 'ml-auto w-14' : 'w-2/3'

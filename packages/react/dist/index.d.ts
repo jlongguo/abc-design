@@ -834,6 +834,57 @@ export declare interface CardTitleProps extends default_2.HTMLAttributes<HTMLHea
 
 export declare type CardVariant = 'default' | 'bordered' | 'ghost' | 'elevated' | 'glass';
 
+/**
+ * 多列级联选择器 (Cascader)
+ * 支持单选/多选、changeOnSelect、悬停或点击展开、异步懒加载 children、拼音全路径检索与键盘多列游走。
+ */
+export declare const Cascader: default_2.FC<CascaderProps>;
+
+export declare type CascaderMultipleValue = Array<CascaderSingleValue>;
+
+export declare interface CascaderOption {
+    value: string | number;
+    label: default_2.ReactNode;
+    disabled?: boolean;
+    children?: CascaderOption[];
+    isLeaf?: boolean;
+}
+
+export declare interface CascaderProps {
+    options: CascaderOption[];
+    value?: CascaderValue;
+    defaultValue?: CascaderValue;
+    onChange?: (value: CascaderValue, selectedOptions?: CascaderOption[] | CascaderOption[][]) => void;
+    multiple?: boolean;
+    /** 单选模式下允许点击非叶子节点直接选中（默认 false） */
+    changeOnSelect?: boolean;
+    /** 开启搜索与拼音首字母路径匹配 */
+    searchable?: boolean;
+    clearable?: boolean;
+    expandTrigger?: 'click' | 'hover';
+    separator?: string;
+    showFullPath?: boolean;
+    maxTagCount?: number;
+    loadData?: (selectedOptions: CascaderOption[]) => Promise<void>;
+    label?: default_2.ReactNode;
+    error?: string;
+    helperText?: string;
+    required?: boolean;
+    placeholder?: string;
+    disabled?: boolean;
+    size?: AbcSize;
+    motion?: AbcMotionPreset;
+    matchWidth?: boolean;
+    emptyText?: default_2.ReactNode;
+    ariaLabel?: string;
+    id?: string;
+    className?: string;
+}
+
+export declare type CascaderSingleValue = Array<string | number>;
+
+export declare type CascaderValue = CascaderSingleValue | CascaderMultipleValue;
+
 /** 复选框组件（支持四档尺寸、动效规格、半选态 indeterminate、辅助描述与键盘无障碍操作） */
 export declare const Checkbox: default_2.ForwardRefExoticComponent<CheckboxProps & default_2.RefAttributes<HTMLInputElement>>;
 
@@ -1671,6 +1722,48 @@ declare interface ErrorBoundaryState {
     error: Error | null;
     errorInfo: ErrorInfo | null;
 }
+
+/**
+ * 通用多文件拖拽上传与校验列表组件 (FileUpload)
+ * 严格遵循原生按钮焦点触发、类型/大小/数量前置校验、上传进度展示与无障碍错误广播。
+ */
+export declare const FileUpload: default_2.FC<FileUploadProps>;
+
+export declare interface FileUploadItem {
+    uid: string;
+    name: string;
+    size: number;
+    type?: string;
+    url?: string;
+    status?: FileUploadStatus;
+    percent?: number;
+    error?: string;
+}
+
+export declare interface FileUploadProps {
+    value?: FileUploadItem[];
+    defaultValue?: FileUploadItem[];
+    onChange?: (files: FileUploadItem[]) => void;
+    /** 自定义上传执行器（缺省时降级使用 AbcProvider.uploadAdapter 或本地对象 URL 预览） */
+    customUpload?: (file: File, onProgress?: (percent: number) => void) => Promise<string | {
+        url: string;
+    }>;
+    accept?: string;
+    multiple?: boolean;
+    maxCount?: number;
+    maxSizeMB?: number;
+    disabled?: boolean;
+    label?: default_2.ReactNode;
+    error?: string;
+    helperText?: default_2.ReactNode;
+    required?: boolean;
+    dragTitle?: default_2.ReactNode;
+    dragHint?: default_2.ReactNode;
+    id?: string;
+    className?: string;
+}
+
+export declare type FileUploadStatus = 'uploading' | 'done' | 'error';
 
 export declare const FILTER_HIGHLIGHT_SWATCHES: {
     color: string;
@@ -2696,7 +2789,7 @@ export declare interface ProCrudApiConfig<T = any, Q = any, F = any> {
     [key: string]: any;
 }
 
-export declare type ProCrudFieldType = 'text' | 'input' | 'password' | 'number' | 'textarea' | 'select' | 'treeSelect' | 'radio' | 'checkbox' | 'switch' | 'date' | 'datetime' | 'datetimePicker' | 'dateRange' | 'image' | 'color' | 'icon' | 'tags' | 'custom';
+export declare type ProCrudFieldType = 'text' | 'input' | 'password' | 'number' | 'textarea' | 'select' | 'treeSelect' | 'radio' | 'checkbox' | 'switch' | 'date' | 'datetime' | 'datetimePicker' | 'dateRange' | 'image' | 'file' | 'upload' | 'cascader' | 'transfer' | 'color' | 'icon' | 'tags' | 'custom';
 
 export declare interface ProCrudFormField<T extends Record<string, any> = any> {
     /** 字段键名（与 name 互为别名） */
@@ -2727,6 +2820,12 @@ export declare interface ProCrudFormField<T extends Record<string, any> = any> {
     unCheckedChildren?: default_2.ReactNode;
     maxCount?: number;
     maxSize?: number;
+    /** file / upload 专属：允许的文件扩展名或 MIME 类型（如 ".pdf,.json"） */
+    accept?: string;
+    /** cascader 专属：级联选项树 */
+    cascaderOptions?: CascaderOption[] | ((form: ProFormInstance<any>, isEdit: boolean) => CascaderOption[]);
+    /** transfer 专属：穿梭框列表项 */
+    transferItems?: TransferItem[] | ((form: ProFormInstance<any>, isEdit: boolean) => TransferItem[]);
     width?: number | string;
     height?: number | string;
     presetIcons?: string[];
@@ -4635,6 +4734,46 @@ export declare interface TopProgressBarProps {
     color?: string;
     /** 层级 z-index（默认 9999） */
     zIndex?: number;
+    className?: string;
+}
+
+/**
+ * 企业级双栏穿梭框 (Transfer)
+ * 支持拼音首字母检索、40+ 条目自动虚拟滚动、反选、禁用项跳过与单向模式。
+ */
+export declare const Transfer: default_2.FC<TransferProps>;
+
+export declare interface TransferItem {
+    key: string;
+    title: string;
+    description?: string;
+    disabled?: boolean;
+}
+
+export declare interface TransferProps {
+    dataSource: TransferItem[];
+    targetKeys?: string[];
+    defaultTargetKeys?: string[];
+    onChange?: (nextTargetKeys: string[], direction: 'left' | 'right', moveKeys: string[]) => void;
+    selectedKeys?: string[];
+    onSelectChange?: (sourceSelectedKeys: string[], targetSelectedKeys: string[]) => void;
+    titles?: [default_2.ReactNode, default_2.ReactNode];
+    searchable?: boolean;
+    searchPlaceholder?: string;
+    showSelectAll?: boolean;
+    /** 当单项列表超过 40 条时自动启用轻量虚拟滚动窗口 */
+    virtual?: boolean;
+    listHeight?: number;
+    itemHeight?: number;
+    disabled?: boolean;
+    /** 单向穿梭模式（右侧列表仅保留快捷移除） */
+    oneWay?: boolean;
+    emptyText?: default_2.ReactNode;
+    label?: default_2.ReactNode;
+    error?: string;
+    helperText?: default_2.ReactNode;
+    required?: boolean;
+    id?: string;
     className?: string;
 }
 

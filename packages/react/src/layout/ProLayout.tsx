@@ -334,7 +334,7 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
   const headerNode = (
     <header
       className={cn(
-        'flex h-[var(--abc-header-h)] shrink-0 items-center justify-between gap-3 border-b border-[var(--abc-border)] select-none transition-colors',
+        'flex h-[var(--abc-header-h)] z-10 shrink-0 items-center justify-between gap-3 border-b border-[var(--abc-border)] select-none transition-colors',
         hm.headerPad,
         layoutSettings.headerBlur !== false
           ? 'bg-[var(--abc-bg-surface)]/85 backdrop-blur-md'
