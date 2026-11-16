@@ -7,6 +7,7 @@ import {
   DictTag,
   FilterPillGroup,
   FilterToolbar,
+  Icon,
   InspectorPanel,
   PageContainer,
   ProTable,
@@ -16,6 +17,7 @@ import {
   SearchInput,
   SplitInspectorLayout,
   StatusTag,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -87,11 +89,67 @@ const INITIAL_DATA: TenantNodeRecord[] = [
   },
 ]
 
+interface ApiMenuRouteItem {
+  id: number
+  menuName: string
+  routePath: string
+  deptId: string
+  iconName: string
+  status: string // '0' 启用 | '1' 停用（演示 Switch 字符串映射）
+  orderNum: number
+}
+
+const INITIAL_API_MENUS: ApiMenuRouteItem[] = [
+  {
+    id: 101,
+    menuName: '边缘网关控制台',
+    routePath: '/edge/gateway',
+    deptId: 'cloud',
+    iconName: 'globe',
+    status: '0',
+    orderNum: 1,
+  },
+  {
+    id: 102,
+    menuName: '租户配额策略',
+    routePath: '/tenant/quota',
+    deptId: 'sec',
+    iconName: 'shield',
+    status: '0',
+    orderNum: 2,
+  },
+  {
+    id: 103,
+    menuName: '审计归档任务',
+    routePath: '/ops/audit-job',
+    deptId: 'hq',
+    iconName: 'layers',
+    status: '1',
+    orderNum: 3,
+  },
+]
+
+const DEPT_TREE_OPTIONS = [
+  {
+    key: 'hq',
+    title: '集团技术总部',
+    children: [
+      { key: 'cloud', title: '云原生网关事业部' },
+      { key: 'sec', title: '零信任安全合规部' },
+    ],
+  },
+]
+
 export const ProTablePage: React.FC = () => {
   const { toast } = useAbcConfig()
   const [rows, setRows] = useState<TenantNodeRecord[]>(INITIAL_DATA)
   // 遵循大表单选型规范：大表单默认使用 drawer，全高贴合无视口裁切风险
   const [formContainer, setFormContainer] = useState<'dialog' | 'drawer'>('drawer')
+
+  // API 驱动 + 列内派生演练台状态
+  const [apiMenus, setApiMenus] = useState<ApiMenuRouteItem[]>(INITIAL_API_MENUS)
+  const [headerFilterDemo, setHeaderFilterDemo] = useState(true)
+  const [apiFormLayout, setApiFormLayout] = useState<'split' | 'grid'>('split')
 
   // FilterToolbar 状态
   const [filterStatus, setFilterStatus] = useState<string>('all')
@@ -495,7 +553,173 @@ export const ProTablePage: React.FC = () => {
           />
         </SplitInspectorLayout>
 
-        {/* 3. TablePrimitives 复合基础表格骨架对照 */}
+        {/* 3. ProTable 全生命周期 API 驱动与列内 search/form 一体化派生演练台 */}
+        <Card
+          variant="bordered"
+          title="ProTable API 全生命周期驱动 + 列内 search/form 派生 + 表头内联筛选调色盘"
+          subtitle="无需拆写冗余 fields 数组：直接在 columns 上声明 search 与 form（含 Switch checkedValue='0' 字符串映射、TreeSelect 组织树、IconPicker 图标选择器、五区左右分栏 split 表单），并在工具栏体验表头内联筛选与 8 色筛选高亮色板。"
+          extra={
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                <Switch size="sm" checked={headerFilterDemo} onChange={setHeaderFilterDemo} />
+                <span>表头内联筛选模式 (点击表头漏斗 + 右上角 8 色调色盘)</span>
+              </label>
+              <RadioGroup
+                variant="segmented"
+                size="xs"
+                value={apiFormLayout}
+                onChange={(v) => setApiFormLayout(v as 'split' | 'grid')}
+                options={[
+                  { label: '五区分栏表单 (split)', value: 'split' },
+                  { label: '网格表单 (grid)', value: 'grid' },
+                ]}
+              />
+            </div>
+          }
+        >
+          <ProTable<ApiMenuRouteItem>
+            tableId="playground_api_crud_parity_v1"
+            title="动态权限路由注册表（模拟异步 API CRUD）"
+            rowKey="id"
+            headerFilterMode={headerFilterDemo}
+            onHeaderFilterModeChange={setHeaderFilterDemo}
+            showHeaderFilterToggle
+            formLayout={apiFormLayout}
+            viewable
+            exportable
+            autoRefreshConfig={{ show: true, defaultInterval: 30000 }}
+            api={{
+              list: async (query: Record<string, any>) => {
+                const kw = String(query.menuName ?? '').trim().toLowerCase()
+                const statusFilter = query.status !== undefined && query.status !== '' ? String(query.status) : ''
+                const deptFilter = query.deptId ? String(query.deptId) : ''
+                const filtered = apiMenus.filter((item) => {
+                  if (kw && !item.menuName.toLowerCase().includes(kw)) return false
+                  if (statusFilter && item.status !== statusFilter) return false
+                  if (deptFilter && item.deptId !== deptFilter) return false
+                  return true
+                })
+                return { list: filtered, total: filtered.length }
+              },
+              create: async (payload: Partial<ApiMenuRouteItem>) => {
+                const created: ApiMenuRouteItem = {
+                  id: Date.now(),
+                  menuName: String(payload.menuName || '新注册菜单'),
+                  routePath: String(payload.routePath || '/new/module'),
+                  deptId: String(payload.deptId || 'hq'),
+                  iconName: String(payload.iconName || 'layers'),
+                  status: String(payload.status ?? '0'),
+                  orderNum: Number(payload.orderNum ?? apiMenus.length + 1),
+                }
+                setApiMenus((prev) => [created, ...prev])
+                return { code: 200, data: created }
+              },
+              update: async (payload: Partial<ApiMenuRouteItem>) => {
+                setApiMenus((prev) =>
+                  prev.map((item) =>
+                    item.id === payload.id ? ({ ...item, ...payload } as ApiMenuRouteItem) : item
+                  )
+                )
+                return { code: 200 }
+              },
+              delete: async (id: string | number) => {
+                const ids = String(id)
+                  .split(',')
+                  .map((s) => Number(s))
+                setApiMenus((prev) => prev.filter((item) => !ids.includes(item.id)))
+                return { code: 200 }
+              },
+            }}
+            columns={[
+              {
+                key: 'menuName',
+                title: '菜单名称',
+                sortable: true,
+                linkToView: true,
+                search: { placeholder: '搜索菜单名称' },
+                form: { required: true, placeholder: '请输入权限菜单名称' },
+              },
+              {
+                key: 'iconName',
+                title: '菜单图标',
+                width: 110,
+                render: (val) => (
+                  <span className="inline-flex items-center gap-1.5 font-mono text-xs">
+                    <Icon name={String(val || 'layers')} className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
+                    <span>{String(val || '-')}</span>
+                  </span>
+                ),
+                form: { type: 'icon', label: '导航图标' },
+              },
+              {
+                key: 'routePath',
+                title: '前端路由路径',
+                copyable: true,
+                form: { required: true, placeholder: '如 /edge/gateway' },
+              },
+              {
+                key: 'deptId',
+                title: '归属技术部门',
+                search: {
+                  type: 'select',
+                  options: [
+                    { label: '集团技术总部', value: 'hq' },
+                    { label: '云原生网关事业部', value: 'cloud' },
+                    { label: '零信任安全合规部', value: 'sec' },
+                  ],
+                  placeholder: '按部门筛选',
+                },
+                form: {
+                  type: 'treeSelect',
+                  treeData: DEPT_TREE_OPTIONS,
+                  required: true,
+                },
+                render: (val) => {
+                  const map: Record<string, string> = {
+                    hq: '集团技术总部',
+                    cloud: '云原生网关事业部',
+                    sec: '零信任安全合规部',
+                  }
+                  return map[String(val)] ?? String(val)
+                },
+              },
+              {
+                key: 'orderNum',
+                title: '显示排序',
+                width: 100,
+                align: 'right',
+                sortable: true,
+                form: { type: 'number', defaultValue: 1 },
+              },
+              {
+                key: 'status',
+                title: '启用状态',
+                width: 120,
+                search: {
+                  type: 'select',
+                  options: [
+                    { label: '正常启用 (0)', value: '0' },
+                    { label: '维护停用 (1)', value: '1' },
+                  ],
+                },
+                form: {
+                  type: 'switch',
+                  checkedValue: '0',
+                  uncheckedValue: '1',
+                  defaultValue: '0',
+                  switchText: '启用 (status="0")',
+                },
+                render: (val) => (
+                  <StatusTag tone={String(val) === '0' ? 'success' : 'neutral'} dot>
+                    {String(val) === '0' ? '正常启用' : '已停用'}
+                  </StatusTag>
+                ),
+              },
+            ]}
+          />
+        </Card>
+
+        {/* 4. TablePrimitives 复合基础表格骨架对照 */}
         <Card
           variant="bordered"
           title="TablePrimitives 基础复合表格骨架原语"

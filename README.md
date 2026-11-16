@@ -4,15 +4,16 @@
 
 ---
 
-## 一、Monorepo 四包协同架构
+## 一、Monorepo 五包协同架构
 
 ```text
 abc-design/
 ├── packages/
-│   ├── tokens/        # @abc-design/tokens — 三层语义 CSS 变量、6 套品牌色、3 档密度、4 档圆角与 View Transitions
-│   ├── core/          # @abc-design/core   — 零依赖纯 TS 无头内核：拼音检索、树级联半选、表格过滤与 URL 同步、月历矩阵
-│   ├── react/         # @abc-design/react  — 45+ 生产级组件、AbcProvider 适配器、5 模态 ProLayout、ProTable、ProConfigForm
-│   └── charts/        # @abc-design/charts — 按需 Tree-shaking ECharts 自适应容器 AbcChart 与核心指标卡 StatCard
+│   ├── tokens/        # @abc-design/tokens   — 三层语义 CSS 变量、6 套品牌色、3 档密度、4 档圆角与 View Transitions
+│   ├── core/          # @abc-design/core     — 零依赖纯 TS 无头内核：拼音检索、树级联半选、表格过滤与 URL 同步、月历矩阵
+│   ├── react/         # @abc-design/react    — 65+ 生产级组件、AbcProvider 适配器、5 模态 ProLayout、ProTable、ProConfigForm
+│   ├── charts/        # @abc-design/charts   — 按需 Tree-shaking ECharts 自适应容器 AbcChart 与核心指标卡 StatCard
+│   └── markdown/      # @abc-design/markdown — 独立双栏 Markdown 编辑器（自动联动明暗主题 + insertText 光标插值）
 ├── apps/
 │   └── playground/    # @abc-design/playground — 交互式组件文档（实时 Knobs + 代码复制 + API 表）与 5 套业务页模板预览站
 ├── docs/

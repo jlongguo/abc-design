@@ -15,7 +15,7 @@ import {
   type AbcDensity,
   type AbcRadius,
 } from '@abc-design/react'
-import { BarChart3, Cpu, Layers, LayoutGrid, Palette, Sparkles } from 'lucide-react'
+import { BarChart3, Cpu, FileCode2, Layers, LayoutGrid, Palette, Sparkles } from 'lucide-react'
 
 export const OverviewPage: React.FC<{
   onJump: (path: string) => void
@@ -26,7 +26,7 @@ export const OverviewPage: React.FC<{
   return (
     <PageContainer
       title="ABC Design 企业级设计系统与官方预览站"
-      subtitle="4 包协同架构（Tokens + Headless Core + React UI/ProLayout + Charts）· 60+ 生产级组件 · 大小表单分流规范 · Pro 全栈套件"
+      subtitle="5 包协同架构（Tokens + Headless Core + React UI/ProLayout + Charts + Markdown）· 65+ 生产级组件 · 大小表单分流规范 · Pro 全栈套件"
       tags={
         <StatusTag tone="primary" dot pulse>
           v0.1.0 Public Release Ready
@@ -34,8 +34,8 @@ export const OverviewPage: React.FC<{
       }
       extra={
         <>
-          <Button variant="secondary" onClick={() => onJump('/templates')}>
-            浏览 5 套开箱页面模板
+          <Button variant="secondary" onClick={() => onJump('/docs/markdown-shell')}>
+            预览最新 Markdown 与壳层组件
           </Button>
           <Button variant="primary" onClick={() => onJump('/docs/form')}>
             进入交互式组件文档
@@ -43,7 +43,7 @@ export const OverviewPage: React.FC<{
         </>
       }
       headerContent={
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {[
             {
               icon: <Palette className="h-4 w-4 text-[var(--abc-primary)]" />,
@@ -62,8 +62,8 @@ export const OverviewPage: React.FC<{
             {
               icon: <Layers className="h-4 w-4 text-[var(--abc-primary)]" />,
               pkg: '@abc-design/react',
-              val: '60+ 组件 + 5 布局',
-              desc: '大小表单分流规范、Select 双模无损兼容、ThemeSwitcher、Watermark、ProCommandPalette、ProLogViewer 全栈覆盖',
+              val: '65+ 组件 + 5 布局',
+              desc: 'ProTable API 引擎、BrandIcon、TabErrorBoundary、KeepAlive 滚动记忆、TopProgressBar、abcUiClasses',
               target: '/docs/display',
             },
             {
@@ -72,6 +72,13 @@ export const OverviewPage: React.FC<{
               val: '自适应可视化套件',
               desc: 'ECharts 按需 Tree-shaking 容器与 StatCard，自动跟随明暗主题与品牌色阶',
               target: '/docs/charts',
+            },
+            {
+              icon: <FileCode2 className="h-4 w-4 text-[var(--abc-primary)]" />,
+              pkg: '@abc-design/markdown',
+              val: '双栏 Markdown 子包',
+              desc: '外部化编辑器依赖零体积膨胀，自动同步 AbcProvider 主题并支持 insertText 光标插值',
+              target: '/docs/markdown-shell',
             },
           ].map((item) => (
             <SpotlightCard
@@ -234,17 +241,33 @@ export const OverviewPage: React.FC<{
               </p>
             </div>
 
-            <div className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)] p-3.5 space-y-1.5">
-              <div className="font-semibold text-[var(--abc-fg)]">主从检视与复合工具栏</div>
+            <div
+              onClick={() => onJump('/docs/markdown-shell')}
+              className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)] p-3.5 space-y-1.5 cursor-pointer transition-colors hover:border-[var(--abc-primary)]"
+            >
+              <div className="flex items-center justify-between font-semibold text-[var(--abc-fg)]">
+                <span>@abc-design/markdown 与壳层基建</span>
+                <StatusTag tone="primary" size="xs">
+                  New →
+                </StatusTag>
+              </div>
               <p className="text-[var(--abc-fg-muted)] leading-relaxed">
-                SplitInspectorLayout + InspectorPanel 带来高效主从属性检视；FilterToolbar + FilterPillGroup 打造高聚合检索与状态胶囊。
+                独立 MarkdownEditor 子包、多租户 BrandIcon（Image 降级 + SVG Mask 主题着色）、单页签崩溃隔离 TabErrorBoundary、KeepAlive 实时滚动记忆、TopProgressBar 与 abcUiClasses。
               </p>
             </div>
 
-            <div className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)] p-3.5 space-y-1.5">
-              <div className="font-semibold text-[var(--abc-fg)]">原子增强与跨后台 Pro 新套件</div>
+            <div
+              onClick={() => onJump('/pro/table')}
+              className="rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)] p-3.5 space-y-1.5 cursor-pointer transition-colors hover:border-[var(--abc-primary)]"
+            >
+              <div className="flex items-center justify-between font-semibold text-[var(--abc-fg)]">
+                <span>ProTable 1:1 全生命周期 CRUD</span>
+                <StatusTag tone="info" size="xs">
+                  Updated →
+                </StatusTag>
+              </div>
               <p className="text-[var(--abc-fg-muted)] leading-relaxed">
-                Select 双模与 SelectField、ThemeSwitcher 与 Watermark 透明度增强、ProCommandPalette 全局命令、ProLogViewer 虚拟日志及 ProFormContainer。
+                支持 api 异步 CRUD 驱动、列内 search/form 一体化派生、表头内联筛选与 8 色筛选高亮调色盘、Switch 字符串状态值及右键表头菜单。
               </p>
             </div>
           </div>

@@ -20,6 +20,7 @@ import { ChartsDocsPage } from './pages/ChartsDocsPage'
 import { DataAndFeedbackDocsPage } from './pages/DataAndFeedbackDocsPage'
 import { GeneralAndFormDocsPage } from './pages/GeneralAndFormDocsPage'
 import { LayoutsPage } from './pages/LayoutsPage'
+import { MarkdownAndShellDocsPage } from './pages/MarkdownAndShellDocsPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { ProConfigPage } from './pages/ProConfigPage'
 import { ProOpsSuitePage } from './pages/ProOpsSuitePage'
@@ -37,6 +38,13 @@ const MENU_TREE: AbcMenuItem[] = [
       { key: 'overview', label: 'Design Tokens 总览', path: '/overview', icon: 'dashboard' },
       { key: 'docs-form', label: '通用与表单控件文档', path: '/docs/form', icon: 'components' },
       { key: 'docs-display', label: '数据展示与反馈文档', path: '/docs/display', icon: 'layers' },
+      {
+        key: 'docs-markdown-shell',
+        label: 'Markdown 与壳层基建',
+        path: '/docs/markdown-shell',
+        icon: 'sparkles',
+        badge: 'New',
+      },
       { key: 'docs-cards', label: '卡片矩阵与动效规格', path: '/docs/cards', icon: 'sparkles' },
       { key: 'docs-charts', label: '自适应图表与指标卡', path: '/docs/charts', icon: 'chart' },
     ],
@@ -54,7 +62,7 @@ const MENU_TREE: AbcMenuItem[] = [
     label: 'Pro 企业套件与模板',
     icon: 'table',
     children: [
-      { key: 'pro-table', label: 'ProTable 数据表格', path: '/pro/table', icon: 'table' },
+      { key: 'pro-table', label: 'ProTable 数据表格', path: '/pro/table', icon: 'table', badge: 'Updated' },
       { key: 'pro-config', label: 'ProConfigForm 配置页', path: '/pro/config', icon: 'config' },
       { key: 'pro-ops', label: 'Pro 命令与虚拟日志套件', path: '/pro/ops', icon: 'layers', badge: 'New' },
       { key: 'templates', label: '5 套开箱业务页模板', path: '/templates', icon: 'sparkles', badge: '5' },
@@ -161,6 +169,7 @@ export const App: React.FC = () => {
         {pathname === '/overview' && <OverviewPage onJump={setPathname} />}
         {pathname === '/docs/form' && <GeneralAndFormDocsPage />}
         {pathname === '/docs/display' && <DataAndFeedbackDocsPage />}
+        {pathname === '/docs/markdown-shell' && <MarkdownAndShellDocsPage />}
         {pathname === '/docs/cards' && <CardsAndMotionDocsPage />}
         {pathname === '/docs/charts' && <ChartsDocsPage />}
         {pathname === '/layouts' && (

@@ -14,7 +14,12 @@ export interface ComponentDocPreviewProps {
   /** 组件标题（如 Button 按钮） */
   title: string
   /** 所属 npm 包名 */
-  pkg?: '@abc-design/react' | '@abc-design/charts' | '@abc-design/core'
+  pkg?:
+    | '@abc-design/react'
+    | '@abc-design/charts'
+    | '@abc-design/core'
+    | '@abc-design/markdown'
+    | '@abc-design/tokens'
   /** 核心设计说明与适用场景 */
   description: string
   /** 顶部交互式属性调节面板（Knobs） */

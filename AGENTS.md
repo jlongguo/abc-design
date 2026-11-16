@@ -12,14 +12,15 @@
 
 ---
 
-## 1. 四包架构职责边界
+## 1. 五包架构职责边界
 
 | 包名 | 职责定位 | 何时直接导入 |
 | :--- | :--- | :--- |
 | `@abc-design/tokens` | 三层语义 CSS 变量（`--abc-*`）、6 套品牌色板（`blue` / `indigo` / `violet` / `emerald` / `amber` / `rose`）、3 档信息密度（`compact` / `default` / `comfortable`）、4 档圆角、View Transitions 主题切换引擎 | 自定义 Tailwind CSS v4 样式表引入 `@abc-design/tokens/styles/index.css`（TS 类型与函数已由 `@abc-design/react` 透传导出） |
 | `@abc-design/core` | 零框架依赖纯 TypeScript 无头算法内核：中文拼音首字母匹配 (`matchKeywordWithPinyin`)、树形父子级联与半选 (`computeTreeCheckState` / `toggleTreeNodeCheck`)、客户端表格过滤排序与 URL Query 同步 (`filterAndSortClientRows` / `readQueryFromUrlSearch` / `writeQueryToUrlSearch`)、42 格月历矩阵 (`buildCalendarMonthGrid`) | 非 React 环境或自定义纯逻辑 Hook 时直接导入（`@abc-design/react` 已完整透传导出） |
-| `@abc-design/react` | 45+ 零业务耦合企业级 UI 组件、`<AbcProvider>` 适配器容器、5 模态 `<ProLayout>` 壳层、`<ProTable>`、`<ProConfigForm>`、`<PermissionGuard>` / `<DictSelect>` | **所有业务页面与布局壳层的主入口** |
-| `@abc-design/charts` | 基于 ECharts 5 按需 Tree-shaking 的主题/容器双自适应图表 `<AbcChart>`（别名 `<Chart>`）与经营指标卡 `<StatCard>` | 仪表盘、数据报表、监控大盘页面（需同时安装 `echarts@^5.6.0`） |
+| `@abc-design/react` | 65+ 零业务耦合企业级 UI 组件、`<AbcProvider>` 适配器容器、5 模态 `<ProLayout>` 壳层（内置 `KeepAliveContainer` 实时滚动记忆、`TabErrorBoundary` 单页签崩溃隔离、`TopProgressBar` 路由进度条）、`BrandIcon` / `TenantIcon`、`abcUiClasses`、`<ProTable>`、`<ProConfigForm>`、`<PermissionGuard>` / `<DictSelect>` | **所有业务页面与布局壳层的主入口** |
+| `@abc-design/charts` | 基于 ECharts 按需 Tree-shaking 的主题/容器双自适应图表 `<AbcChart>`（别名 `<Chart>`）与经营指标卡 `<StatCard>` | 仪表盘、数据报表、监控大盘页面（需同时安装 `echarts@^5.6.0`） |
+| `@abc-design/markdown` | 封装 `@uiw/react-md-editor` 的独立企业级 Markdown 编辑器 `<MarkdownEditor>`（自动跟随 `AbcProvider` 亮暗主题、三态预览、`ref.current.insertText()` 光标插值） | 文章发布、富文本工单、发版说明等需要 Markdown 编辑的场景（需同时安装 `@uiw/react-md-editor@^4.0.0`） |
 
 ---
 
