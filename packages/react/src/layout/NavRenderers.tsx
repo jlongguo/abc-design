@@ -700,7 +700,7 @@ export const SidebarNav: React.FC<{
       {brand && (
         <div
           className={cn(
-            'flex h-[var(--abc-header-h)] shrink-0 items-center border-b',
+            'flex h-[var(--abc-header-h)] z-10 shrink-0 items-center border-b',
             isDark ? 'border-[var(--abc-sidebar-dark-border)]' : 'border-[var(--abc-border)]'
           )}
         >
