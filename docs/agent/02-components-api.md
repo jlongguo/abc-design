@@ -1,242 +1,233 @@
-# 02. `@abc-design/react` 45+ 组件精确 API 字典
+# 02. 基础与中阶组件精准契约 (`@abc-design/react`)
 
-> 所有组件均支持直接从 `@abc-design/react` 具名导入。
-
----
-
-## 一、通用、图标与导航
-
-### 1. `Button`
-```tsx
-<Button
-  variant="primary" // 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'warning' | 'ghost' | 'text' | 'link'
-  size="sm"         // 'xs' | 'sm' | 'md' | 'lg'
-  loading={false}
-  loadingText="提交中…"
-  disabled={false}
-  block={false}
-  leftIcon={<Plus className="h-3.5 w-3.5" />}
-  rightIcon={<ArrowRight className="h-3.5 w-3.5" />}
-  iconOnly={false}
-  onClick={handleClick}
->
-  新建租户
-</Button>
-```
-
-### 2. `SegmentedControl`
-分段选择器控件，用于在多个互斥选项之间进行快捷切换，支持图标、角标、等宽/流式自适应布局与物理动效：
-```tsx
-<SegmentedControl
-  value={scope}
-  onChange={setScope}
-  size="sm"
-  options={[
-    { value: 'all', label: '全部' },
-    { value: 'active', label: '运行中', badge: 12 },
-    { value: 'frozen', label: '已冻结' },
-  ]}
-/>
-```
-
-### 3. `Icon` & `IconPicker`
-- `Icon`：按需具名映射 120+ 高频中后台 Lucide 图标，兼容历史 `el-icon-*` 类名与中文菜单标题智能推断（`text` 属性）。
-- `IconPicker`：同时支持两种模式：
-  1. **内联表单字段模式**：`<IconPicker value={icon} onChange={setIcon} clearable />`
-  2. **受控弹窗模式**：`<IconPicker open={open} current={icon} onClose={() => setOpen(false)} onSelect={setIcon} />`
-
-### 3. `CopyableText` & `copyToClipboard` & `Kbd`
-```tsx
-<CopyableText
-  text="sk-live-9812379182"
-  displayText="sk-live-****9182" // 可选脱敏展示文案
-  iconOnly={false}
-  onCopy={(copied) => console.log(copied)}
-/>
-```
-
-### 4. `Breadcrumb` & `Steps`
-```tsx
-<Breadcrumb
-  items={[
-    { key: 'home', label: '首页', onClick: () => navigate('/') },
-    { key: 'roles', label: '角色管理' },
-  ]}
-/>
-
-<Steps
-  current={1} // 0-based 当前步骤索引
-  direction="horizontal" // 'horizontal' | 'vertical'
-  onChange={(stepIndex) => setStep(stepIndex)}
-  items={[
-    { title: '填写主体', description: '基础工商信息' },
-    { title: '分配配额', description: '设定并发上限' },
-    { title: '开通完成' },
-  ]}
-/>
-```
+> **AI Agent 防幻觉与避坑准则**：
+> 1. **严禁猜参数**：下文每个 Props 与联合类型均逐字核对自 `packages/react/dist/index.d.ts` 及组件源码；未列出的参数切勿凭 Ant Design / MUI 习惯杜撰（例如 `Divider` 使用 `label` 而非 `children`，`Dialog.size` 不存在 `'full'`）。
+> 2. **区分同名双包符号**：`@abc-design/react` 导出的 `StatCard` 标题字段为 `label`（含 `hint`/`tone`/`mono`），而 `@abc-design/charts` 导出的 `StatCard` 标题字段为 `title`（含 `prefix`/`suffix`/`loading`）；在联动/指标页面中若同时引入两个包，请显式区分或别名导入。
+> 3. **类型与组件同名警告**：`DropdownMenuItem` 在 `@abc-design/react` 中**既作为复合菜单子组件导出，又作为 `Dropdown.items` 的 TS 接口导出**；若需要显式声明 `items` 数组类型，推荐写 `DropdownProps['items']` 或在 `import type` 中隔离避免与 JSX `<DropdownMenuItem>` 冲突。
 
 ---
 
-## 二、高密度表单控件
+## 1. 通用按钮、标签与图标
 
-### 1. `FormField`
+### `Button`
+- `Button`:
+  - `variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'warning' | 'ghost' | 'text' | 'default' | 'destructive' | 'link'`
+  - `size?: 'xs' | 'sm' | 'md' | 'lg' | 'default' | 'icon' | 'icon-sm'`（纯图标按钮可直接传 `size="icon"` / `size="icon-sm"` 或 `iconOnly` + `aria-label`，不要寻找不存在的 `IconButton` 或 `ButtonGroup`）
+  - `loading?: boolean`、`loadingText?: ReactNode`、`block?: boolean`、`disabled?: boolean`、`motion?: AbcMotionPreset`、`asChild?: boolean`
+  - `leftIcon?: ReactNode`、`rightIcon?: ReactNode`、`icon?: ReactNode`（`leftIcon` 兼容别名）
+
+### `Badge` / `StatusTag` / `Tag` / `StatusBadge`
+- `Badge`: `count?: number`、`maxCount?: number`、`dot?: boolean`、`tone?: 'danger' | 'primary' | 'success'`、`variant?: 'default' | 'secondary' | 'outline' | 'destructive' | 'success' | 'warning' | 'danger' | 'info' | 'neutral'`、`size?: AbcSize`
+- `StatusTag`: `tone?: 'neutral' | 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'purple' | 'teal'`、`dot?: boolean`、`size?: AbcSize`、`icon?: ReactNode`、`closable?: boolean`、`onClose?: () => void`、`variant?: 'soft' | 'solid' | 'outline'`
+- `Tag`: `StatusTag` 统一别名封装；`variant?: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info' | string`、`dot?: boolean`
+- `StatusBadge`: 基于文本状态码自动推断视觉色调与动画点：
+  - `status: string`（必填）
+  - `label?: ReactNode`、`variant?: StatusBadgeVariant`、`dot?: boolean`（默认 `true`）、`pulse?: boolean`、`humanize?: boolean`（默认 `true`）
+  - 辅助函数：`resolveStatusBadgeVariant(status: string): StatusBadgeVariant`、`STATUS_VARIANTS`
+
+### `CheckableTag` & `CheckableTagGroup`（可勾选胶囊标签）
+- `CheckableTag`: `label?: ReactNode`、`checked?: boolean`、`defaultChecked?: boolean`、`onCheckedChange?: (checked: boolean) => void`、`disabled?: boolean`、`mono?: boolean`、`size?: 'sm' | 'md'`、`labelClassName?: string`
+- `CheckableTagGroup<T extends string = string>`:
+  - `options: ReadonlyArray<T | CheckableTagOption<T>>`（`{ value: T; label?: ReactNode; disabled?: boolean }`）
+  - `value?: ReadonlyArray<T>`、`values?: ReadonlyArray<T>`（兼容别名）
+  - `onValueChange?: (next: T[]) => void`、`onValuesChange?: (next: T[]) => void`
+  - `mono?: boolean`、`size?: 'sm' | 'md'`
+
+### `Icon` / `SemanticIcon` / `RichIconText` / `IconBadge` / `BrandIcon` (`TenantIcon`)
+- `Icon`: `name: string`、`size?: number | string`、`strokeWidth?: number`、`fallback?: ReactNode`
+- `SemanticIcon`: 矢量语义图标：`token?: string`、`icon?: ReactNode`、`size?: number`（默认 `14`）、`strokeWidth?: number`（默认 `1.9`）、`srText?: string`
+- `RichIconText`: 解析文本中嵌入的 `[icon:xxx]` 令牌或组合前置矢量图标：`text?: string`、`token?: string`、`icon?: ReactNode`、`iconSize?: number`、`size?: AbcSize`、`iconClassName?: string`、`preserveSrToken?: boolean`（默认 `true`）
+- `IconBadge`: `token?: string`、`icon?: ReactNode`、`label?: ReactNode`、`variant?: 'default' | 'success' | 'warning' | 'error' | 'info'`、`tone?: IconBadgeTone`、`size?: 'xs' | 'sm' | 'md' | 'lg'`、`iconSize?: number`、`srText?: string`
+- `BrandIcon`（别名 `TenantIcon`）: 多品牌/多租户前缀图标（支持图片失败回退与 CSS Mask 主题着色）：
+  - `code?: string`、`tenantCode?: string`、`presets?: Record<string, BrandIconPreset>`
+  - `src?: string`、`maskSrc?: string`、`maskClassName?: string`、`alt?: string`、`fallbackIcon?: ReactNode`、`className?: string`（默认 `'w-4 h-4'`）
+
+### `CopyButton` / `CopyableText` / `CopyableCode` / `CodeBlock` / `LocaleSwitcher`
+- `CopyButton`: `value: string`（必填）、`title?: string`、`copyLabel?: string`（默认 `'复制'`）、`copiedLabel?: string`（默认 `'已复制'`）、`successDuration?: number`（默认 `1800`）、`iconOnly?: boolean`（默认 `true`）、`onCopySuccess?: (val: string) => void`、`onCopyError?: (err: unknown) => void`
+- `CopyableText`: `text: string`、`displayText?: ReactNode`、`showIcon?: boolean`、`iconOnly?: boolean`、`mono?: boolean`、`successMessage?: string`
+- `CopyableCode`: `value: string`、`displayValue?: ReactNode`、`hideCopyButton?: boolean`、`codeClassName?: string`
+- `CodeBlock`: 深色终端/代码展示块：
+  - `code: string`（必填）、`title?: ReactNode`、`language?: string`
+  - `copyable?: boolean`（默认 `true`）、`copyLabel?: string`（`'Copy'`）、`copiedLabel?: string`（`'Copied'`）、`copyAriaLabel?: string`
+  - `headerAction?: ReactNode`、`preClassName?: string`、`maxHeightClassName?: string`、`showLineNumbers?: boolean`（默认 `false`）、`wrapLongLines?: boolean`（默认 `false`）
+- `LocaleSwitcher`: `locale: string`、`onToggle?: () => void`、`onSelectLocale?: (next: 'en' | 'zh') => void`、`mode?: 'toggle' | 'segmented'`（默认 `'toggle'`）、`dark?: boolean`、`label?: string`
+
+---
+
+## 2. 布局辅助与通用原子样式
+
+### `Divider` / `Separator` / `Space` / `abcUiClasses`
+- **`Divider`（避坑重点）**：
+  - `orientation?: 'horizontal' | 'vertical'`（默认 `'horizontal'`）
+  - `label?: ReactNode`
+  - **严禁写 `<Divider>或</Divider>`** —— 组件源码不渲染 `children`，**必须使用 `<Divider label="或" />`**！
+- `Separator`: 无障碍分割线：`orientation?: 'horizontal' | 'vertical'`（默认 `'horizontal'`）、`decorative?: boolean`（默认 `true`）
+- `Space`: 弹性间距容器：`direction?: 'horizontal' | 'vertical'`（默认 `'horizontal'`）、`size?: AbcSize`、`wrap?: boolean`（默认 `false`）、`align?: 'start' | 'center' | 'end' | 'stretch'`
+- `abcUiClasses`: 只读通用 Tailwind 类名预设字典，包含 16 个键：`input`、`textarea`、`button`、`secondary`、`dangerButton`、`textButton`、`panel`、`filterCard`、`tableCard`、`tableHead`、`tableHeaderCell`、`tableCell`、`pageHeader`、`pageTitle`、`pageSubTitle`、`label`。
+
+---
+
+## 3. 基础与中阶表单控件
+
+> **基础输入类（全四档尺寸 `'xs' | 'sm' | 'md' | 'lg'` 与 `AbcMotionPreset`）**：
+> - `Label`: `size?: AbcSize`、`required?: boolean`（与 `FormField` 标签字体、星号规范完全一致）
+> - `FormField`: `label?`、`required?`、`error?`、`helperText?`、`hint?`、`tooltip?`、`size?`、`labelExtra?`、`extra?`、`layout?: 'vertical' | 'horizontal'`
+> - `Input` / `SearchInput` / `Textarea` / `InputNumber`:
+>   - `Input`: 支持 `prefix`/`prefixIcon`、`suffix`/`suffixIcon`、`allowClear`/`clearable`、`type="password"` 时默认开启 `passwordToggle` 明密文切换、`maxLength`/`showCount`
+>   - `SearchInput`: 固定搜索图标与一键清空，支持 `onClear?: () => void`、`containerClassName?`、`wrapperClassName?`、`onKeyDown` 回车检索
+>   - `InputNumber`: `value?: number | null`、`defaultValue?: number`、`onChange?: (val: number | null) => void`、`min`/`max`/`step`、`invalid?`
+> - `Checkbox` / `RadioGroup` / `Switch`:
+>   - `Checkbox`: `checked` / `defaultChecked` / `indeterminate` / `onChange(checked, e)` / `onCheckedChange(checked)` / `label` / `description`
+>   - `RadioGroup`: `options: RadioGroupOption[]`、`variant?: 'default' | 'segmented'`
+>   - `Switch`: `checked` / `onChange(checked)` / `onCheckedChange(checked)` / `loading` / `checkedLabel` / `uncheckedLabel` / `checkedChildren` / `unCheckedChildren`
+> - 业务配额/辅助控件：`ByteQuotaInput` & `DurationQuotaInput`（配合 `formatQuotaBytes` / `formatQuotaDuration`）、`TagInput`、`IconPicker`、`SliderVerify`
+
+### `Select` / `SelectField` / `RadixSelect`（单/多选家族）
+- `Select`: `options?: ReadonlyArray<SelectOption>`、`value`/`defaultValue`、`onChange`/`onValueChange`、`multiple?`、`searchable?`、`allowClear`/`clearable?`、`invalid?`、`size?: ControlSize | 'ghost'`、`wrapperClassName`/`containerClassName`、`dropdownClassName`/`popoverClassName`、`matchWidth?`、`hideChevron?`、`container?`
+- `SelectField`: 面向纯字符串单选的场景快捷封装：
+  - `value?: string`、`defaultValue?: string`、`onValueChange?: (val: string) => void`、`onChange?: (val: any) => void`
+  - `options: ReadonlyArray<{ value: string | number; label: ReactNode; disabled?: boolean; description?: string }>`
+  - `label?: ReactNode`、`error?: string`、`helperText?: ReactNode`、`placeholder?: string`、`searchable?: boolean`、`allowClear?: boolean`、`clearable?: boolean`、`triggerClassName?: string`、`contentClassName?: string`、`size?: SelectSize`
+- **`RadixSelect` 复合风格组件族**（兼容 Radix UI `<Select>` 书写结构，但根标签名为 **`RadixSelect`** 而非 `Select`）：
+  - `RadixSelect`: `{ value?: string; defaultValue?: string; onValueChange?: (val: string) => void; disabled?: boolean; open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void; children: ReactNode }`
+  - `SelectTrigger`: `{ className?, ...buttonProps }`
+  - `SelectValue`: `{ placeholder?: ReactNode }`
+  - `SelectContent`: `{ position?: 'popper' | 'item-aligned' }`
+  - `SelectGroup` / `SelectLabel` / `SelectSeparator`
+  - `SelectItem`: `{ value: string; disabled?: boolean; children: ReactNode }`
+
+### `TreeSelect` & `TreeSelectField`（树选择器）
+- 静态策略常量：`TreeSelect.SHOW_ALL` (`'SHOW_ALL'`)、`TreeSelect.SHOW_PARENT` (`'SHOW_PARENT'`)、`TreeSelect.SHOW_CHILD` (`'SHOW_CHILD'`)
+- 核心 Props (`TreeSelectProps`):
+  - 数据源与构树：`treeData?: ReadonlyArray<Record<string, any>>`、`fieldNames?: AbcTreeFieldNames` (`{ label?, value?, children? }`)、`treeDataSimpleMode?: boolean | AbcTreeSimpleModeConfig` (`{ id?, pId?, rootPId? }`)
+  - 懒加载与展开：`loadData?: (node: AbcTreeSelectNode) => Promise<void>`、`treeLoadedKeys?: Array<string | number>`、`treeDefaultExpandAll?: boolean`、`treeDefaultExpandedKeys?: Array<string | number>`、`treeExpandedKeys?: Array<string | number>`、`onTreeExpand?: (keys) => void`、`showToolbar?: boolean`
+  - 选择模式与策略：`value`/`defaultValue`、`onChange?: (value, labelList, extra: TreeSelectChangeExtra) => void`、`onValueChange?: (value) => void`、`multiple?: boolean`、`treeCheckable?: boolean`、`treeCheckStrictly?: boolean`、`showCheckedStrategy?: AbcCheckedStrategy`、`selectableLeafOnly?: boolean`、`maxTagCount?: number | 'responsive'`
+  - 搜索与虚拟滚动：`searchable?: boolean`（别名 `showSearch`）、`searchValue?: string`、`onSearch?: (kw: string) => void`、`treeNodeFilterProp?: 'title' | 'value' | 'both'`、`virtual?: boolean`（可见行 > 40 行自动启用）、`listHeight?: number`（默认 `280`）、`itemHeight?: number`（默认 `30`）
+- `TreeSelectField`: 同 `SelectField` 命名风格：`triggerClassName?: string`、`contentClassName?: string` + 其余 `Omit<TreeSelectProps, 'className' | 'dropdownClassName'>`。
+
 ```tsx
-<FormField label="企业名称" required error={errors.name} helperText="将展示在控制台左上角" layout="vertical">
-  <Input value={name} onChange={(e) => setName(e.target.value)} clearable />
-</FormField>
+import { TreeSelect } from '@abc-design/react'
+
+<TreeSelect
+  treeCheckable
+  treeDataSimpleMode={{ id: 'id', pId: 'parentId', rootPId: null }}
+  fieldNames={{ label: 'deptName', value: 'id' }}
+  showCheckedStrategy={TreeSelect.SHOW_PARENT}
+  selectableLeafOnly={false}
+  searchable
+  virtual
+  listHeight={280}
+  treeData={[
+    { id: '1', parentId: null, deptName: '基础架构部' },
+    { id: '1-1', parentId: '1', deptName: '云原生网关组' },
+  ]}
+  onValueChange={(vals) => console.log(vals)}
+/>
 ```
 
-### 2. `Input` / `InputNumber` / `Textarea` / `SearchInput` / `QuotaUnitInput`
-- `Input`：支持 `size` (`'xs'|'sm'|'md'|'lg'`)、`prefix` / `prefixIcon`、`suffix` / `suffixIcon`、`allowClear` / `clearable`（清空后自动回焦）、`passwordToggle`（`type="password"` 默认开启明密文眼睛按钮）、`showCount`、内联 `label` / `error` / `helperText`。
-- `SearchInput`：统一定制搜索框组件，内置搜索图标居中、一键清空与回车提交监听（`<SearchInput placeholder="检索规则或拼音首字母..." onClear={handleClear} />`）。
-- `QuotaUnitInput`（含 `ByteQuotaInput` / `DurationQuotaInput`）：容量/时长配额与单位联动输入，支持自动换算（B/KB/MB/GB/TB 或 s/m/h/d）、自适应单位匹配与范围保护：
+### `Cascader`（级联选择器）
+- 核心 Props (`CascaderProps`):
+  - `options: CascaderOption[]`（`{ value, label, disabled?, children?, isLeaf? }`）
+  - `value?: CascaderValue`（单选 `Array<string|number>`，多选 `Array<Array<string|number>>`）、`defaultValue?: CascaderValue`
+  - `onChange?: (value: CascaderValue, selectedOptions?: CascaderOption[] | CascaderOption[][]) => void`
+  - `multiple?: boolean`、`changeOnSelect?: boolean`（单选允许选中非叶子节点，默认 `false`）、`searchable?: boolean`（支持拼音首字母路径匹配）、`clearable?: boolean`
+  - `expandTrigger?: 'click' | 'hover'`、`separator?: string`、`showFullPath?: boolean`、`maxTagCount?: number`、`loadData?: (selectedOptions: CascaderOption[]) => Promise<void>`、`matchWidth?: boolean`
+
+### `Transfer`（双栏穿梭框）
+- 核心 Props (`TransferProps`):
+  - `dataSource: TransferItem[]`（`{ key, title, description?, disabled? }`）
+  - `targetKeys?: string[]`、`defaultTargetKeys?: string[]`
+  - `onChange?: (nextTargetKeys: string[], direction: 'left' | 'right', moveKeys: string[]) => void`
+  - `selectedKeys?: string[]`、`onSelectChange?: (sourceKeys: string[], targetKeys: string[]) => void`
+  - `titles?: [ReactNode, ReactNode]`、`searchable?: boolean`、`showSelectAll?: boolean`
+  - `virtual?: boolean`（单栏超过 `40` 条自动启用虚拟滚动窗口）、`listHeight?: number`、`itemHeight?: number`、`oneWay?: boolean`（右侧仅保留快捷移除）
+
+### `KeyValueInput`（键值对编辑器）
+- 核心 Props (`KeyValueInputProps`):
+  - `value?: AbcKeyValueEntry[]`、`defaultValue?: AbcKeyValueEntry[]`、`onChange?: (next: AbcKeyValueEntry[]) => void`
+  - `allowEnableToggle?: boolean`（默认 `true`）、`allowSecretMask?: boolean`（默认 `false`）
+  - `allowBulkEdit?: boolean`（默认 `true`）、`defaultBulkFormat?: 'dotenv' | 'headers' | 'json'`（默认 `'dotenv'`）
+  - `keyPlaceholder?: string`、`valuePlaceholder?: string`、`maxItems?: number`、`disabled?: boolean`、`size?: AbcSize`
+- 详细与 `@abc-design/core` 解析/序列化联动的示例参见 [05-complex-linkage-and-orchestration.md](./05-complex-linkage-and-orchestration.md#35-keyvalueinput--环境变量--请求头--json-双向编辑器)。
+
+### `FileUpload` & `ImageUpload` & `ProMultiImageUpload` & `ProFormLayout`
+- `FileUpload`:
+  - `value?: FileUploadItem[]`（`{ uid, name, size, type?, url?, status?: 'uploading' | 'done' | 'error', percent?, error? }`）、`defaultValue?: FileUploadItem[]`、`onChange?: (files: FileUploadItem[]) => void`
+  - `customUpload?: (file: File, onProgress?: (percent: number) => void) => Promise<string | { url: string }>`（缺省回退使用 `AbcProvider.uploadAdapter` 或本地预览 URL）
+  - `accept?: string`、`multiple?: boolean`、`maxCount?: number`、`maxSizeMB?: number`、`dragTitle?: ReactNode`、`dragHint?: ReactNode`
+- `ImageUpload`: `value?: string`、`onChange?: (url: string) => void`、`customUpload?`、`previewShape?: 'rounded' | 'circle'`
+- `ProMultiImageUpload`（别名 `MultiImageFieldControl`）:
+  - `value: string | string[]`（兼容数组或逗号分隔字符串）、`onChange: (val: string) => void`（输出逗号分隔 URL 字符串）、`maxCount?: number`（默认 `9`）、`disabled?: boolean`、`customUpload?: (file: File) => Promise<{ url: string } | string | undefined>`
+- `ProFormLayout`: 分组表单排版容器：`mode?: 'split' | 'grid'`（`split` 为左侧标题导览 + 右侧卡片，`grid` 为多列卡片堆叠）、`sections: ProFormSection[]`（`{ key, title, description?, columns?: 1 | 2 | 3, children }`）
+
+### 日期选择器
+- `DatePicker`：`value?: string`、`defaultValue?: string`、`onChange?: (dateStr: string) => void`、`format?`、`shortcuts?: boolean | DatePickerShortcut[]`、`minDate?`、`maxDate?`、`allowClear`/`clearable?`
+- `DateRangePicker`：`value?: DateRangeInput`（`[string, string]` 或 `{ start?, end? }`）、`defaultValue?`、`onChange?: (range: any) => void`（按输入格式自动回传对象或元组）、`shortcuts?: boolean | DateRangeShortcut[]`、`minDate?`、`maxDate?`、`allowClear`/`clearable?`
+
+---
+
+## 4. 数据展示与卡片家族
+
+### 卡片套件 (`Card`, `StatCard`, `MetricCard`, `CheckCard`, `ActionCard`, `CollapsibleCard`, `PricingCard`, `BentoGrid`/`BentoCard`, `SpotlightCard`)
+- `Card` + `CardHeader` / `CardTitle` / `CardDescription` / `CardContent` / `CardFooter`
+- `StatCard`（`@abc-design/react` 版）: `label: ReactNode`（必填）、`value: ReactNode`（必填）、`icon?`、`hint?`、`badge?`、`trend?`、`mono?: boolean`、`tone?: 'default' | 'surface' | 'primary' | 'success' | 'warning' | 'danger'`、`size?: 'sm' | 'default' | 'lg'`、`valueClassName?`
+- `MetricCard`: `title: ReactNode`、`value: ReactNode`、`prefix?`、`suffix?`、`trend?: { value: string | number; direction?: 'up' | 'down' | 'flat'; label?: string }`、`sparkline?: number[]`（纯 SVG 迷你折线，零 ECharts 依赖）、`icon?`、`footer?`、`loading?: boolean`、`hoverable?: boolean`
+- `CheckCardGroup` & `CheckCard`: `CheckCardGroup` 支持 `multiple?`、`value`/`defaultValue`、`onChange`、`columns?: 1 | 2 | 3 | 4`；`CheckCard` 支持 `value?`、`title`、`description?`、`avatar?`、`icon?`、`extra?`、`checked?`、`disabled?`
+- `ActionCard`: 整卡主动作可点击 (`href`/`onClick`) 且右上角 `extra` 独立隔离点击：`title`、`description?`、`icon?`、`tags?: string[]`、`extra?: ReactNode`、`href?`、`target?`、`onClick?`
+- `CollapsibleCard`: `title`、`subtitle?`、`icon?`、`extra?`、`defaultOpen?: boolean`、`open?`、`onOpenChange?`、`bodyClassName?`、`children`
+- `PricingCard`: `tier`、`price`、`period?`（默认 `'/ 月'`）、`description?`、`features: Array<{ text: ReactNode; included?: boolean } | string>`、`recommended?: boolean`、`badge?`、`ctaText?`、`loading?: boolean`、`onSelect?`
+- `BentoGrid` & `BentoCard`: `BentoGrid` (`columns?: 2 | 3 | 4`, `gap?: AbcSize`)；`BentoCard` (`colSpan?: 1 | 2 | 3`, `rowSpan?: 1 | 2`, `eyebrow?`, `title`, `description?`, `icon?`, `graphic?`, `footer?`, `hoverable?`)
+- `SpotlightCard`: `spotlightColor?`、`hoverable?: boolean`、`size?`、`motion?`
+
+### 描述列表 (`Descriptions` vs `DescriptionList`)
+- **`Descriptions`**（紧凑网格）：`items: Array<{ key?: string; label: ReactNode; children: ReactNode; span?: number }>`、`column?: 1 | 2 | 3 | 4`、`bordered?: boolean`
+- **`DescriptionList` & `DescriptionItem` (`DescriptionListItem`)**：
+  - `items?: Array<{ key?: string; label: ReactNode; value: ReactNode; mono?: boolean; copyValue?: string; span?: 1 | 2 | 3 | 'full' }>`
+  - `columns?: 1 | 2 | 3 | 4`、`variant?: 'default' | 'cards' | 'divided' | 'compact'`、`density?: 'default' | 'compact'`、`bordered?: boolean`
+  - **避坑重点**：`Descriptions` 的项用 `children` 传值；`DescriptionList` 的项用 `value` 传值！
+
+### 交互导航与复合菜单 (`Tabs`, `Dropdown`, `DropdownMenu`, `Pagination`)
+- `Tabs`: 支持声明式 `items?: TabItem<K>[]`（`activeKey`/`value`、`defaultActiveKey`、`variant?: 'line' | 'pills' | 'segmented'`、`extra?`）或复合写法 (`TabsList` / `TabsTrigger` / `TabsContent`)。
+- `Dropdown`（items 模式）：`items?: DropdownMenuItem[]`（`{ key, label, icon?, danger?, disabled?, divider?, dividerAbove?, onClick? }`）、`content?: ReactNode`、`align?: 'left' | 'right'`、`placement?: 'bottomLeft' | 'bottomRight' | 'topLeft' | 'topRight'`、`trigger?: 'click' | 'hover'`
+- `DropdownMenu`（复合组件写法）：
+  - `DropdownMenu` (`open`, `defaultOpen`, `onOpenChange`)
+  - `DropdownMenuTrigger` (`asChild?: boolean`)
+  - `DropdownMenuContent` (`align?: 'start' | 'end'`, `sideOffset?: number`)
+  - `DropdownMenuGroup`、`DropdownMenuLabel` (`inset?: boolean`)、`DropdownMenuSeparator`、`DropdownMenuShortcut`
+  - `DropdownMenuItem`（`inset?: boolean` + `<button>` 属性）
+- **分页器家族 (`SmartPagination`, `OffsetPagination`, `CursorPagination`)**：
+  - `PaginationProps`：`mode?: 'offset' | 'cursor'`（默认 `'offset'`）
+  - 偏移分页字段：`current`/`currentPage`/`page`、`pageSize`/`limit`、`total`、`onChange(page, pageSize)`、`onPageChange`、`onSizeChange`/`onPageSizeChange`/`onLimitChange`、`pageSizeOptions`/`limitOptions`、`showTotal`/`summaryText`、`showQuickJumper`
+  - 游标分页字段：`hasNext?: boolean`、`hasPrev?: boolean`、`nextCursor?: string | null`、`prevCursor?: string | null`、`currentCursor?: string | null`、`loadedCount?: number`、`onNext?: () => void`、`onPrev`/`onPrevious?: () => void`、`onResetCursor?: () => void`
+  - **避坑重点**：若需设置分页器控件视觉大小而非每页条数，使用 `controlSize?: AbcSize`（因 `size` 兼容历史数字 `pageSize`）。
+
+---
+
+## 5. 反馈、错误态、确认与浮层
+
+### 警告与诊断横幅 (`Alert`, `NotificationBanner`, `ReadErrorBanner`, `AsyncInlineError`, `ToastCard`, `LoadingStateCard`, `ProgressBar`)
+- `Alert`: `tone?: 'info' | 'success' | 'warning' | 'danger'`、`title?`、`description?`、`showIcon?: boolean`、`closable?: boolean`、`onClose?`、`action?: ReactNode`
+- `NotificationBanner`: `variant?: 'error' | 'warning' | 'success' | 'info'`、`title?`、`message?`、`description?`、`code?: string`、`status?: number`、`requestId?: string`、`actionHint?: ReactNode`、`action?: ReactNode`、`onDismiss?`、`dismissLabel?`、`hideIcon?: boolean`
+- `ReadErrorBanner`: 专用数据读取失败横幅（带重试防重复状态）：`message?`、`code?`、`status?`、`requestId?`、`onRetry?: () => void`、`retryLabel?: string`（默认 `'重试读取'`）、`pendingLabel?: string`、`retryAriaLabel?: string`、`pending?: boolean`、`action?: ReactNode`
+- `AsyncInlineError`: 自动从 `unknown` 异常提取消息，当 `error` 为空时返回 `null`：`error: unknown`、`fallbackTitle?: ReactNode`（默认 `'加载失败'`）、`fallbackMessage?: ReactNode`、`action?: ReactNode`、`retry?: () => void`、`retryLabel?: ReactNode`（默认 `'重试'`）、`isRetrying?: boolean`
+- `ToastCard`: 结构化诊断 Toast 卡片：`id: string`、`variant: NotificationVariant`、`title?: ReactNode`、`message?: ReactNode`、`code?: string`、`status?: number`、`requestId?: string`、`actionHint?: ReactNode`、`durationMs: number | null`、`paused?: boolean`、`onDismiss: (id: string) => void`
+- `LoadingStateCard`: `message: ReactNode`、`paused?: boolean`、`size?: 'sm' | 'md'`
+- `ProgressBar`: 带自动阈值变色与 ARIA progressbar 语义的进度条：`value?: number | null`、`max?: number`（默认 `100`）、`size?: 'sm' | 'md' | 'lg'`、`variant?: 'default' | 'success' | 'warning' | 'danger' | 'auto'`、`dangerThreshold?: number`（默认 `90`）、`warningThreshold?: number`（默认 `100`）、`fillClassName?: string`
+- 骨架与空状态：`Skeleton`、`SkeletonTable`、`SkeletonChart`、`EmptyState`、`Result`、`ErrorBoundary`
+
+### 确认对话框与命令式 API (`useConfirm`, `abcConfirm`, `ConfirmDialog`, `OneTimeSecretDialog`)
+- `useConfirm()` Hook：返回与 `abcConfirm` 等价的命令式 Promise 确认函数：
   ```tsx
-  <ByteQuotaInput
-    value={quotaBytes}
-    onChange={setQuotaBytes}
-    allowedUnits={['MB', 'GB', 'TB']}
-    ariaLabel="磁盘配额"
-  />
-  ```
-- `InputNumber`：`value: number | null`，`onChange: (value: number | null) => void`，支持 `min`、`max`、`step`、键盘上下键步进。
-- `Textarea`：支持 `showCount`、`maxLength`、内联 `label` / `error` / `helperText`。
-
-### 3. `Select` & `DictSelect`
-- **注意：`onChange` 直接返回选中值（单选为 `string | number`，多选 `multiple` 为 `Array<string | number>`）**。
-```tsx
-<Select
-  label="所属角色"
-  options={[
-    { label: '系统管理员', value: 'admin', description: '全量权限' },
-    { label: '财务复核员', value: 'finance' },
-    { label: '已停用角色', value: 'legacy', disabled: true },
-  ]}
-  value={selected}
-  onChange={(val) => setSelected(val)}
-  searchable   // 支持汉字拼音首字母匹配（如输入 xtgl 命中“系统管理员”）
-  multiple     // 开启多选胶囊模式
-  clearable    // 一键清空
-/>
-
-<DictSelect
-  dictCode="order_status" // 亦兼容 dictKey 别名，自动调用 AbcProvider.dictAdapter
-  prependOptions={[{ label: '全部状态', value: '' }]}
-  value={status}
-  onChange={setStatus}
-/>
-```
-
-### 4. `Checkbox` / `RadioGroup` / `Switch`
-```tsx
-<Checkbox checked={checked} indeterminate={isHalf} onChange={(next: boolean) => setChecked(next)} label="全选" />
-<RadioGroup variant="segmented" value={tab} onChange={setTab} options={[{ label: '按日', value: 'day' }, { label: '按月', value: 'month' }]} />
-<Switch checked={enabled} loading={saving} size="default" onChange={(next: boolean) => setEnabled(next)} />
-```
-
-### 5. `DatePicker` / `DateRangePicker` / `ImageUpload` / `Tree` / `TagInput` / `SliderVerify`
-- `DatePicker`：`value?: string` (`YYYY-MM-DD`)，`onChange?: (dateStr: string) => void`。
-- `DateRangePicker`：`value?: [string, string] | { start?: string; end?: string }`，`onChange?: (range: [string, string]) => void`（内置今日/近7天/本月快捷按钮）。
-- `ImageUpload`：`value?: string`，`onChange?: (url: string) => void`，自动复用 `AbcProvider.uploadAdapter` 或单组件传入 `customUpload`。
-- `Tree`：`treeData: AbcTreeNode[]`，支持 `checkable`、`checkStrictly`、`searchable`（拼音检索 + 一键全展开/全收起）、`checkedKeys`、`onCheck={(keys, info) => ...}`。
-- `TagInput`：`value?: string[]`，`onChange?: (tags: string[]) => void`，`maxTags?: number`。
-- `SliderVerify`：`onSuccess: (payload: { nonceStr: string; value: number }) => void`，自动消费 `AbcProvider.captchaAdapter`。
-
----
-
-## 三、表面容器与数据展示
-
-- **`Card` / `CardHeader` / `CardTitle` / `CardDescription` / `CardContent` / `CardFooter` / `SpotlightCard` / `BorderBeam` / `AuroraBackground` / `Divider` / `Space`**：
-  `<Card as="article" title="标题" subtitle="副标题" extra={<Button>操作</Button>} size="md" variant="default" cover={...} statusRibbon={{ text: '推荐', tone: 'primary' }} loading={false} hoverable motion="smooth">`
-  - 新增复合插槽子组件（`CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter`），支持更精细的模块化卡片排版。
-  - 新增 `variant?: 'default' | 'bordered' | 'ghost' | 'elevated' | 'glass'`、`size?: AbcSize`（`xs | sm | md | lg`）、`loading`、`cover`、`statusRibbon` 与 `@container` 容器查询上下文。
-- **`TablePrimitives` 复合基础表格骨架**：
-  - 提供轻量、复合无业务绑定的表格原语：`Table`（内置水平滚动视口与无障碍 role）、`TableHeader`（支持 `sticky` 吸顶）、`TableBody`、`TableFooter`、`TableRow`、`TableHead`、`TableCell`、`TableCaption`。
-- **`DescriptionList` / `DescriptionListItem` / `CopyableCode`**：
-  - 基于语义化 `<dl>`/`<dt>`/`<dd>`，支持 `columns`（1~4 列）、`variant`（`'default' | 'cards' | 'divided' | 'compact'`）与一键内联复制组件 `CopyableCode`。
-- **`IconBadge` & `RichIconText`**：
-  - 图标与文字组合徽标（`<IconBadge icon={<Shield className="h-3 w-3" />} label="BGP 专线" variant="success" size="sm" />`）。
-- **`AttentionList`**：
-  - 重点待办与聚合运营告警清单，展示高危/中危风险信号及直达处理链接。
-- **企业级卡片矩阵（`Cards` 模块）**：
-  - `MetricCard`：`title`, `value`, `prefix`, `suffix`, `trend?: { value, direction?: 'up' | 'down' | 'flat', label? }`, `sparkline?: number[]`, `icon`, `footer`, `loading`, `hoverable`, `size`, `motion`
-  - `CheckCardGroup` / `CheckCard`：`multiple`, `value`, `defaultValue`, `onChange`, `columns?: 1 | 2 | 3 | 4`, `disabled`, `size`, `motion`（`CheckCard`：`value`, `title`, `description`, `avatar`, `icon`, `extra`, `checked`, `disabled`）
-  - `ActionCard`：`title`, `description`, `icon`, `tags`, `extra`, `href`, `target`, `disabled`, `onClick`, `size`, `motion`（主卡片点击热区与右上角 `extra` 操作互斥隔离）
-  - `CollapsibleCard`：`title`, `subtitle`, `icon`, `extra`, `defaultOpen`, `open`, `onOpenChange`, `size`, `motion`
-  - `PricingCard`：`tier`, `price`, `period`, `description`, `features: Array<{ text; included? } | string>`, `recommended`, `badge`, `ctaText`, `disabled`, `loading`, `onSelect`, `size`, `motion`
-  - `BentoGrid` (`columns?: 2 | 3 | 4`, `gap?: AbcSize`) & `BentoCard` (`colSpan?: 1 | 2 | 3`, `rowSpan?: 1 | 2`, `eyebrow`, `title`, `description`, `icon`, `graphic`, `footer`, `hoverable`, `size`, `motion`)
-- **`TableCore<T>`**：支持 `columns: AbcColumn<T>[]`（`fixed: 'left' | 'right'` 多列累加粘性偏移、`sortable`、`filterable`、`tooltip`、`valueType` 语义自动格式化、`options` 状态标签映射、`linkToView`、`copyable`）、表头右键快捷菜单（排序/左右固定/隐藏列/重置）、`expandable` 子面板展开与树形 `children` 缩进、列宽拖拽 `onColumnResize`（含右侧固定列与 `__abc_actions__` 操作列左边缘拖拽调宽 + `<colgroup>`/`tableLayout: 'fixed'` 宽度锁定、`resizable` 控制与 `ProColumnSettingsPopover` 数值输入调宽）、表头实时 `onDragOver` 列序嵌入高亮与 FLIP 滑移动画（支持 `Escape` 取消回滚，`onColumnReorder`）、多选 `selectedKeys` / `onSelectionChange`、三种密度 `density` 与 `motion?: AbcMotionPreset`。
-- **`Descriptions`**：`<Descriptions title="详情" bordered column={2} items={[{ label: '订单号', children: 'ORD-1', span: 2 }]} />`
-- **`Collapse`**：基于原生 `<details>` 的无障碍折叠面板，`<Collapse accordion items={[{ key: '1', label: '标题', children: '内容' }]} />`
-- **`Timeline`**：`<Timeline items={[{ title: '节点标题', time: '10:00', description: '说明', tone: 'success' }]} />`
-- **`Tabs`**：`<Tabs variant="line" activeKey={key} onChange={setKey} items={[{ key: 'a', label: '概览', badge: 5, children: <div /> }]} />`（亦支持 `variant="pills"`）。
-- **`StatusTag` & `DictTag`**：支持 `tone` (`'neutral'|'primary'|'success'|'warning'|'danger'|'info'`)，以及兼容属性 `status` / `color` (`'purple'|'cyan'|'orange'|'teal'|'pink'`) 和 `dot` / `pulse`。
-- **`ImagePreview`**：`<ImagePreview src={logoUrlOrSvgMarkup} width={40} height={40} zoomable />`，原生支持位图 URL 与 `<svg>...</svg>` 字符串的缩略图及全屏缩放/旋转灯箱。
-- **`Tooltip` / `Popover` / `Dropdown`**：基于 `useFloatingPosition` 与 `getOverlayPortalContainer` 的视口感知顶层 Portal 浮层体系，自动逃逸 `overflow: hidden` 卡片裁剪并兼容原生 `<dialog>` `#top-layer` 模态栈，边缘自动翻转且支持完整键盘无障碍导航。
-- **`EmptyState` / `Pagination` / `Skeleton` / `SkeletonCard` / `SkeletonTable` / `SkeletonChart`**：完整空状态、分页器（含每页条数与页码快跳）与骨架屏。
-
----
-
-## 四、反馈、安全浮层与权限守卫
-
-- **`Dialog`**：`<Dialog open={open} onClose={handleClose} title="快捷操作" size="md" footer={...}>`（支持标题栏拖拽移动与双击最大化，`size` 支持 `'sm'|'md'|'lg'|'xl'|'full'`，亦兼容 `isOpen` 与 `maxWidth`）。
-  - **定位与使用场景**：专用于**小表单操作与轻量确认**（如修改名称、停用、快速输入操作原因等少字段场景），居中弹出且天然支持多级 Modal 遮罩堆叠。
-- **`Drawer`**：`<Drawer open={open} onClose={handleClose} title="配额与能力配置" placement="right" size="lg" resizable push cascadeMode="adjacent">`（支持侧边拖拽调宽，以及多级抽屉自动左移层叠 `stack` 或并排平级展开 `adjacent`）。
-  - **定位与使用场景**：专用于**大表单交互操作展示**（多指标、长录入、多分类卡片与复杂校验），全高贴合无视口裁切风险；**若大表单内部需要再打开另一个大表单，必须使用子级抽屉（二级抽屉 L1 -> L2）**，严禁使用 Modal。
-- **`ConfirmDialog`**：
-  - 结构化二次确认对话框，相比简易命令式 `abcConfirm`，支持嵌入自定义表单内容、破坏性警示样式、异步加载中与无障碍焦点锁定：
-  ```tsx
-  <ConfirmDialog
-    open={confirmOpen}
-    title="确认删除该网关节点？"
-    description="删除后将立即剔除路由转发池并释放弹性 IP，此操作不可撤销。"
-    variant="destructive"
-    loading={deleting}
-    onCancel={() => setConfirmOpen(false)}
-    onConfirm={handleDelete}
-  />
-  ```
-- **`OneTimeSecretDialog`**：
-  - 一次性敏感密钥/凭证展示弹窗，专用于仅下发一次的 API Key、Token 或临时密码，提供强安全提醒与一键复制确认：
-  ```tsx
-  <OneTimeSecretDialog
-    open={Boolean(newSecret)}
-    title="已生成只读访问凭证"
-    secret={newSecret}
-    metadata={[{ label: '权限范围', value: 'read:billing, read:nodes' }]}
-    onClose={() => setNewSecret(null)}
-  />
-  ```
-- **`NotificationBanner`**：
-  - 局部与全局通知横幅（支持 `'error' | 'warning' | 'success' | 'info'` 四种状态），支持标题、错误码、RequestId、操作按钮及可关闭态。
-- **`abcConfirm`（别名 `confirm` / `useConfirm`）**：
-  ```ts
-  const ok = await abcConfirm({
-    title: '确认删除？',
-    message: '此操作不可撤销',
+  const confirm = useConfirm()
+  const ok = await confirm({
+    title: '确认下线节点？',
+    message: '下线后流量将自动漂移至同可用区其余实例',
     tone: 'danger',
   })
   ```
-- **`Alert` / `Progress` / `Result` / `Loading` / `Watermark` / `ErrorBoundary` / `TabErrorBoundary`**：
-  - `<Result status="403" title="无权限" subTitle="说明" extra={<Button>返回</Button>} />`
-  - `<TabErrorBoundary resetKey={location.pathname}>{children}</TabErrorBoundary>`
-- **`ToastContainer`（别名 `AbcToastViewport`）**：
-  - `<ToastContainer position="top-right" maxCount={5} pauseOnHover newestOnTop={false} closable />`
-  - 支持 6 种视口定位（`top-right`、`top-left`、`top-center`、`bottom-right`、`bottom-left`、`bottom-center`）、鼠标悬停暂停倒计时（`pauseOnHover`）、`newestOnTop` 排序、Portal 挂载目标节点定制、多容器 `containerId` 隔离及单条富文本卡片（`title` + `description` + `action`）。
-  - 命令式调用（亦导出 `toast` 简写）：`abcToast.success('保存成功')`、`abcToast.error('异常')`、`abcToast.warning('警告')`、`abcToast.info('提示')`、`abcToast.loading('加载中')`、`abcToast.dismiss(id)`、`abcToast.clear()`。
-- **`PermissionGuard`（别名 `Permission`）**：
-  ```tsx
-  <Permission code="sys:user:delete" fallbackStrategy="disable">
-    <Button variant="danger">删除账号</Button>
-  </Permission>
-  ```
+- `ConfirmDialog`：声明式受控确认框；`OneTimeSecretDialog`：一次性密钥（API Key / Token）弹窗。
 
-## 全域规格 (`AbcSize`) 与统一动效体系 (`AbcMotionPreset`)
-
-- **四档通用规格 `AbcSize = 'xs' | 'sm' | 'md' | 'lg'`**：
-  - `AbcProvider` 支持全局 `defaultTheme={{ ..., componentSize: 'sm', motion: 'smooth' }}` 与运行时 `setComponentSize` / `setMotion`（均暴露在 `ThemeCustomizer` 主题配置器中）。
-  - 全部基础输入与展示组件（`Button`、`Input`、`InputNumber`、`Textarea`、`Select`、`DatePicker`、`DateRangePicker`、`Checkbox`、`RadioGroup`、`Switch`、`TagInput`、`IconPicker`、`ImageUpload`、`StatusTag`、`Badge`、`Avatar`、`Tabs`、`Descriptions`、`Collapse`、`Timeline`、`Breadcrumb`、`Steps`、`EmptyState`、`Loading`、`AbcToastViewport`、`Dialog`、`Drawer`、`Card` 等）均可自动通过 `useAbcSize` / `useAbcMotion` 继承全局配置并允许局部 `size` / `motion` 覆盖。
-  - 向后兼容注意：`Pagination` 保留 `size?: number | AbcSize` 与新增 `controlSize?: AbcSize`；`Switch` 兼容 `'small' | 'default'`；`Progress` 保留 `size?: number | AbcSize`。
-- **四档动效预设 `AbcMotionPreset = 'none' | 'subtle' | 'smooth' | 'spring'`**：
-  - 自动写入 `document.documentElement.dataset.abcMotion`，并向下游每个组件注入 `data-motion` 与 `@abc-design/tokens` 物理缓动变量（`--abc-ease-active` 过冲曲线仅用于位移/缩放，不用于 `opacity` 或颜色）。
-  - `motion="none"` 或系统开启 `prefers-reduced-motion: reduce` 时，自动关闭动画位移并令 `Dialog` / `Drawer` / `Dropdown` / `Popover` / `Tooltip` 零延迟即时卸载。
+### 弹窗与抽屉交互铁律 (`Dialog` vs `Drawer`)
+1. **小表单 / 轻量确认用 `Dialog`**：支持多层叠加，默认居中。`Dialog.size` 类型 `DialogSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl'`；**注意没有 `'full'` 尺寸**，全屏最大化通过 `fullscreenable`（默认 `true`）与受控 `fullscreen` / `onFullscreenChange` 控制。
+2. **大表单 / 复杂详情用 `Drawer`**：全高贴合右侧、带吸附 Header/Footer、支持边缘拖拽调宽 (`resizable`, `storageKey`)。二级抽屉优先设 `cascadeMode="adjacent"`（平级并排对比展开）。
+3. **非阻塞列表联动详情优先用 `SplitDetailLayout` + `SplitDetailPanel`**：见 [03-layout-and-pro-suite.md](./03-layout-and-pro-suite.md)。

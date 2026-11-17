@@ -1,0 +1,19 @@
+# ABC Design (`@abc-design/*`)
+
+> 企业级高密度前端设计系统、纯 TypeScript 无头核心算法库、零业务耦合 React 组件库、5 模态自适应布局壳层、主题感知 ECharts 图表套件与双栏 Markdown 编辑器（共 5 个 Monorepo 核心包，导出 200+ 组件与工具函数）。专为现代多租户 SaaS 管理后台与 AI Coding Agent 零幻觉对接设计。
+
+## Core Documentation
+- [AI Agent 权威对接手册 (AGENTS.md)](./AGENTS.md): 唯一架构总纲、五包边界、防幻觉签名核对表与复杂联动组件选型准则
+- [Claude / Agent 快速入口 (CLAUDE.md)](./CLAUDE.md): AI 编码助手读取入口与核心文档路由表
+- [单文件全量机器可读上下文 (llms-full.txt)](./llms-full.txt): 包含安装命令、适配器契约、全部高频及联动组件准确签名
+- [Agent 集成技能定义 (skills/abc-design/SKILL.md)](./skills/abc-design/SKILL.md): 可直接挂载到 Antigravity / Claude Code 的标准对接工作流技能
+
+## Layered Agent Guides (`docs/agent/`)
+- [01. 快速接入、样式体系与 5 大适配器](./docs/agent/01-quickstart-and-adapters.md): 独立 CSS vs Tailwind v4 两种样式接入方式与 `<AbcProvider>` 五大解耦适配器
+- [02. 基础、表单与展示组件精确 API 字典](./docs/agent/02-components-api.md): 全量原子、表单（含 `TreeSelect`/`Cascader`/`Transfer`/`KeyValueInput`）、展示与安全反馈组件 Props
+- [03. 5 模态布局与 Pro 企业业务套件](./docs/agent/03-layout-and-pro-suite.md): `ProLayout`、`PageContainer`/`PageHeader`/`HubNavBar`、`DataTable`/`ProTable`/`ProConfigForm`/`ProLogViewer`/`ProCommandPalette`
+- [04. 自适应图表与开箱业务页蓝图](./docs/agent/04-charts-and-templates.md): `@abc-design/charts`（`StatCard`/`AbcChart`/`getAbcChartPalette`/`buildAbcBaseChartOption`）与标准页面模板
+- [05. 复杂组件联动编排与选型决策矩阵](./docs/agent/05-complex-linkage-and-orchestration.md): 7 大跨组件复杂联动场景、12 个高阶联动组件及 `@abc-design/core` 算法内核签名
+
+## Interactive Playground (`apps/playground/src/pages/`)
+- `foundation/`, `navigation/`, `form/`, `display/`, `surfaces/`, `feedback/`, `charts/`, `pro/`, `linkage/`, `templates/` — 10 大领域共 36 个聚焦文档路由页与实时 Props 调节面板

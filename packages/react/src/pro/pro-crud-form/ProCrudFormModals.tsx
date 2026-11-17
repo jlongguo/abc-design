@@ -9,6 +9,7 @@ import { getNestedValue,renderBuiltInValue,type AbcColumn } from '../../componen
 import { cn } from '../../utils/cn'
 
 /* ==================== 1. 零外部依赖响应式表单控制器 (ProFormInstance) ==================== */
+import { ProFormProvider } from '../ProFormDependency'
 import { ProCrudFormFieldControl } from './fieldControls'
 import {
 isSchemaFieldRequired,
@@ -93,7 +94,7 @@ export function ProCrudFormLayout<F = any>({
     const bottomFields = visible.filter((f) => f.formGroup === 'bottom')
     const extraFields = visible.filter((f) => f.formGroup === 'extra')
 
-    return (
+    const splitContent = (
       <div className="space-y-4">
         {topFields.length > 0 && (
           <div className="space-y-3.5">{topFields.map((f) => renderField(f))}</div>
@@ -119,9 +120,10 @@ export function ProCrudFormLayout<F = any>({
         )}
       </div>
     )
+    return form ? <ProFormProvider form={form}>{splitContent}</ProFormProvider> : splitContent
   }
 
-  return (
+  const gridContent = (
     <div
       className={cn(
         'grid gap-3.5',
@@ -144,6 +146,7 @@ export function ProCrudFormLayout<F = any>({
       })}
     </div>
   )
+  return form ? <ProFormProvider form={form}>{gridContent}</ProFormProvider> : gridContent
 }
 
 export const CrudFormLayout = ProCrudFormLayout

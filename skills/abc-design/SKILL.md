@@ -1,6 +1,6 @@
 ---
 name: abc-design
-description: 使用 @abc-design/*（tokens、core、react、charts）搭建或改造企业级中后台前端工程、接入 5 模态 ProLayout 布局、构建 Schema 驱动 ProTable / ProConfigForm 页面及自适应 ECharts 看板。当用户要求基于 abc-design 创建新项目、迁移旧管理后台、开发 CRUD 列表、配置表单或仪表盘时必须激活此技能。
+description: 使用 @abc-design/*（tokens、core、react、charts、markdown）搭建或改造企业级中后台前端工程、接入 5 模态 ProLayout 布局、构建 Schema 驱动 ProTable / EditableProTable / ProStepsForm / FilterBuilder / ProSplitWorkbench 复杂联动页面及自适应 ECharts 看板。当用户要求基于 abc-design 创建新项目、迁移管理后台、开发多组件联动工作台、动态表单或仪表盘时必须激活此技能。
 ---
 
 # ABC Design (`@abc-design/*`) 官方集成技能指南
@@ -8,12 +8,13 @@ description: 使用 @abc-design/*（tokens、core、react、charts）搭建或�
 ## 1. 适用场景与前置核查
 
 在编写任何业务代码前，先检查目标工程的 `package.json` 与全局样式入口：
-1. 确认已安装 `@abc-design/tokens`、`@abc-design/core`、`@abc-design/react`（若含图表页面则包含 `@abc-design/charts` 与 `echarts`）。
+1. 确认已安装 `@abc-design/tokens`、`@abc-design/core`、`@abc-design/react`（按需含 `@abc-design/charts` + `echarts`、`@abc-design/markdown` + `@uiw/react-md-editor`）。
 2. 检查样式加载方式（二选一，不可遗漏）：
    - **普通项目**：入口引入 `import '@abc-design/react/styles.css'`。
    - **Tailwind CSS v4 项目**：主 CSS 文件引入 `@import "@abc-design/tokens/styles/index.css";` 并通过 `@source` 扫描 `@abc-design/react` 与 `@abc-design/charts`。
+   - **Tailwind CSS v3 宿主**：除引入 `@abc-design/react/styles.css` 并把 `@tailwind base` 包入 `@layer base` 外，**必须在 `tailwind.config.js` 的 `content` 加入 `'./node_modules/@abc-design/react/dist/**/*.js'`（与 `charts`）**，防止宿主未分层 `.hidden` 压死组件库 `@layer utilities` 里的桌面端断点导致 `ProLayout` 导航消失。
 
-## 2. 标准对接四步法
+## 2. 标准对接五步法
 
 ### 第一步：在根组件配置 `<AbcProvider>`
 将宿主项目的上传接口、字典服务、权限码校验、滑块验证码接口与 Toast 服务通过 Adapter 注入 `<AbcProvider>`，保持 UI 组件与业务 API 零耦合：
@@ -22,28 +23,32 @@ description: 使用 @abc-design/*（tokens、core、react、charts）搭建或�
 - `permissionAdapter: (permission: string | string[], mode?: 'any' | 'all') => boolean`
 - `captchaAdapter?: () => Promise<{ nonceStr, blockSrc, blockY, canvasSrc }>`
 - `toastAdapter?: { success, error, info, warning }`（不传则自动启用内置 `AbcToastViewport`）
+- `defaultDrawerCascadeMode?: 'stack' | 'adjacent'`（控制多级大表单抽屉默认展开方式）
 
 ### 第二步：使用 `<ProLayout>` 构建多模态导航壳层
 将路由器的 `location.pathname` 与 `navigate` 传入 `<ProLayout>`：
 - `brand`: `{ name, subtitle, logo, onClick, onEditBrand }`（`logo` 原生支持图片 URL 或 `<svg>...</svg>` 字符串）。
 - `menuItems`: `AbcMenuItem[]` 树形菜单（支持 `key`、`label`、`path`、`icon`、`badge`、`children`）。
 - `settings` / `defaultSettings`: 支持 `mode: 'sidebar' | 'top' | 'mix' | 'dual-column' | 'auth'`、多页签 `showTabs`、状态保活 `keepAlive`。
-- `headerExtra`: 挂载多租户切换器、环境标识或通知中心。
 
-### 第三步：使用 `<PageContainer>` + Pro 套件交付业务页面
-- **列表与增删改查页**：优先使用 `<ProTable>`，通过 `columns` + `fields` 一处配置同时驱动顶部检索栏、表头内联筛选、远程/本地拼音双引擎过滤（`clientFilter` / `showClientFilterSwitch`）、详情查看（`viewable`）与带草稿防丢失的表单容器（`formContainer: 'drawer' | 'dialog'`，大表单务必使用 `'drawer'`）。
-- **分组参数设置页**：优先使用 `<ProConfigForm>`，支持 `split`（左侧锚点描述 + 右侧表单卡片）或 `grid` 布局，内置图片/SVG 实时预览与脏数据检测。
-- **经营分析看板页**：使用 `@abc-design/charts` 的 `<StatCard>`（等宽数字 + 涨跌绿红标）与 `<AbcChart>`（自动适配暗黑模式、6 大品牌色与容器 `ResizeObserver`）。
+### 第三步：按场景直接选用标准 Pro 与复杂联动组件（禁止重复造轮子）
+- **常规列表与 CRUD 页**：`<PageContainer>` + `<ProTable>`（开启 `viewable` + `showClientFilterSwitch` + `formContainer="drawer"`）；内联点击行看详情用 `splitPanelOpen` / `SplitDetailPanel`。
+- **左树右表 + 详情工作台**：`<ProSplitWorkbench>`（内置 `ResizableSplitPane` 可拖拽/可折叠左栏 + 拼音树 + `SplitDetailLayout`）。
+- **行内批量编辑表格**：`<EditableProTable>`（支持 `mode="row" | "table"`、跨列 `validator`、`summaryRender`）。
+- **动态表单级联、增删行与键值**：`<ProFormProvider>` + `<ProFormDependency>`（`AbortSignal` 防竞态 + `resetFieldsOnChange`） + `<ProFormList>` + `<KeyValueInput>`（支持 `.env`/`headers`/`json`）。
+- **可视化高级筛选与视图**：`<SavedFilterViews>` + `<FilterBuilder>`（别名 `<RuleBuilder>`）配合 `@abc-design/core` 的 `evaluateRuleGroup`。
+- **跨步向导、变更对比与批处理追踪**：`<ProStepsForm>` + `<ConfigDiffViewer>`（自动脱敏密钥 + 字段/代码双视图） + `<BatchActionTracker>`。
+- **经营与下钻分析看板**：`<StatCard>` + `<AbcChart>`（通过 `onEvents={{ click }}` 联动 `<ActiveFilterBar>` 实现图表与表格双向交叉下钻）。
 
 ### 第四步：严格遵守高频控件调用签名（防错核对）
-- `Select` / `DictSelect`：`onChange={(val) => ...}` 直接返回原始值或数组，**不是** `e.target.value`。
-- `InputNumber`：`onChange={(num) => ...}` 直接返回 `number | null`。
+- `Select` / `DictSelect` / `TreeSelect` / `Cascader`：`onChange={(val) => ...}` 直接返回选中值或数组，**不是** `e.target.value`。
+- `InputNumber` / `ByteQuotaInput` / `DurationQuotaInput`：`onChange={(num) => ...}` 直接返回数值；注意配额控件 `size` 仅支持 `'sm' | 'default'`。
 - `Input` / `Textarea`：`onChange={(e) => ...}` 返回标准输入事件；支持 `clearable`、`showCount`、`label`、`error`。
 - `Checkbox` / `Switch`：`onChange={(checked: boolean) => ...}`。
-- `Tree`：`checkable` 模式下自动处理父子级联与半选态，`onCheck={(checkedKeys, { halfCheckedKeys }) => ...}`。
-- `ImagePreview`：同时支持位图直链与内联 `<svg>` 源码缩略图及全屏缩放旋转预览。
+- `useAbcConfig()`：明暗态字段为 `resolvedTheme`（`'light' | 'dark'`），不要写成 `resolvedColorScheme`。
+- `Divider` 中间标题用 `label`；`ProFormContainer.mode` 为 `'drawer' | 'modal'`；`HubNavBar.badgeTone` 为 `'indigo' | 'slate' | 'primary' | 'dark'`。
 
 ### 第五步：表单容器与多级交互设计准则（大小表单分流规范）
-- **大表单交互操作展示必须使用抽屉（`Drawer`）**：字段较多、含分组卡片、多指标配额等复杂业务表单，采用右侧全高抽屉，提供吸附 Header/Footer 与原生垂直滚动流，坚决避免使用绝对居中 Modal 导致顶部被裁切。
-- **大表单嵌套大表单必须使用子级抽屉（`cascadeMode="adjacent"` / `"stack"`）**：打开一层是大表单，表单上需要打开另一个表单也是大表单时，必须使用二级抽屉（L1 -> L2），严禁使用 Modal。
-- **小表单与轻量确认操作使用 `Dialog`**：仅包含少数字段输入（如重命名、状态修改、删除确认等极少操作项）时使用居中 Modal，天然支持多级遮罩堆叠。
+- **大表单必须使用抽屉（`Drawer`）**：多字段、分组卡片、配额或包含 `ConfigDiffViewer` 审阅的复杂表单采用右侧全高抽屉，坚决避免绝对居中 Modal 顶部裁切。
+- **大表单嵌套大表单必须使用二级抽屉（`cascadeMode="adjacent" | "stack"`）**：禁止 Modal 盖死或套 Modal。
+- **小表单与轻量确认使用 `Dialog`**：仅 1~3 个字段、状态修改或删除确认使用居中 `Dialog` 或 `ReasonedActionDialog`。

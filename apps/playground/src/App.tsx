@@ -33,6 +33,12 @@ import { IconsThemeAndLocalePage } from './pages/foundation/IconsThemeAndLocaleP
 import { OverviewPage } from './pages/foundation/OverviewPage'
 import { SpacingAndClassesPage } from './pages/foundation/SpacingAndClassesPage'
 import { TypographyAndCodePage } from './pages/foundation/TypographyAndCodePage'
+import { CrossFilterDashboardPage } from './pages/linkage/CrossFilterDashboardPage'
+import { DynamicFormOrchestrationPage } from './pages/linkage/DynamicFormOrchestrationPage'
+import { EditableTableLinkagePage } from './pages/linkage/EditableTableLinkagePage'
+import { MasterDetailWorkbenchPage } from './pages/linkage/MasterDetailWorkbenchPage'
+import { QueryBuilderAndViewsPage } from './pages/linkage/QueryBuilderAndViewsPage'
+import { WizardDiffAndBatchPage } from './pages/linkage/WizardDiffAndBatchPage'
 import { ButtonsAndSegmentedPage } from './pages/navigation/ButtonsAndSegmentedPage'
 import { DropdownAndCommandPage } from './pages/navigation/DropdownAndCommandPage'
 import { TabsStepsBreadcrumbPage } from './pages/navigation/TabsStepsBreadcrumbPage'
@@ -48,7 +54,7 @@ import { TemplatesPage } from './pages/TemplatesPage'
 
 const INITIAL_BRAND_SVG = `<svg viewBox="0 0 40 40" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="40" height="40" rx="10" fill="#2563eb"/><path d="M12 28L20 11L28 28H23.8L20 19.6L16.2 28H12Z" fill="#ffffff"/></svg>`
 
-/** 9 大领域分组 × 30 个聚焦展示路由 */
+/** 10 大领域分组 × 36 个聚焦展示路由 */
 const MENU_TREE: AbcMenuItem[] = [
   {
     key: 'foundation',
@@ -141,6 +147,19 @@ const MENU_TREE: AbcMenuItem[] = [
       { key: 'pro-config', label: 'Schema配置中心', path: '/pro/config', icon: 'config' },
       { key: 'pro-logs', label: '虚拟滚动日志查看', path: '/pro/logs', icon: 'log' },
       { key: 'templates', label: '5套企业业务模板', path: '/templates', icon: 'sparkles', badge: '5' },
+    ],
+  },
+  {
+    key: 'linkage',
+    label: '复杂联动',
+    icon: 'Network',
+    children: [
+      { key: 'linkage-master-detail', label: '左树右表四方工作台', path: '/linkage/master-detail', icon: 'FolderTree', badge: 'New' },
+      { key: 'linkage-dynamic-form', label: '动态表单级联与列表', path: '/linkage/dynamic-form', icon: 'Sliders', badge: 'New' },
+      { key: 'linkage-editable-table', label: '行内编辑表格与汇总', path: '/linkage/editable-table', icon: 'edit', badge: 'New' },
+      { key: 'linkage-query-builder', label: '规则构建器与视图栏', path: '/linkage/query-builder', icon: 'search', badge: 'New' },
+      { key: 'linkage-cross-filter', label: '图表下钻交叉过滤板', path: '/linkage/cross-filter', icon: 'chart', badge: 'New' },
+      { key: 'linkage-wizard-batch', label: '分步向导Diff与批处理', path: '/linkage/wizard-batch', icon: 'layers', badge: 'New' },
     ],
   },
 ]
@@ -247,6 +266,18 @@ export const App: React.FC = () => {
         return <ProLogViewerPage />
       case '/templates':
         return <TemplatesPage />
+      case '/linkage/master-detail':
+        return <MasterDetailWorkbenchPage />
+      case '/linkage/dynamic-form':
+        return <DynamicFormOrchestrationPage />
+      case '/linkage/editable-table':
+        return <EditableTableLinkagePage />
+      case '/linkage/query-builder':
+        return <QueryBuilderAndViewsPage />
+      case '/linkage/cross-filter':
+        return <CrossFilterDashboardPage />
+      case '/linkage/wizard-batch':
+        return <WizardDiffAndBatchPage />
       default:
         return <OverviewPage onJump={setPathname} />
     }

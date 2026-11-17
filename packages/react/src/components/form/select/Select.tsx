@@ -374,6 +374,13 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           onKeyDown: handleKeyDown,
         } as const)
 
+    const hasExplicitInlineWidth =
+      !effectiveWrapperClass &&
+      Boolean(
+        className &&
+          /\bw-(?!full\b)(?:auto|fit|min|max|\d+(?:\.\d+)?|\[[^\]]+\])\b/.test(className)
+      )
+
     return (
       <div
         ref={rootRef}
@@ -381,7 +388,13 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         data-state={open ? 'open' : 'closed'}
         className={cn(
           'relative min-w-0',
-          size === 'ghost' ? 'inline-flex w-auto' : effectiveWrapperClass ? effectiveWrapperClass : 'w-full'
+          size === 'ghost'
+            ? 'inline-flex w-auto'
+            : effectiveWrapperClass
+              ? effectiveWrapperClass
+              : hasExplicitInlineWidth
+                ? 'inline-flex w-auto shrink-0'
+                : 'w-full'
         )}
       >
         {label && (

@@ -36,6 +36,21 @@ import '@abc-design/react/styles.css'
 @source "../../node_modules/@abc-design/charts/dist/**/*.js";
 ```
 
+### 模式 C：Tailwind CSS v3 宿主兼容（旧工程升级过渡必读）
+若宿主工程仍停留在 **Tailwind CSS v3**，切勿直接只引入 `@abc-design/react/styles.css` 而遗漏 `content` 扫描：Tailwind v3 产出的 `.hidden` 无 `@layer` 包裹，在 CSS 级联优先级上会压过 Tailwind v4 产物中的 `@layer utilities { .md:block { ... } }`，从而让 `<ProLayout>` 桌面端导航与折叠按钮全部被 `.hidden` 隐藏。必须在宿主 `tailwind.config.js` 补全包产物扫描，并将 `@tailwind base` 包入 `@layer base`：
+
+```js
+// tailwind.config.js (Tailwind v3 宿主必须扫描 @abc-design/dist)
+export default {
+  content: [
+    './index.html',
+    './src/**/*.{ts,tsx}',
+    './node_modules/@abc-design/react/dist/**/*.js',
+    './node_modules/@abc-design/charts/dist/**/*.js',
+  ],
+}
+```
+
 ---
 
 ## 3. 语义化 CSS 变量速查表 (`@abc-design/tokens`)

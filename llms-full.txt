@@ -1,11 +1,19 @@
 # ABC Design (`@abc-design/*`) — Full LLM & AI Agent Reference (`llms-full.txt`)
 
 Version: 0.1.0
-Packages:
-1. `@abc-design/tokens` — 3-tier semantic CSS custom properties (`--abc-*`), 6 enterprise brand palettes (`blue`, `indigo`, `violet`, `emerald`, `amber`, `rose`), 3 densities (`compact`, `default`, `comfortable`), 4 border-radius presets (`none`, `sm`, `md`, `lg`), View Transitions theme engine.
-2. `@abc-design/core` — Zero-dependency pure TypeScript headless logic kernel: Chinese pinyin initials matching (`matchKeywordWithPinyin`), cascade tree check/half-check (`computeTreeCheckState`, `toggleTreeNodeCheck`, `filterTreeNodes`), client table filter/sort & URL query sync (`filterAndSortClientRows`, `cleanQueryObject`, `readQueryFromUrlSearch`, `writeQueryToUrlSearch`), 42-cell calendar grid (`buildCalendarMonthGrid`).
-3. `@abc-design/react` — 45+ zero-business-coupled enterprise UI components, `<AbcProvider>` adapter container, 5-mode `<ProLayout>` (`sidebar`, `top`, `mix`, `dual-column`, `auth`), `<ProTable>`, `<ProConfigForm>`, `<PermissionGuard>` (`Permission`), `<DictSelect>` / `<DictTag>`.
-4. `@abc-design/charts` — Tree-shaken ECharts 5 theme/resize-adaptive `<AbcChart>` (`<Chart>`) and `<StatCard>`.
+Packages (5 workspace packages):
+1. `@abc-design/tokens` — 3-tier semantic CSS custom properties (`--abc-*`), 6 brand palettes (`blue`, `indigo`, `violet`, `emerald`, `amber`, `rose`), 3 densities (`compact`, `default`, `comfortable`), 4 radii (`none`, `sm`, `md`, `lg`), 4 control sizes (`xs`, `sm`, `md`, `lg`), 4 motion presets (`none`, `subtle`, `smooth`, `spring`), View Transitions theme engine.
+2. `@abc-design/core` — Zero-dependency pure TypeScript headless logic kernel:
+   - `pinyin`: `getCharInitial`, `getPinyinInitials`, `matchKeywordWithPinyin`
+   - `tree`: `computeTreeCheckState`, `toggleTreeNodeChecked`, `filterTreeNodes`, `collectAllExpandableKeys`, `normalizeTreeSelectData`, `resolveTreeCheckedStateFromValue`, `formatTreeCheckedStrategy`, `filterTreeSelectNodes`, `flattenVisibleTreeNodes`
+   - `table`: `filterAndSortClientRows`, `cleanQueryObject`, `readQueryFromUrlSearch`, `writeQueryToUrlSearch`
+   - `calendar`: `formatIsoDate`, `buildCalendarMonthGrid`
+   - `queryBuilder`: `getOperatorsForFieldType`, `getRuleOperatorMeta`, `createDefaultCondition`, `createDefaultRuleGroup`, `evaluateRuleGroup`, `formatRuleGroupSummary`
+   - `diff`: `computeObjectDiff` (auto secret masking), `computeLineDiff` (LCS line diff with line numbers)
+   - `keyValue`: `parseKeyValueText` (auto-detects JSON / `.env` / HTTP headers), `serializeKeyValueEntries`, `findDuplicateKeys`
+3. `@abc-design/react` — Zero-business-coupled enterprise UI library (340+ runtime exports, 240+ component & compound primitives): `<AbcProvider>`, 5-mode `<ProLayout>`, `<PageHeader>`/`<HubNavBar>`/`<PageSection>`/`<ProPageHeader>`, `<TreeSelect>`/`<Cascader>`/`<Transfer>`/`<FileUpload>`/`<KeyValueInput>`, `<Table>`/`<TableCore>`/`<DataTable>`/`<ProTable>`/`<EditableProTable>`, `<ProConfigForm>`/`<ProFormLayout>`/`<ProStepsForm>`/`<ProFormDependency>`/`<ProFormList>`, `<FilterBuilder>` (`<RuleBuilder>`)/`<SavedFilterViews>`/`<ActiveFilterBar>`, `<ResizableSplitPane>`/`<ProSplitWorkbench>`/`<SplitDetailPanel>`/`<InspectorPanel>`, `<ConfigDiffViewer>`/`<BatchActionTracker>`, `<Watermark>`/`<PermissionGuard>`/`<TabErrorBoundary>`.
+4. `@abc-design/charts` — Tree-shaken ECharts 5 theme/resize-adaptive `<AbcChart>` (`<Chart>`), `<StatCard>`, `getAbcChartPalette`, `buildAbcBaseChartOption`.
+5. `@abc-design/markdown` — Standalone dual-pane `<MarkdownEditor>` wrapping `@uiw/react-md-editor`, synced automatically with `<AbcProvider>` `resolvedTheme`, exposes `MarkdownEditorHandle` (`insertText`, `focus`).
 
 ================================================================================
 SECTION 1: INSTALLATION & CSS INTEGRATION
@@ -13,12 +21,16 @@ SECTION 1: INSTALLATION & CSS INTEGRATION
 
 Install:
 ```bash
-pnpm add @abc-design/tokens @abc-design/core @abc-design/react @abc-design/charts echarts lucide-react
+pnpm add @abc-design/tokens @abc-design/core @abc-design/react lucide-react
+# Optional add-ons:
+pnpm add @abc-design/charts echarts
+pnpm add @abc-design/markdown @uiw/react-md-editor
 ```
 
 CSS Mode A (Standard Vite / Next.js / Webpack without Tailwind v4):
 ```tsx
 import '@abc-design/react/styles.css'
+// If using @abc-design/markdown: it bundles its CSS in dist or import '@abc-design/markdown/styles.css'
 ```
 
 CSS Mode B (Host uses Tailwind CSS v4):
@@ -30,52 +42,46 @@ CSS Mode B (Host uses Tailwind CSS v4):
 @source "../../node_modules/@abc-design/charts/dist/**/*.js";
 ```
 
-================================================================================
-SECTION 2: ROOT PROVIDER & 5 ADAPTERS (`@abc-design/react`)
-================================================================================
-
-```tsx
-import { AbcProvider } from '@abc-design/react'
-
-<AbcProvider
-  defaultTheme={{ mode: 'system', brand: 'blue', density: 'default', radius: 'md', componentSize: undefined, motion: 'smooth' }}
-  defaultPageTransition="fade-slide"
-  watermarkText={['Internal Console', 'Confidential']}
-  defaultWatermarkEnabled={false}
-  uploadAdapter={async (file: File): Promise<string> => {
-    // Upload file to OSS/S3/backend and return URL string
-    return uploadedUrl
-  }}
-  dictAdapter={async (dictCode: string) => {
-    // Return Array<{ label: string; value: string | number; tone?: 'neutral'|'primary'|'success'|'warning'|'danger'|'info'; disabled?: boolean }>
-    return options
-  }}
-  permissionAdapter={(permission: string | string[], mode: 'any' | 'all' = 'any'): boolean => {
-    // Check user RBAC permission codes
-    return true
-  }}
-  captchaAdapter={async () => {
-    // Optional: return { nonceStr, blockSrc, blockY, canvasSrc } for <SliderVerify />
-    return captchaPayload
-  }}
-  toastAdapter={{
-    // Optional: omit to use built-in zero-dependency <AbcToastViewport />
-    success: (msg) => {},
-    error: (msg) => {},
-    info: (msg) => {},
-    warning: (msg) => {},
-  }}
->
-  {children}
-</AbcProvider>
+CSS Mode C (Host uses legacy Tailwind CSS v3 + `@abc-design/react/styles.css`):
+CRITICAL: Unlayered v3 `.hidden` overrides `@abc-design/react/styles.css` `@layer utilities` breakpoints (`md:block`, `md:flex`) and hides `ProLayout` desktop navigation unless the v3 host scans abc-design dist AND wraps `@tailwind base` inside `@layer base`:
+```js
+// tailwind.config.js
+content: ['./index.html', './src/**/*.{ts,tsx}', './node_modules/@abc-design/react/dist/**/*.js', './node_modules/@abc-design/charts/dist/**/*.js']
 ```
 
 ================================================================================
-SECTION 3: 5-MODE PROLAYOUT & ROUTER WIRING
+SECTION 2: ROOT PROVIDER, 5 ADAPTERS & CONFIG HOOK (`@abc-design/react`)
 ================================================================================
 
 ```tsx
-import { ProLayout, PageContainer, type AbcMenuItem } from '@abc-design/react'
+import { AbcProvider, useAbcConfig } from '@abc-design/react'
+
+<AbcProvider
+  defaultTheme={{ mode: 'system', brand: 'blue', density: 'default', radius: 'md', componentSize: undefined, motion: 'smooth' }}
+  defaultPageTransition="fade-slide" // 'fade-slide' | 'fade' | 'zoom' | 'slide-left' | 'none'
+  defaultDrawerCascadeMode="adjacent" // 'stack' | 'adjacent'
+  watermarkText={['Internal Console', 'Confidential']}
+  defaultWatermarkEnabled={false}
+  uploadAdapter={async (file: File): Promise<string> => uploadedUrl}
+  dictAdapter={async (dictCode: string) => options} // Array<{ label, value, tone?, disabled? }>
+  permissionAdapter={(permission: string | string[], mode: 'any' | 'all' = 'any'): boolean => true}
+  captchaAdapter={async () => ({ nonceStr, blockSrc, blockY, canvasSrc })}
+  toastAdapter={{ success, error, info, warning }} // optional: built-in AbcToastViewport if omitted
+>
+  {children}
+</AbcProvider>
+
+// Read config in child components:
+const { theme, resolvedTheme, setBrand, setComponentSize, setMotion, toggleTheme, toast } = useAbcConfig()
+// CRITICAL: Property is `resolvedTheme` ('light' | 'dark'), NOT `resolvedColorScheme`.
+```
+
+================================================================================
+SECTION 3: 5-MODE PROLAYOUT, PAGE CHROME & ROUTER WIRING
+================================================================================
+
+```tsx
+import { ProLayout, PageContainer, PageHeader, HubNavBar, hubNavTabClassName, PageSection, type AbcMenuItem } from '@abc-design/react'
 
 const menus: AbcMenuItem[] = [
   { key: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: 'LayoutDashboard' },
@@ -91,33 +97,12 @@ const menus: AbcMenuItem[] = [
 ]
 
 <ProLayout
-  brand={{
-    name: 'Acme Enterprise',
-    subtitle: 'Multi-Tenant SaaS',
-    logo: '<svg ...>...</svg>', // Accepts image URL, raw <svg> string, or ReactNode
-    onEditBrand: () => setBrandModalOpen(true), // Optional multi-tenant brand editor trigger
-  }}
+  brand={{ name: 'Acme Enterprise', subtitle: 'Multi-Tenant SaaS', logo: '<svg ...>...</svg>', onEditBrand: () => {} }}
   menuItems={menus}
   pathname={location.pathname}
   onNavigate={(path) => navigate(path)}
-  defaultSettings={{
-    mode: 'sidebar', // 'sidebar' | 'top' | 'mix' | 'dual-column' | 'auth'
-    sidebarTone: 'dark',
-    sidebarCollapsed: false,
-    sidebarAccordion: true,
-    showTabs: true,
-    keepAlive: true,
-    contentWidth: 'fluid',
-  }}
+  defaultSettings={{ mode: 'sidebar', sidebarTone: 'dark', showTabs: true, keepAlive: true, contentWidth: 'fluid' }}
   headerExtra={<TenantSwitcher />}
-  user={{
-    name: 'Admin',
-    role: 'Super Admin',
-    avatar: '',
-    menuItems: [
-      { key: 'logout', label: 'Sign out', danger: true, onClick: handleLogout },
-    ],
-  }}
 >
   <PageContainer title="Users" subtitle="Manage enterprise accounts">
     {pageContent}
@@ -129,43 +114,43 @@ const menus: AbcMenuItem[] = [
 SECTION 4: EXACT COMPONENT SIGNATURES & ANTI-HALLUCINATION RULES
 ================================================================================
 
-1. `Button`: `variant?: 'primary'|'secondary'|'outline'|'danger'|'success'|'warning'|'ghost'|'text'`, `size?: 'xs'|'sm'|'md'|'lg'`, `loading?: boolean`, `icon?: ReactNode`, `block?: boolean`.
-2. `Icon`: `name?: string` (120+ Lucide names, `el-icon-*` legacy names), `text?: string` (Chinese semantic fallback), `size?: number`.
-3. `IconPicker`:
-   - Inline form mode: `<IconPicker value={icon} onChange={setIcon} clearable />`
-   - Controlled modal mode: `<IconPicker open={open} current={icon} onClose={...} onSelect={...} />`
-4. `Input`: `value`, `onChange: (e: ChangeEvent<HTMLInputElement>) => void`, `clearable`/`allowClear`, `passwordToggle`, `showCount`, `prefix`/`prefixIcon`, `suffix`/`suffixIcon`, `label`, `error`, `helperText`.
-5. `InputNumber`: `value?: number | null`, `onChange?: (val: number | null) => void`, `min`, `max`, `step`.
-6. `Textarea`: `value`, `onChange: (e: ChangeEvent<HTMLTextAreaElement>) => void`, `showCount`, `label`, `error`, `helperText`.
-7. `Select` & `DictSelect`:
-   - IMPORTANT: `onChange` passes the VALUE directly (`string | number` or `Array<string | number>` when `multiple={true}`), NEVER a DOM ChangeEvent!
-   - Props: `options`, `value`, `onChange`, `multiple`, `searchable` (built-in Chinese pinyin matching), `clearable`/`allowClear`, `label`, `error`, `helperText`.
-   - `DictSelect`: `dictCode` (or `dictKey`), `prependOptions`, `appendOptions`.
-8. `Checkbox` & `Switch`:
-   - `Checkbox`: `checked?: boolean`, `indeterminate?: boolean`, `onChange?: (checked: boolean) => void`, `label?: ReactNode`, `description?: ReactNode`.
-   - `Switch`: `checked?: boolean`, `loading?: boolean`, `size?: 'sm'|'md'|'small'|'default'`, `onChange?: (checked: boolean) => void`.
-9. `RadioGroup`: `options`, `value`, `onChange: (val: string | number) => void`, `variant?: 'radio' | 'segmented'`.
-10. `DatePicker` & `DateRangePicker`:
-    - `DatePicker`: `value?: string` (`YYYY-MM-DD`), `onChange?: (isoDate: string) => void`.
-    - `DateRangePicker`: `value?: [string, string] | { start?: string; end?: string }`, `onChange?: (range: [string, string]) => void`.
-11. `Tree`: `treeData: AbcTreeNode[]`, `checkable?: boolean`, `checkStrictly?: boolean`, `searchable?: boolean`, `checkedKeys?: Array<string | number>`, `onCheck?: (checkedKeys, info) => void`.
-12. `TagInput`: `value?: string[]`, `onChange?: (tags: string[]) => void`, `maxTags?: number`.
-13. `ImageUpload`: `value?: string`, `onChange?: (url: string) => void`, `customUpload?: (file: File) => Promise<string>`, `label`, `helperText`.
-14. `SliderVerify`: `onSuccess: (payload: { nonceStr: string; value: number }) => void`, `fetchCaptcha?: () => Promise<AbcCaptchaData>`.
-15. `TableCore<T>`: `columns: AbcColumn<T>[]` (supports `fixed: 'left'|'right'`, `sortable`, `filterable`, `tooltip`, `valueType`, `options`, `linkToView`, `copyable`, `ellipsis`), `data: T[]`, `rowKey`, `loading`, `density`, `selectedKeys`, `onSelectionChange`, `sortState`, `onSortChange`, `headerFilterMode`, `headerFilterRender`, `columnWidths`, `onColumnResize`, `columnFixed`, `onColumnPin`, `onColumnHide`, `onResetColumns`, `onColumnReorder`, `expandable`, `maxHeight`.
-16. `ProTable<T>`: `storageKey`, `title`, `columns`, `fields` (supports `'text'|'number'|'select'|'textarea'|'switch'|'date'|'dateRange'|'tags'|'icon'`, `multiple`, `span`, `validator`), `dataSource`, `request`, `rowKey`, `clientFilter`, `showClientFilterSwitch`, `defaultSearchCollapsed`, `autoRefresh`, `exportable`, `onExport`, `syncToUrl`, `viewable`, `formContainer: 'dialog' | 'drawer'`, `formColumns: 1 | 2`, `rowActions`, `maxInlineActions`, `rowSelection`, `batchActions`, `expandable`, `permissions`, `onSaveRecord`, `onDeleteRecords`.
-17. `ProConfigForm`: `groups`, `initialValues`, `layoutMode: 'split' | 'grid'`, `onSubmit`.
-18. `Dialog` & `Drawer` (Modal vs Drawer Routing Rule):
-    - `Drawer`: Mandatory for large/complex forms (multi-field, cards, metrics). Right full-height anchor, sticky header/footer, native vertical scroll, no viewport clip. Sub-forms within a large form MUST open as child drawers (`cascadeMode="adjacent"` for side-by-side comparison, or `"stack"` for push L1/L2). Supports edge drag resize (`resizable`), `open`, `onClose`, `placement`, `size`, `footer`.
-    - `Dialog`: For small forms & lightweight confirmations (rename, state toggle, single audit reason, confirm dialog). Centered on screen, supports multi-level overlay stacking. Native Top Layer `<dialog>`, draggable header, double-click fullscreen, `open` (or `isOpen`), `onClose`, `title`, `size`, `footer`. Never lock `document.body` scroll manually.
-19. `abcConfirm` (aliases `confirm`, `useConfirm`): `const ok = await abcConfirm({ title, message, tone: 'danger' })`.
-20. `Descriptions`, `Collapse` (`items: [{ key, label, children, extra }]`), `Timeline` (`tone?: 'neutral'|'primary'|'success'|'warning'|'danger'`), `Popover`, `Tooltip`, `Dropdown`, `Tabs`, `Breadcrumb`, `Steps`, `StatusTag` (`DictTag`), `Badge`, `Avatar`, `ImagePreview` (supports raster URL & inline `<svg>`), `CopyableText`, `EmptyState`, `Pagination` (`size?: number | AbcSize`, `controlSize?: AbcSize`), `Skeleton` (`SkeletonCard`, `SkeletonTable`, `SkeletonChart`), `Alert`, `Progress` (`size?: number | AbcSize`), `Result` (`status`, `title`, `subTitle`, `extra`), `Loading`, `Watermark`, `ErrorBoundary`, `TabErrorBoundary`, `PermissionGuard` (`Permission`). All core components support `size?: AbcSize` (`xs | sm | md | lg`) via `useAbcSize` and `motion?: AbcMotionPreset` (`none | subtle | smooth | spring`) via `useAbcMotion` (`AbcProvider.setComponentSize` / `setMotion`).
-21. Enhanced Cards (`@abc-design/react`):
-    - `Card` (`as?: 'div'|'article'|'section'`, `size`, `padding?: 'none'|AbcSize`, `variant?: 'default'|'bordered'|'ghost'|'elevated'|'glass'`, `cover`, `statusRibbon`, `loading`, `motion`, `@container`), `SpotlightCard`, `BorderBeam`, `AuroraBackground`.
-    - `MetricCard` (`title`, `value`, `prefix`, `suffix`, `trend`, `sparkline`, `icon`, `footer`, `loading`, `hoverable`, `size`, `motion`).
-    - `CheckCardGroup` (`multiple`, `value`, `defaultValue`, `onChange`, `columns`, `disabled`, `size`, `motion`) & `CheckCard`.
-    - `ActionCard` (stretched click area + isolated `extra`), `CollapsibleCard`, `PricingCard`, `BentoGrid` & `BentoCard`.
-22. `TableCore` & `ProTable` upgrades: supports `resizable?: boolean`, left-edge resizing on `fixed: 'right'` & `__abc_actions__` columns with `<colgroup>` / `tableLayout: 'fixed'` width locking + `ProColumnSettingsPopover` numeric action width input, and real-time `onDragOver` header column reorder with FLIP slide animation (`motion?: AbcMotionPreset`) and `Escape` rollback.
-23. `@abc-design/charts`:
-    - `<StatCard title="..." prefix="¥" value="128,400" trend={12.5} trendLabel="MoM" footer="..." loading={false} />`
-    - `<AbcChart option={echartsOption} height={300} loading={false} empty={false} onEvents={{ click: fn }} />` (alias `<Chart />`).
+1. `Button`: `variant?: 'primary'|'secondary'|'outline'|'danger'|'success'|'warning'|'ghost'|'text'|'default'|'destructive'|'link'`, `size?: 'xs'|'sm'|'md'|'lg'|'default'|'icon'|'icon-sm'`, `motion?: AbcMotionPreset`, `loading?: boolean`, `loadingText?: ReactNode`, `leftIcon`/`rightIcon`, `iconOnly?: boolean`, `block?: boolean`, `asChild?: boolean`.
+2. `Input` & `Textarea`: `onChange: (e: ChangeEvent) => void`; `clearable`/`allowClear`, `passwordToggle`, `showCount`, `label`, `error`, `helperText`.
+3. `InputNumber` / `ByteQuotaInput` / `DurationQuotaInput`: `onChange: (val: number | null) => void` (quota inputs pass `number`). NOTE: Quota input `size` only accepts `'sm' | 'default'`.
+4. `Select` & `DictSelect` & `SelectField`:
+   - `Select`: When `options` are provided, `onChange(val)` receives VALUE directly (`string | number` or array when `multiple`). `size?: ControlSize | 'ghost'`.
+   - `SelectField`: Convenience wrapper with `onValueChange: (val: string) => void`.
+   - `RadixSelect`: Compound API `<RadixSelect value onValueChange><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectLabel /><SelectItem value="a">A</SelectItem><SelectSeparator /></SelectGroup></SelectContent></RadixSelect>`.
+5. `TreeSelect` & `TreeSelectField` & `Cascader`:
+   - `TreeSelect`: `treeData`, `fieldNames`, `treeDataSimpleMode`, `treeCheckable`, `treeCheckStrictly`, `showCheckedStrategy` (`TreeSelect.SHOW_PARENT | SHOW_CHILD | SHOW_ALL`), `selectableLeafOnly`, `maxTagCount`, `searchable`, `allowClear`, `loadData`, `virtual`, `listHeight`, `onChange(value, labelList, extra)`.
+   - `Cascader`: `options`, `value`, `onChange`, `multiple`, `changeOnSelect`, `searchable`, `clearable`.
+6. `Checkbox` & `Switch`: `onChange: (checked: boolean) => void`.
+7. `Divider`: Middle title prop is `label?: ReactNode` (NOT `children`), `orientation?: 'horizontal' | 'vertical'`.
+8. `Alert` vs `NotificationBanner`: `Alert.tone` uses `'info'|'success'|'warning'|'danger'`, whereas `NotificationBanner.variant` & `ToastCard.variant` use `'info'|'success'|'warning'|'error'`.
+9. `Dialog` vs `Drawer` vs `ProFormContainer` Modal Routing Rule:
+   - `Drawer`: Mandatory for large/complex forms & cascaded sub-forms (`cascadeMode="adjacent" | "stack"`).
+   - `Dialog`: Native `<dialog>` Top Layer for small forms (1–3 fields) & confirmations.
+   - `ProFormContainer`: Prop is `mode?: 'drawer' | 'modal'` (NOT `'dialog'`).
+   - `HubNavBar`: `badgeTone?: 'indigo' | 'slate' | 'primary' | 'dark'`, tabs use `hubNavTabClassName(active, variant)`.
+10. `@abc-design/charts` vs `@abc-design/react` `StatCard`: Charts `<StatCard title value trend loading />` uses `title`, whereas React `<StatCard label value hint badge tone />` uses `label`; Charts exports `<AbcChart option height loading empty onEvents={{ click: fn }} />`, `getAbcChartPalette(brand, isDark)`, `buildAbcBaseChartOption(option, brand, isDark)`.
+
+================================================================================
+SECTION 5: 12 COMPLEX LINKAGE & ORCHESTRATION COMPONENTS (`@abc-design/react`)
+================================================================================
+
+Use these built-in orchestrators instead of hand-writing glue code (`apps/playground/src/pages/linkage/*`, `docs/agent/05-complex-linkage-and-orchestration.md`):
+
+1. `ResizableSplitPane`: Drag/keyboard-accessible (`role="separator"`, Arrow keys +/-16px, Home/End, double-click reset) horizontal/vertical split container with `storageKey` persistence and `collapsible` toggle.
+   - Props: `direction?: 'horizontal'|'vertical'`, `defaultSize`, `size`, `onSizeChange`, `minSize`, `maxSize`, `collapsible`, `collapsed`, `onCollapsedChange`, `storageKey`, `firstPane`, `secondPane`.
+2. `ProSplitWorkbench`: Left `Tree` (with pinyin search, `counts` badges, "All" shortcut returning `null`) + center table workspace + right `SplitDetailLayout` inline detail drawer.
+   - Props: `treeData`, `counts`, `allLabel`, `allCount`, `selectedKey`, `onSelectKey`, `sidebarWidth`, `detailPanel`, `detailOpen`, `detailWidth`, `detailExpanded`, `children`.
+3. `ProFormProvider` / `useProFormContext` / `ProFormDependency`: Subscribes selectively to `deps: string[]` on `ProFormInstance`, auto-clears `resetFieldsOnChange: string[]`, runs debounced `asyncLoader(depValues, abortSignal)` cancelling stale requests on rapid change.
+4. `ProFormList`: Dynamic array subform rows (`variant?: 'card' | 'inline'`), `initialItem`, `minItems`, `maxItems`, `copyable`, `sortable` (moveUp/moveDown), `rowValidator`, `summaryRender`, binds `form`+`name` or controlled `value`/`onChange`.
+5. `KeyValueInput`: Key-value pair editor using `@abc-design/core` (`findDuplicateKeys`, `parseKeyValueText`, `serializeKeyValueEntries`). Supports row enable toggle (`allowEnableToggle`), secret masking toggle (`allowSecretMask`), duplicate key alerts, and live `.env` / HTTP `headers` / `json` bulk text round-trip (`allowBulkEdit`).
+6. `EditableProTable<T>`: Inline editable data grid (`mode?: 'row' | 'table'`) with `'text' | 'number' | 'select' | 'switch' | 'date'` cell editors + `renderEditor`, cross-column `validator(value, row, rows)`, dirty badge detection, `recordCreatorProps` (`position: 'top'|'bottom'`), `deletable`, `summaryRender`, `onSaveRow`.
+7. `FilterBuilder` (alias `RuleBuilder`): Nested `AND` / `OR` / `NOT` rule AST builder driven by `@abc-design/core/queryBuilder` (`AbcRuleFieldSchema[]`). Changing `field` automatically resets incompatible `operator` & right-hand value; changing `operator` adapts right input slot by `arity` (0 = hidden, 1 = single/multi control, 2 = range `between`). Filter rows client-side via `evaluateRuleGroup(record, group, fields)`.
+8. `SavedFilterViews<TFilter>`: Named filter view pill bar with `builtIn` lock protection, dirty badge (`isDirty` vs deep comparison), inline save-as & update custom views, and optional `storageKey` persistence.
+9. `ActiveFilterBar`: Unified active filter chip bar displaying filter sources (`'chart' | 'toolbar' | 'table' | 'tree' | 'rule' | 'custom'`), `filteredCount`/`totalCount` summary, per-chip removal, and `onClearAll`. Designed to pair with `<AbcChart onEvents={{ click }} />` for dashboard cross-filtering.
+10. `ProStepsForm<T>`: Multi-step wizard (`steps`, `initialValues`, `onFinish`, `stepsDirection?: 'horizontal'|'vertical'`). Each step supports sync/async `validate(values)` (disables button with `loading` during async check, displays `<Alert tone="danger" />` on block), preserves draft state when navigating back.
+11. `ConfigDiffViewer`: Before/after review component powered by `@abc-design/core/diff`. Props: `before`, `after`, `beforeCode`, `afterCode`, `labels`, `mode?: 'fields'|'code'|'tabs'`, `codeLayout?: 'unified'|'split'`, `onlyChanges`, `maskSecrets`. Auto-masks secrets/tokens and shows `+Added / ~Modified / -Removed` badges.
+12. `BatchActionTracker`: Real-time batch execution monitor (`variant?: 'inline'|'floating'`), `ProgressBar`, status filter pills (`queued`/`running`/`succeeded`/`failed`), per-item error details, `onRetryItem(id)`, and `onRetryFailed(failedIds)` for bulk retry of failed records.

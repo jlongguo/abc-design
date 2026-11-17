@@ -1,11 +1,22 @@
 import { AbcBrandColor } from '@abc-design/tokens';
 import { AbcCheckedStrategy } from '@abc-design/core';
 import { AbcDensity } from '@abc-design/tokens';
+import { AbcDiffKind } from '@abc-design/core';
+import { AbcFieldDiffEntry } from '@abc-design/core';
 import { AbcFontScale } from '@abc-design/tokens';
+import { AbcKeyValueEntry } from '@abc-design/core';
+import { AbcKeyValueFormat } from '@abc-design/core';
+import { AbcLineDiffEntry } from '@abc-design/core';
 import { AbcMotionPreset } from '@abc-design/tokens';
 import { AbcPageTransition } from '@abc-design/tokens';
 import { AbcRadius } from '@abc-design/tokens';
 import { AbcResolvedTheme } from '@abc-design/tokens';
+import { AbcRuleCondition } from '@abc-design/core';
+import { AbcRuleFieldSchema } from '@abc-design/core';
+import { AbcRuleFieldType } from '@abc-design/core';
+import { AbcRuleGroup } from '@abc-design/core';
+import { AbcRuleOperator } from '@abc-design/core';
+import { AbcRuleOperatorOption } from '@abc-design/core';
 import { AbcSize } from '@abc-design/tokens';
 import { AbcSurfaceProfile } from '@abc-design/tokens';
 import { AbcThemeConfig } from '@abc-design/tokens';
@@ -237,12 +248,20 @@ export declare interface AbcDictOption {
     disabled?: boolean;
 }
 
+export { AbcDiffKind }
+
+export { AbcFieldDiffEntry }
+
 /** 图标组件渲染签名 */
 export declare type AbcIconComponent = default_2.ComponentType<{
     size?: number | string;
     className?: string;
     strokeWidth?: number;
 }>;
+
+export { AbcKeyValueEntry }
+
+export { AbcKeyValueFormat }
 
 /** 5 大标准企业级布局拓扑模式 */
 export declare type AbcLayoutMode = 'sidebar' | 'top' | 'mix' | 'dual-column' | 'auth';
@@ -270,6 +289,8 @@ export declare interface AbcLayoutSettings {
     /** 是否在路由切换时显示顶部轻量加载进度条（默认 true） */
     routeProgress?: boolean;
 }
+
+export { AbcLineDiffEntry }
 
 /** 路由无关的树形导航菜单节点协议 */
 export declare interface AbcMenuItem {
@@ -341,6 +362,18 @@ export declare interface AbcRowSelectionConfig<T = Record<string, any>> {
         name?: string;
     };
 }
+
+export { AbcRuleCondition }
+
+export { AbcRuleFieldSchema }
+
+export { AbcRuleFieldType }
+
+export { AbcRuleGroup }
+
+export { AbcRuleOperator }
+
+export { AbcRuleOperatorOption }
 
 /** 侧边栏独立视觉色调（允许亮色工作区搭配深色专业侧栏，或全浅色通透侧栏） */
 export declare type AbcSidebarTone = 'dark' | 'light';
@@ -484,6 +517,48 @@ export declare interface ActiveDrawerEntry {
 }
 
 /**
+ * 多源联动筛选状态摘要栏 (ActiveFilterBar)
+ *
+ * 将来自图表下钻、左侧目录树、顶部工具栏、表头列筛选及规则引擎的激活条件
+ * 汇总为统一可读胶囊条，支持单条精准撤销与一键全局重置。
+ */
+export declare const ActiveFilterBar: React_2.ForwardRefExoticComponent<ActiveFilterBarProps & React_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface ActiveFilterBarProps extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'children'> {
+    /** 当前生效的筛选胶囊列表 */
+    chips: ReadonlyArray<ActiveFilterChip>;
+    /** 全量数据条数 */
+    totalCount?: number;
+    /** 筛选后命中条数 */
+    filteredCount?: number;
+    /** 统一移除回调（当单条 chip 未自带 onRemove 时回退触发） */
+    onRemove?: (key: string) => void;
+    /** 一键清空全部筛选回调 */
+    onClearAll?: () => void;
+    /** 清空按钮文案（默认 '清空筛选'） */
+    clearAllLabel?: string;
+    /** 无任何筛选胶囊时是否自动隐藏整条状态栏（默认 true） */
+    hideWhenEmpty?: boolean;
+    /** 右侧附加操作或统计内容 */
+    extra?: React_2.ReactNode;
+}
+
+export declare interface ActiveFilterChip {
+    /** 筛选条件唯一标识 */
+    key: string;
+    /** 筛选字段名 */
+    label: string;
+    /** 当前生效值展示文本 */
+    valueText: React_2.ReactNode;
+    /** 筛选条件来源（用于自动匹配语义图标） */
+    source?: ActiveFilterSource;
+    /** 单条筛选移除回调（优先于 ActiveFilterBar.onRemove 执行） */
+    onRemove?: () => void;
+}
+
+export declare type ActiveFilterSource = 'chart' | 'toolbar' | 'table' | 'tree' | 'rule' | 'custom';
+
+/**
  * 页内提示横幅组件 (Alert)
  */
 export declare const Alert: default_2.FC<AlertProps>;
@@ -597,6 +672,53 @@ export declare interface BadgeProps extends default_2.HTMLAttributes<HTMLSpanEle
 }
 
 export declare const baseFieldControlClass = "w-full rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] leading-normal py-0 transition-[color,background-color,border-color,box-shadow] duration-[var(--abc-motion-fast,140ms)] ease-out enabled:hover:border-[var(--abc-border-strong)] focus-within:border-[var(--abc-primary)] focus-within:ring-2 focus-within:ring-[var(--abc-ring)] focus:border-[var(--abc-primary)] focus:ring-2 focus:ring-[var(--abc-ring)] focus:outline-none disabled:bg-[var(--abc-bg-muted)] disabled:text-[var(--abc-fg-muted)] disabled:cursor-not-allowed";
+
+/**
+ * 批量任务执行追踪器 (BatchActionTracker)
+ *
+ * 适用于批量启停、批量审批、多资源导出与异步批处理反馈：
+ * - 支持 inline 内联面板与 floating 右下角悬浮可最小化浮窗双模式；
+ * - 实时汇总完成进度条、状态过滤胶囊、失败原因诊断及单条/全量一键重试。
+ */
+export declare const BatchActionTracker: React_2.ForwardRefExoticComponent<BatchActionTrackerProps & React_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface BatchActionTrackerProps extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'title'> {
+    /** 队列面板标题（默认 '批量执行队列'） */
+    title?: React_2.ReactNode;
+    /** 批量任务条目列表 */
+    items: ReadonlyArray<BatchTaskItem>;
+    /** 展现形态：inline 内联卡片，floating 右下角悬浮可折叠浮窗（默认 'inline'） */
+    variant?: 'inline' | 'floating';
+    /** 是否显示队列面板（默认 true） */
+    open?: boolean;
+    /** 关闭回调；传入时右上角显示关闭按钮 */
+    onClose?: () => void;
+    /** 一键重试全部失败项回调 */
+    onRetryFailed?: (failedIds: string[]) => void;
+    /** 单条失败任务重试回调 */
+    onRetryItem?: (id: string) => void;
+    /** 清理已完成（succeeded）任务回调 */
+    onClearSucceeded?: () => void;
+    /** 顶部重试失败项按钮文案（默认 '重试失败项'） */
+    retryFailedLabel?: string;
+}
+
+export declare interface BatchTaskItem {
+    /** 任务唯一标识 */
+    id: string;
+    /** 任务标题 */
+    title: string;
+    /** 次级说明文案（如目标资源 ID 或参数摘要） */
+    subtitle?: string;
+    /** 当前执行状态 */
+    status: BatchTaskStatus;
+    /** 失败原因详情（仅 failed 时高亮展示） */
+    error?: string;
+    /** 耗时（毫秒） */
+    durationMs?: number;
+}
+
+export declare type BatchTaskStatus = 'queued' | 'running' | 'succeeded' | 'failed';
 
 /** Bento 网格单卡（支持跨列/跨行特性视觉呈现与微交互上浮） */
 export declare const BentoCard: default_2.FC<BentoCardProps>;
@@ -1107,6 +1229,40 @@ export declare interface CommandTriggerButtonProps extends React_2.ButtonHTMLAtt
     placeholder?: string;
     mobilePlaceholder?: string;
     ariaLabel?: string;
+}
+
+/**
+ * 配置变更差异审阅面板 (ConfigDiffViewer)
+ * 支持结构化对象字段语义对比与 LCS 逐行源码对比，内置敏感字段脱敏提示与实时变更筛选开关。
+ */
+export declare const ConfigDiffViewer: default_2.FC<ConfigDiffViewerProps>;
+
+export declare interface ConfigDiffViewerProps {
+    /** 变更前配置对象 */
+    before?: Record<string, any> | null;
+    /** 变更后配置对象 */
+    after?: Record<string, any> | null;
+    /** 变更前源码/配置文件文本 */
+    beforeCode?: string;
+    /** 变更后源码/配置文件文本 */
+    afterCode?: string;
+    /** 字段键名到中文语义展示名称的映射表 */
+    labels?: Record<string, string>;
+    /** 展示模式：字段对比 / 源码对比 / 双标签切换 */
+    mode?: 'fields' | 'code' | 'tabs';
+    /** 源码逐行对比布局（默认 unified） */
+    codeLayout?: 'unified' | 'split';
+    /** 是否默认仅显示存在变更的条目（默认 true） */
+    onlyChanges?: boolean;
+    /** 是否对敏感字段（password/secret/token/api_key 等）自动脱敏（默认 true） */
+    maskSecrets?: boolean;
+    /** 顶部标题 */
+    title?: default_2.ReactNode;
+    /** 无变更时的空状态提示文案 */
+    emptyText?: default_2.ReactNode;
+    /** 无障碍区域标签 */
+    ariaLabel?: string;
+    className?: string;
 }
 
 export declare type ConfigFieldSchema<T extends Record<string, any> = Record<string, any>> = ProConfigPageFieldSchema<T>;
@@ -1805,6 +1961,73 @@ export declare interface DurationQuotaInputProps extends QuotaUnitInputBaseProps
 
 export declare type DurationUnit = 's' | 'm' | 'h' | 'd';
 
+export declare interface EditableProColumn<T = Record<string, any>> {
+    key: string;
+    title: default_2.ReactNode;
+    dataIndex?: keyof T & string;
+    width?: number | string;
+    align?: 'left' | 'center' | 'right';
+    /** 当前单元格是否允许编辑（默认 true） */
+    editable?: boolean | ((row: T, index: number) => boolean);
+    /** 内置编辑器类型（默认 'text'） */
+    valueType?: EditableProEditorType;
+    /** select 类型选项列表 */
+    options?: Array<{
+        label: default_2.ReactNode;
+        value: string | number;
+        disabled?: boolean;
+    }>;
+    min?: number;
+    max?: number;
+    step?: number;
+    placeholder?: string;
+    /** 列级校验函数，返回错误文案字符串表示校验失败 */
+    validator?: (value: any, row: T, rows: T[]) => string | undefined;
+    /** 只读展示态自定义渲染 */
+    render?: (value: any, row: T, index: number) => default_2.ReactNode;
+    /** 编辑态自定义控件渲染 */
+    renderEditor?: (value: any, row: T, onChange: (val: any) => void, index: number) => default_2.ReactNode;
+}
+
+export declare type EditableProEditorType = 'text' | 'number' | 'select' | 'switch' | 'date';
+
+export declare interface EditableProRecordCreatorProps<T = Record<string, any>> {
+    position?: 'top' | 'bottom';
+    record: () => T;
+    label?: default_2.ReactNode;
+    maxRows?: number;
+}
+
+/**
+ * 企业级行内/整表可编辑表格 (EditableProTable)
+ * 支持 'row'（逐行编辑/校验拦截/取消回滚）与 'table'（整表实时编辑与校验）双模式，内置脏数据检测与行增删
+ */
+export declare function EditableProTable<T = Record<string, any>>({ value, defaultValue, onChange, columns, rowKey, mode, recordCreatorProps, deletable, summaryRender, onSaveRow, className, }: EditableProTableProps<T>): default_2.ReactElement;
+
+export declare interface EditableProTableProps<T = Record<string, any>> {
+    /** 受控行数据列表 */
+    value?: T[];
+    /** 非受控初始行数据列表 */
+    defaultValue?: T[];
+    /** 数据变更回调 */
+    onChange?: (next: T[]) => void;
+    /** 可编辑列配置 */
+    columns: EditableProColumn<T>[];
+    /** 主键字段名（默认 'id'） */
+    rowKey?: keyof T & string;
+    /** 编辑模式：'row' 单行点击编辑保存/取消回滚 | 'table' 整表实时编辑（默认 'row'） */
+    mode?: 'row' | 'table';
+    /** 新增行配置；传入 false 关闭新增按钮 */
+    recordCreatorProps?: false | EditableProRecordCreatorProps<T>;
+    /** 是否允许删除行（默认 true） */
+    deletable?: boolean;
+    /** 表格底部汇总行自定义渲染 */
+    summaryRender?: (rows: T[]) => default_2.ReactNode;
+    /** 单行保存钩子（返回 Promise 时自动呈现加载态） */
+    onSaveRow?: (row: T, index: number) => void | Promise<void>;
+    className?: string;
+}
+
 declare interface EmojiTextSegment {
     type: 'text' | 'emoji';
     value: string;
@@ -1927,6 +2150,32 @@ export declare const FILTER_HIGHLIGHT_SWATCHES: {
     color: string;
     label: string;
 }[];
+
+/**
+ * 嵌套可视化规则筛选构建器 (FilterBuilder / RuleBuilder)
+ * 驱动 @abc-design/core AST 节点树，支持三段式联动、多级嵌套与只读逻辑表达式预览。
+ */
+export declare const FilterBuilder: default_2.FC<FilterBuilderProps>;
+
+export declare interface FilterBuilderProps {
+    /** 可用字段 Schema 定义列表 */
+    fields: AbcRuleFieldSchema[];
+    /** 受控规则组树 */
+    value?: AbcRuleGroup;
+    /** 非受控初始规则组树 */
+    defaultValue?: AbcRuleGroup;
+    /** 规则树任意节点变更时触发 */
+    onChange?: (next: AbcRuleGroup) => void;
+    /** 最大嵌套深度（默认 2；0 表示不允许添加子条件组） */
+    maxDepth?: number;
+    /** 是否在底部展示只读逻辑表达式摘要与复制按钮（默认 true） */
+    showSummary?: boolean;
+    /** 全局禁用态 */
+    disabled?: boolean;
+    /** 无障碍区域标签 */
+    ariaLabel?: string;
+    className?: string;
+}
 
 /** 搜索筛选卡片样式 */
 export declare const filterCardClass = "rounded-[var(--abc-radius-lg,0.75rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] p-4 shadow-[var(--abc-shadow-card)]";
@@ -2370,6 +2619,40 @@ export declare interface KeepAliveContainerProps {
     /** 页签异常边界点击“返回仪表盘”时的回调 */
     onNavigateHome?: () => void;
     children: default_2.ReactNode;
+}
+
+/**
+ * 企业级环境变量与请求头键值对编辑器 (KeyValueInput)
+ * 内置重复 Key 实时告警、单行启用开关、密文遮罩切换及 .env / Headers / JSON 双向批量编辑
+ */
+export declare const KeyValueInput: default_2.FC<KeyValueInputProps>;
+
+export declare interface KeyValueInputProps {
+    /** 受控键值对列表 */
+    value?: AbcKeyValueEntry[];
+    /** 非受控初始键值对列表 */
+    defaultValue?: AbcKeyValueEntry[];
+    /** 列表变更回调 */
+    onChange?: (next: AbcKeyValueEntry[]) => void;
+    /** 是否在每行左侧展示启用/停用开关（默认 true） */
+    allowEnableToggle?: boolean;
+    /** 是否允许每行切换明文/密文遮罩查看（默认 false） */
+    allowSecretMask?: boolean;
+    /** 是否在右上角提供“结构化行 / 批量文本”编辑器切换（默认 true） */
+    allowBulkEdit?: boolean;
+    /** 批量文本编辑器默认格式（默认 'dotenv'） */
+    defaultBulkFormat?: AbcKeyValueFormat;
+    /** Key 输入框占位符 */
+    keyPlaceholder?: string;
+    /** Value 输入框占位符 */
+    valuePlaceholder?: string;
+    /** 最大允许条目数 */
+    maxItems?: number;
+    /** 是否禁用全部输入与操作 */
+    disabled?: boolean;
+    /** 控件尺寸规格 */
+    size?: AbcSize;
+    className?: string;
 }
 
 /**
@@ -3356,6 +3639,35 @@ export declare interface ProFormContainerSummaryRenderProps {
     className?: string;
 }
 
+/**
+ * 声明式表单字段联动容器 (ProFormDependency)
+ * 通过精细化字段对比避免无关重渲染与死循环，支持下游字段自动清空及防抖/竞态安全的异步加载
+ */
+export declare function ProFormDependency<TData = any>({ form: formProp, deps, resetFieldsOnChange, asyncLoader, debounceMs, children, }: ProFormDependencyProps<TData>): default_2.ReactElement;
+
+export declare interface ProFormDependencyAsyncState<TData = any> {
+    loading: boolean;
+    data: TData | undefined;
+    error: Error | null;
+    reload: () => void;
+    form: ProFormInstance<any> | null;
+}
+
+export declare interface ProFormDependencyProps<TData = any> {
+    /** 显式传入的表单实例（未传时自动回退读取 useProFormContext()） */
+    form?: ProFormInstance<any>;
+    /** 声明监听的依赖字段名集合 */
+    deps: string[];
+    /** 任一依赖值发生变更时自动清空的下游字段名集合 */
+    resetFieldsOnChange?: string[];
+    /** 依赖值变化时触发的异步数据源加载器（支持 AbortSignal 竞态取消） */
+    asyncLoader?: (depValues: Record<string, any>, signal: AbortSignal) => Promise<TData>;
+    /** 异步加载防抖毫秒数（默认 0，> 0 时防抖触发并在新变化到来时中止旧请求） */
+    debounceMs?: number;
+    /** 渲染函数，接收当前依赖字段值快照及异步加载元信息 */
+    children: (depValues: Record<string, any>, meta: ProFormDependencyAsyncState<TData>) => default_2.ReactNode;
+}
+
 export declare type ProFormErrors = Record<string, ProFieldError | undefined>;
 
 export declare interface ProFormInstance<T extends Record<string, any> = Record<string, any>> {
@@ -3398,6 +3710,80 @@ export declare interface ProFormLayoutProps {
     mode?: 'split' | 'grid';
     sections: ProFormSection[];
     className?: string;
+}
+
+/**
+ * 动态结构化表单列表 (ProFormList)
+ * 同时支持独立受控/非受控模式与 ProFormInstance 双向绑定，提供增删改、行复制、排序与行级校验
+ */
+export declare function ProFormList<T = Record<string, any>>({ name, form: formProp, label, value, defaultValue, onChange, initialItem, minItems, maxItems, variant, copyable, sortable, addLabel, rowValidator, summaryRender, disabled, className, children, }: ProFormListProps<T>): default_2.ReactElement;
+
+export declare interface ProFormListItemHelpers<T = Record<string, any>> {
+    /** 局部合并或函数式更新当前行数据 */
+    update: (patchOrNext: Partial<T> | ((prev: T) => T)) => void;
+    /** 删除当前行（受 minItems 约束） */
+    remove: () => void;
+    /** 复制当前行并插入到下一位置（受 maxItems 约束） */
+    duplicate: () => void;
+    /** 上移当前行 */
+    moveUp: () => void;
+    /** 下移当前行 */
+    moveDown: () => void;
+    /** 行级校验错误文本 */
+    error?: string;
+    canRemove: boolean;
+    canAdd: boolean;
+    canMoveUp: boolean;
+    canMoveDown: boolean;
+}
+
+export declare interface ProFormListProps<T = Record<string, any>> {
+    /** 绑定 ProFormInstance 的字段路径（与 form 或 ProFormProvider 配合使用） */
+    name?: string;
+    /** 显式传入的表单实例（未传时自动读取 useProFormContext()） */
+    form?: ProFormInstance<any>;
+    /** 列表顶部标题 */
+    label?: default_2.ReactNode;
+    /** 受控列表值 */
+    value?: T[];
+    /** 非受控默认列表值 */
+    defaultValue?: T[];
+    /** 列表变更回调 */
+    onChange?: (next: T[]) => void;
+    /** 新增空白行默认对象或工厂函数 */
+    initialItem?: T | (() => T);
+    /** 最少保留条目数（默认 0） */
+    minItems?: number;
+    /** 最多允许条目数 */
+    maxItems?: number;
+    /** 渲染形态：'card' 独立卡片行 | 'inline' 紧凑行内布局（默认 'card'） */
+    variant?: 'inline' | 'card';
+    /** 是否允许复制单行插入下一位（默认 true） */
+    copyable?: boolean;
+    /** 是否允许上移/下移重排（默认 false） */
+    sortable?: boolean;
+    /** 新增按钮文案（默认 '添加一行'） */
+    addLabel?: default_2.ReactNode;
+    /** 单行校验函数 */
+    rowValidator?: (item: T, index: number, all: T[]) => string | undefined;
+    /** 列表底部汇总区域自定义渲染 */
+    summaryRender?: (items: T[]) => default_2.ReactNode;
+    /** 是否禁用全部操作 */
+    disabled?: boolean;
+    className?: string;
+    /** 行内容渲染函数 */
+    children: (item: T, index: number, helpers: ProFormListItemHelpers<T>) => default_2.ReactNode;
+}
+
+/**
+ * 表单实例上下文提供者：允许深层嵌套的联动区块或列表组件无需逐层透传 form prop
+ */
+export declare const ProFormProvider: default_2.FC<ProFormProviderProps>;
+
+export declare interface ProFormProviderProps {
+    /** 需要向下透传的响应式表单实例 */
+    form: ProFormInstance<any>;
+    children: default_2.ReactNode;
 }
 
 export declare interface ProFormSection {
@@ -3675,6 +4061,93 @@ export declare interface ProSearchFieldConfig {
     clearable?: boolean;
     /** 内部标记：是否源自 ProTableFieldSchema */
     __fromFieldSchema?: boolean;
+}
+
+/**
+ * 通用主从分栏工作台 (ProSplitWorkbench)
+ *
+ * 整合左侧可拖拽/可折叠导航树、中间主工作区与右侧按需内联挤压详情区（SplitDetailLayout），
+ * 适用于分类树筛选列表、资产目录检视与主从联动审批等典型中后台高频工作台场景。
+ */
+export declare const ProSplitWorkbench: React_2.ForwardRefExoticComponent<ProSplitWorkbenchProps & React_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface ProSplitWorkbenchProps extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'children'> {
+    /** 左侧分类树数据；传入时自动渲染带拼音搜索框的分类树与顶部“全部”快捷节点 */
+    treeData?: AbcTreeNode[];
+    /** 各树节点对应的统计数量映射（按 String(node.key) 匹配） */
+    counts?: Record<string, number>;
+    /** 顶部“全部”快捷节点文案（默认 '全部视图'） */
+    allLabel?: React_2.ReactNode;
+    /** 顶部“全部”快捷节点数量徽标 */
+    allCount?: number;
+    /** 受控当前选中节点 key（null 表示选中“全部”） */
+    selectedKey?: string | number | null;
+    /** 非受控初始选中节点 key（默认 null） */
+    defaultSelectedKey?: string | number | null;
+    /** 节点切换回调；点击“全部”时固定返回 null */
+    onSelectKey?: (key: string | number | null, node?: AbcTreeNode) => void;
+    /** 左侧边栏头部标题 */
+    sidebarTitle?: React_2.ReactNode;
+    /** 左侧边栏头部右侧扩展区域 */
+    sidebarExtra?: React_2.ReactNode;
+    /** 自定义左侧栏内容（传入时完整覆盖内置“全部”+ Tree 视图） */
+    sidebarRender?: React_2.ReactNode;
+    /** 左侧边栏初始宽度（px，默认 260） */
+    sidebarWidth?: number;
+    /** 左侧边栏最小拖拽宽度（px，默认 200） */
+    minSidebarWidth?: number;
+    /** 左侧边栏最大拖拽宽度（px，默认 440） */
+    maxSidebarWidth?: number;
+    /** 本地持久化记忆侧栏与详情宽度的存储键 */
+    storageKey?: string;
+    /** 右侧按需内联挤压详情面板节点 */
+    detailPanel?: React_2.ReactNode;
+    /** 是否打开右侧详情区（默认 false） */
+    detailOpen?: boolean;
+    /** 右侧详情区初始宽度 */
+    detailWidth?: number | string;
+    /** 右侧详情区是否处于沉浸全宽展开模式（默认 false） */
+    detailExpanded?: boolean;
+    /** 主工作区内容 */
+    children: React_2.ReactNode;
+}
+
+/**
+ * 跨步向导表单容器 (ProStepsForm)
+ * 集成 Steps 分步引导条、同步/异步分步校验阻断、Alert 危险提示、提交防连点及跨步草稿无损保留。
+ */
+export declare function ProStepsForm<T = Record<string, any>>({ steps, initialValues, values, onValuesChange, current, onCurrentChange, onFinish, prevLabel, nextLabel, submitLabel, stepsDirection, ariaLabel, className, }: ProStepsFormProps<T>): default_2.JSX.Element | null;
+
+export declare namespace ProStepsForm {
+    var displayName: string;
+}
+
+export declare interface ProStepsFormProps<T = Record<string, any>> {
+    /** 分步向导步骤配置数组 */
+    steps: ReadonlyArray<ProWizardStepConfig<T>>;
+    /** 初始表单草稿值 */
+    initialValues: T;
+    /** 受控表单值 */
+    values?: T;
+    /** 表单值变更回调 */
+    onValuesChange?: (values: T) => void;
+    /** 受控当前步骤下标（从 0 开始） */
+    current?: number;
+    /** 当前步骤变化回调 */
+    onCurrentChange?: (step: number) => void;
+    /** 全部步骤校验通过并点击提交时触发 */
+    onFinish: (values: T) => void | Promise<void>;
+    /** 上一步按钮文案（默认 "上一步"） */
+    prevLabel?: default_2.ReactNode;
+    /** 下一步按钮文案（默认 "下一步"） */
+    nextLabel?: default_2.ReactNode;
+    /** 末步提交按钮文案（默认 "提交"） */
+    submitLabel?: default_2.ReactNode;
+    /** 步骤条排版方向（默认 horizontal） */
+    stepsDirection?: 'horizontal' | 'vertical';
+    /** 无障碍区域标签 */
+    ariaLabel?: string;
+    className?: string;
 }
 
 export declare function ProTable<T extends Record<string, any> = Record<string, any>, Q extends Record<string, any> = Record<string, any>, F extends Record<string, any> = Record<string, any>>(props: ProTableProps<T, Q, F>): JSX.Element;
@@ -4032,6 +4505,21 @@ export declare interface ProToolbarButtonConfig {
     onClick: () => void;
 }
 
+export declare interface ProWizardStepConfig<T = Record<string, any>> {
+    key: string;
+    title: default_2.ReactNode;
+    description?: default_2.ReactNode;
+    validate?: (values: T) => boolean | string | undefined | Promise<boolean | string | undefined>;
+    render: (ctx: ProWizardStepRenderContext<T>) => default_2.ReactNode;
+}
+
+export declare interface ProWizardStepRenderContext<T = Record<string, any>> {
+    values: T;
+    setValues: (patch: Partial<T>) => void;
+    setValue: <K extends keyof T>(key: K, val: T[K]) => void;
+    error?: string | null;
+}
+
 /** 向全局队列推送一条 Toast 消息 */
 export declare function pushToast(tone: ToastTone, messageOrOptions: default_2.ReactNode | ToastOptions, duration?: number): string;
 
@@ -4193,6 +4681,51 @@ export declare function registerAbcIcons(icons: Record<string, AbcIconComponent>
 
 export declare function renderBuiltInValue<T extends Record<string, any>>(rawVal: any, record: T, col: AbcColumn<T>, onRowView?: (record: T, linkTarget?: string) => void): default_2.ReactNode;
 
+/**
+ * 可拖拽调节与折叠的双栏分割容器 (ResizableSplitPane)
+ *
+ * 支持水平/垂直方向拖拽、键盘方向键与 Home/End 调节、双击复位、
+ * localStorage 尺寸记忆，并在窄屏（<768px）水平模式下自动退化为上下堆叠以保障可读性。
+ */
+export declare const ResizableSplitPane: React_2.ForwardRefExoticComponent<ResizableSplitPaneProps & React_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface ResizableSplitPaneProps extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'children'> {
+    /** 分栏方向：horizontal 为左右分栏，vertical 为上下分栏（默认 horizontal） */
+    direction?: 'horizontal' | 'vertical';
+    /** 非受控初始尺寸（px，默认 260） */
+    defaultSize?: number;
+    /** 受控尺寸（px） */
+    size?: number;
+    /** 尺寸变更回调 */
+    onSizeChange?: (next: number) => void;
+    /** 最小尺寸限制（px，默认 180） */
+    minSize?: number;
+    /** 最大尺寸限制（px，默认 560） */
+    maxSize?: number;
+    /** 是否允许折叠主面板（默认 true） */
+    collapsible?: boolean;
+    /** 受控折叠状态 */
+    collapsed?: boolean;
+    /** 非受控初始折叠状态 */
+    defaultCollapsed?: boolean;
+    /** 折叠状态变更回调 */
+    onCollapsedChange?: (collapsed: boolean) => void;
+    /** 本地持久化记忆尺寸的存储键（自动捕获隐私模式等存储异常） */
+    storageKey?: string;
+    /** 第一分栏内容（左侧或上方） */
+    firstPane: React_2.ReactNode;
+    /** 第二分栏内容（右侧或下方，自动占满剩余空间） */
+    secondPane: React_2.ReactNode;
+    /** 折叠按钮无障碍文案 */
+    collapseLabel?: string;
+    /** 展开按钮无障碍文案 */
+    expandLabel?: string;
+    /** 第一分栏容器附加类名 */
+    firstPaneClassName?: string;
+    /** 第二分栏容器附加类名 */
+    secondPaneClassName?: string;
+}
+
 export declare type ResolvedColorScheme = 'light' | 'dark';
 
 export declare interface ResolvedRowActionItem {
@@ -4250,6 +4783,56 @@ export declare interface RichIconTextProps extends React_2.HTMLAttributes<HTMLSp
     size?: number;
     iconClassName?: string;
     preserveSrToken?: boolean;
+}
+
+export declare const RuleBuilder: default_2.FC<FilterBuilderProps>;
+
+export declare type RuleBuilderProps = FilterBuilderProps;
+
+export declare interface SavedFilterViewItem<TFilter = any> {
+    id: string;
+    name: string;
+    filter: TFilter;
+    builtIn?: boolean;
+    count?: number;
+}
+
+/**
+ * 常用筛选视图管理栏 (SavedFilterViews)
+ * 支持内置锁定视图、自定义视图持久化（localStorage）、脏状态提示及内联另存为确认流。
+ */
+export declare function SavedFilterViews<TFilter = any>({ views, defaultViews, onViewsChange, activeViewId, onSelectView, currentFilter, isDirty, storageKey, onSaveAsView, onUpdateView, onDeleteView, ariaLabel, className, }: SavedFilterViewsProps<TFilter>): JSX.Element;
+
+export declare namespace SavedFilterViews {
+    var displayName: string;
+}
+
+export declare interface SavedFilterViewsProps<TFilter = any> {
+    /** 受控视图列表 */
+    views?: SavedFilterViewItem<TFilter>[];
+    /** 非受控初始视图列表 */
+    defaultViews?: SavedFilterViewItem<TFilter>[];
+    /** 视图列表变更回调 */
+    onViewsChange?: (views: SavedFilterViewItem<TFilter>[]) => void;
+    /** 当前激活视图 ID（受控） */
+    activeViewId?: string;
+    /** 选中或新建激活视图回调 */
+    onSelectView?: (view: SavedFilterViewItem<TFilter>) => void;
+    /** 当前业务筛选器状态 */
+    currentFilter: TFilter;
+    /** 显式脏状态覆盖；省略时自动深度比对 currentFilter 与激活视图 */
+    isDirty?: boolean;
+    /** 非空时自动将自定义视图持久化到 localStorage */
+    storageKey?: string;
+    /** 另存为新视图回调 */
+    onSaveAsView?: (name: string, filter: TFilter) => void;
+    /** 更新当前自定义视图回调 */
+    onUpdateView?: (viewId: string, filter: TFilter) => void;
+    /** 删除自定义视图回调 */
+    onDeleteView?: (viewId: string) => void;
+    /** 无障碍区域标签 */
+    ariaLabel?: string;
+    className?: string;
 }
 
 export declare type SearchFieldConfig = ProSearchFieldConfig;
@@ -5713,6 +6296,9 @@ export declare function usePresence(open: boolean, durationMs?: number): {
  * 轻量级响应式表单状态引擎：完整对齐 getValues / setValue / watch / reset / formState 交互契约
  */
 export declare function useProForm<T extends Record<string, any> = Record<string, any>>({ defaultValues, schema, fields, onValuesChange, }?: UseProFormOptions<T>): ProFormInstance<T>;
+
+/** 获取当前上下文注入的 ProFormInstance（未包裹 ProFormProvider 时返回 null） */
+export declare function useProFormContext(): ProFormInstance<any> | null;
 
 export declare interface UseProFormOptions<T extends Record<string, any> = Record<string, any>> {
     defaultValues?: Partial<T>;

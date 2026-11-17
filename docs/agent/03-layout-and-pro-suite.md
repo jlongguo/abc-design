@@ -1,255 +1,251 @@
-# 03. 5 模态 `ProLayout` 壳层与 Pro 业务套件指南
+# 03. 企业级布局、Chrome、高阶 Pro 套件与路由保活
+
+> **AI Agent 防幻觉与避坑准则**：
+> 1. **`PageContainer` 底部栏字段名为 `footer`，严禁写成 `footerBar`**。
+> 2. **`ReasonedActionDialog` 必填 `description`、`confirmLabel` 与 `onOpenChange(open)`；`ReasonedActionDrawer` 必填 `confirmLabel` 与 `onClose()`**。
+> 3. **`InspectorPanel` 默认不显示清除按钮**：必须显式传入 `showClear={true}`（配合 `onClear`）才会渲染顶部“清除选择”按钮。
+> 4. **需要多组件实时联动、表单依赖异步防竞态、三栏拖拽工作台或可编辑表格时**，直接跳转阅读 [05-complex-linkage-and-orchestration.md](./05-complex-linkage-and-orchestration.md)（含 `ProSplitWorkbench`、`ResizableSplitPane`、`EditableProTable`、`FilterBuilder`、`SavedFilterViews`、`ActiveFilterBar`、`ProStepsForm`、`ConfigDiffViewer`、`BatchActionTracker`、`ProFormProvider` / `ProFormDependency` / `ProFormList`）。
 
 ---
 
-## 一、`ProLayout` — 5 模态企业级完整布局系统
+## 1. 应用外壳与路由过渡 (`ProLayout`, `PageContainer`, `AuthLayout`, `KeepAliveContainer`, `PageTransition`)
 
-### 1. 支持的 5 种布局拓扑 (`settings.mode`)
-1. `'sidebar'`：经典左侧树形菜单（支持深色 `dark` / 浅色 `light` 侧栏独立色调、折叠图标态悬浮二级菜单、手风琴模式）。
-2. `'top'`：顶部水平导航栏，最大化横向表格视野。
-3. `'mix'`：混合导航（顶栏渲染一级业务域，侧边栏自动联动当前域下的二三级菜单）。
-4. `'dual-column'`：双栏侧边导航（左侧极窄一级图标轨 + 右侧二级平铺面板，适合超大型 ERP/SaaS）。
-5. `'auth'`：登录认证独立壳层（支持左右分屏极光叙事屏 `split` 与居中卡片 `centered`）。
+### `ProLayout`（多布局统一应用外壳）
+- **核心 Props**：
+  - `brand?: AbcBrandInfo`、`menuItems: AbcMenuItem[]`、`pathname: string`、`onNavigate: (path: string, item?: AbcMenuItem) => void`
+  - `settings?: Partial<AbcLayoutSettings>`、`defaultSettings?: Partial<AbcLayoutSettings>`、`onSettingsChange?: (next: AbcLayoutSettings) => void`
+  - `user?: AbcUserInfo`、`headerExtra?: ReactNode`、`commandActions?: CommandActionItem[]`
+  - `tabs?: AbcTabItem[]`、`onTabsChange?: (tabs: AbcTabItem[]) => void`
+  - `authRender?: ReactNode`、`authProps?: Partial<AuthLayoutProps>`、`showCustomizerTrigger?: boolean`
+  - `isolateTabError?: boolean`（默认 `true`，为多页签注入 `TabErrorBoundary`）、`homePath?: string`（默认 `'/'`）
+  - `size?: AbcSize`、`motion?: AbcMotionPreset`
+- **布局模式 (`AbcLayoutSettings.mode` / `AbcLayoutMode`)**：支持 5 种标准拓扑 `'sidebar' | 'top' | 'mix' | 'dual-column' | 'auth'`（默认 `'sidebar'`）。
 
-> 说明：`ProLayout`、`SidebarNav`、`DualColumnNav`、`TopHorizontalNav`、`BrandLogoBlock` 与 `MultiTabBar` 均原生继承 `AbcProvider.theme.componentSize`（`xs | sm | md | lg`）与 `theme.motion`（也支持局部传入 `size` / `motion` prop 覆写）；未显式指定 `sidebarWidth` / `headerHeight` 时，侧边栏宽度（`208 / 232 / 248 / 268`）与顶栏高度（`48 / 54 / 58 / 62`）将自动随四档尺寸联动。
-
-### 2. 核心类型定义
-
-```ts
-export interface AbcBrandInfo {
-  name: string
-  subtitle?: string
-  /** 支持图片 URL、内联 <svg>...</svg> 字符串或自定义 ReactNode */
-  logo?: React.ReactNode | string
-  onClick?: () => void
-  /** 传入此回调时，品牌区右侧自动显示编辑铅笔按钮（常用于多租户动态配置 Logo 与项目名称） */
-  onEditBrand?: () => void
-}
-
-export interface AbcMenuItem {
-  key: string
-  label: string
-  path?: string
-  /** 支持 Lucide 名称（如 'Users'）、语义键（如 'dashboard'）或自定义节点 */
-  icon?: string | React.ReactNode
-  badge?: string | number
-  hidden?: boolean
-  disabled?: boolean
-  externalUrl?: string
-  children?: AbcMenuItem[]
-}
-
-export interface AbcLayoutSettings {
-  mode: 'sidebar' | 'top' | 'mix' | 'dual-column' | 'auth'
-  sidebarTone: 'light' | 'dark'
-  sidebarCollapsed: boolean
-  sidebarAccordion: boolean
-  showTabs: boolean
-  keepAlive: boolean
-  contentWidth: 'fluid' | 'fixed'
-  /** 展开态侧边栏宽度（不指定时随 componentSize 自动联动 208/232/248/268，自定义范围 196 ~ 288） */
-  sidebarWidth?: number
-  /** 顶部导航栏高度（不指定时随 componentSize 自动联动 48/54/58/62，自定义范围 46 ~ 66） */
-  headerHeight?: number
-  /** 多页签栏视觉风格 */
-  tabStyle?: 'card' | 'pill' | 'underline'
-  /** 顶部栏毛玻璃透射效果 */
-  headerBlur?: boolean
-  /** 是否显示面包屑与页脚 */
-  showBreadcrumb?: boolean
-  showFooter?: boolean
-}
-```
-
-### 3. 对接不同路由框架示例
-
-#### React Router v6 / v7
-```tsx
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { ProLayout } from '@abc-design/react'
-
-export function DefaultLayout() {
-  const location = useLocation()
-  const navigate = useNavigate()
-  return (
-    <ProLayout
-      brand={{ name: 'BytesFlows Admin', logo: tenantLogo }}
-      menuItems={menuTree}
-      pathname={location.pathname}
-      onNavigate={(path) => navigate(path)}
-    >
-      <Outlet />
-    </ProLayout>
-  )
-}
-```
-
-#### Next.js App Router (`'use client'`)
-```tsx
-'use client'
-import { usePathname, useRouter } from 'next/navigation'
-import { ProLayout } from '@abc-design/react'
-
-export function DashboardShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-  const router = useRouter()
-  return (
-    <ProLayout
-      brand={{ name: 'Next Enterprise' }}
-      menuItems={menuTree}
-      pathname={pathname}
-      onNavigate={(path) => router.push(path)}
-    >
-      {children}
-    </ProLayout>
-  )
-}
-```
-
----
-
-## 二、`PageContainer` — 标准业务页面容器
-
-每个路由页面顶层统一包裹 `<PageContainer>`，保证标题字阶、右上角操作区、头部统计卡插槽与底部吸底提交栏全站一致：
+### `PageContainer`
+- **核心 Props (`PageContainerProps`)**：
+  - `title?: ReactNode`、`subtitle?: ReactNode`、`tags?: ReactNode`、`breadcrumbs?: BreadcrumbEntry[]`
+  - `extra?: ReactNode`、`headerContent?: ReactNode`、`footer?: ReactNode`（底部吸底栏）、`className?: string`
 
 ```tsx
 <PageContainer
-  title="订单清结算管理"
-  subtitle="支持按账期核对商户分账流水与异常退汇单"
-  tags={<StatusTag tone="success" dot>T+1 自动出账</StatusTag>}
-  extra={<Button variant="primary">导出月度对账单</Button>}
-  footerBar={<Button variant="primary">批量确认核销</Button>} // 可选吸底工具栏
+  title="算力集群管理"
+  subtitle="统一配置多可用区网关、配额策略与审批流"
+  extra={<Button variant="primary">新建集群</Button>}
+  footer={<Button variant="primary">保存全页配置</Button>}
 >
-  {/* 页面主体 */}
+  {children}
 </PageContainer>
 ```
 
+### `AuthLayout`
+- `brand?: AbcBrandInfo`、`variant?: 'split' | 'centered'`、`headline?: ReactNode`、`subheadline?: ReactNode`、`highlights?: string[]`、`topRightExtra?: ReactNode`、`copyright?: ReactNode`
+
+### `KeepAliveContainer` & `PageTransition`
+- `AbcPageTransition`: `'fade-slide' | 'fade' | 'zoom' | 'slide-left' | 'none'`
+- `KeepAliveContainer`:
+  - `activeKey: string`（必填，通常为 `location.pathname`）
+  - `enabled?: boolean`（默认 `true`）、`maxCached?: number`（默认 `12`，LRU 淘汰）、`aliveKeys?: string[]`
+  - `scrollContainerRef?: RefObject<HTMLElement | null>`（切回页签恢复滚动高度）、`refreshSeed?: number`、`refreshKeys?: Record<string, number>`
+  - `activeClassName?: string`、`isolateError?: boolean`（默认 `false`）、`onTabReload?: (key) => void`、`onTabClose?: (key) => void`、`onNavigateHome?: () => void`
+- `PageTransition`:
+  - `activeKey?: string`、`transition?: AbcPageTransition`、`showProgress?: boolean`（默认 `true`，切换 `activeKey` 时联动 `TopProgressBar`）
+
 ---
 
-## 三、`ProTable` — Schema 驱动全功能 CRUD 表格
+## 2. 页面 Chrome、导航带与引导头
 
-一套配置覆盖：**可折叠多维搜索卡片（支持文本、数值、多选、日期区间） + 表头单列气泡筛选与内联筛选行 + 表头右键快捷菜单 + 服务端异步分页 / 本地拼音即时过滤双引擎 + 自动定时轮询 + UTF-8 CSV 导出 + 沉浸全屏展示 + 列宽/列序/左右冻结/筛选项本地记忆 + 展开详情行与树形子行 + 行操作自动溢出折叠 + 毛玻璃悬浮批量胶囊栏 + 带草稿防丢失与双列自适应的新建/编辑容器**。
+### `PageHeader` & `PageSection` (`Section`)
+- `PageHeader`: `backLink?: ReactNode`、`eyebrow?: ReactNode`、`title: ReactNode`（必填）、`badge?: ReactNode`、`description?: ReactNode`、`action?: ReactNode`、`actions?: ReactNode`
+- `PageSection`（导出别名 `Section`）：`title?: ReactNode`、`badge?: ReactNode`、`description?: ReactNode`、`action?: ReactNode`、`contentClassName?: string`、`noPadding?: boolean`（默认 `false`）、`children: ReactNode`
+
+### `HubNavBar` & `hubNavTabClassName`
+- `HubNavBar`: 多层/多模块汇总导航条：
+  - `badge?: ReactNode`、`layerBadge?: ReactNode`
+  - `badgeTone?: 'indigo' | 'slate' | 'primary' | 'dark'`、`layerTone?: 'indigo' | 'slate' | 'primary' | 'dark'`
+  - `title?: ReactNode`、`meta?: ReactNode`、`navLabel?: string`
+  - `variant?: 'compact' | 'layered' | 'pill'`、`children: ReactNode`
+- `hubNavTabClassName(active: boolean, variant?: 'compact' | 'layered' | 'pill'): string`：用于快速渲染与 `HubNavBar` 视觉对齐的 Tab 按钮或 `<Link>`。
+
+### `ProPageHeader`（含右侧操作说明抽屉与无障碍摘要）
+- **核心 Props (`ProPageHeaderProps`)**：
+  - `title?: ReactNode`、`description?: ReactNode`、`breadcrumb?: ReactNode`、`tags?: ReactNode`、`actions?: ReactNode`
+  - `guide?: ProPageGuide`（配置后自动提供右侧滑出“操作说明” `Drawer` 与供屏幕阅读器读取的 `<details className="sr-only">` 结构化摘要）
+    - `ProPageGuide`: `{ badge?: ReactNode; title: ReactNode; subtitle?: ReactNode; steps: ProPageGuideStep[]; summary?: ReactNode; extra?: ReactNode }`
+    - `ProPageGuideStep`: `{ step?: string | number; title: ReactNode; description?: ReactNode }`
+  - `guideButtonLabel?: ReactNode`（默认 `'操作说明'`）、`guideDrawerTitle?: ReactNode`、`guideCloseLabel?: ReactNode`、`guideDrawerWidth?: number | string`（默认 `480`）
+  - `guideOpen?: boolean`、`defaultGuideOpen?: boolean`、`onGuideOpenChange?: (open: boolean) => void`、`hideGuide?: boolean`
 
 ```tsx
-import { ProTable, StatusTag, type AbcColumn, type ProTableFieldSchema } from '@abc-design/react'
-
-interface RoleItem {
-  id: number
-  roleName: string
-  roleKey: string
-  status: '0' | '1'
-}
-
-const columns: AbcColumn<RoleItem>[] = [
-  { key: 'id', title: 'ID', dataIndex: 'id', width: 80 },
-  { key: 'roleName', title: '角色名称', dataIndex: 'roleName', sortable: true },
-  { key: 'roleKey', title: '权限字符', dataIndex: 'roleKey' },
-  {
-    key: 'status',
-    title: '状态',
-    dataIndex: 'status',
-    render: (v) => (
-      <StatusTag tone={v === '0' ? 'success' : 'danger'}>
-        {v === '0' ? '正常' : '停用'}
-      </StatusTag>
-    ),
-  },
-]
-
-const fields: ProTableFieldSchema[] = [
-  { name: 'roleName', label: '角色名称', required: true },
-  { name: 'roleKey', label: '权限字符', required: true },
-  {
-    name: 'status',
-    label: '状态',
-    type: 'select', // 'text' | 'number' | 'select' | 'textarea' | 'switch' | 'date' | 'tags' | 'icon'
-    options: [
-      { label: '正常', value: '0' },
-      { label: '停用', value: '1' },
+<ProPageHeader
+  title="租户密钥轮换中心"
+  description="支持灰度双密钥并行过渡与审计追踪"
+  actions={<Button variant="primary">签发新密钥</Button>}
+  guide={{
+    badge: '操作指南',
+    title: '安全轮换流程',
+    steps: [
+      { title: '生成新密钥', description: '系统会保持旧密钥 24 小时宽限期' },
+      { title: '吊销旧密钥', description: '观测流量切换完成后再执行吊销' },
     ],
-  },
-]
-
-export function RoleManagePage() {
-  return (
-    <ProTable<RoleItem>
-      storageKey="sys_role_table"
-      title="系统角色列表"
-      columns={columns}
-      fields={fields}
-      showClientFilterSwitch // 后端不支持搜索时可一键切换当前页拼音检索
-      syncToUrl              // 页码与筛选条件自动同步至浏览器地址栏
-      viewable               // 自动附加“详情”只读查看弹窗
-      formContainer="drawer" // 'dialog' | 'drawer'
-      request={async ({ current, pageSize, filters, sortField, sortOrder }) => {
-        const res = await apiFetchRoles({ page: current, size: pageSize, ...filters })
-        return { data: res.list, total: res.count }
-      }}
-      onSaveRecord={async (values, editingRecord) => {
-        if (editingRecord) await apiUpdateRole(editingRecord.id, values)
-        else await apiCreateRole(values)
-      }}
-      onDeleteRecords={async (ids) => {
-        await apiBatchDeleteRoles(ids)
-      }}
-    />
-  )
-}
-```
-
-> **表单容器选型与多级嵌套准则**：
-> 1. **大表单交互操作展示必须使用抽屉（`Drawer`）**：字段较多、含分组卡片、配额配置等复杂业务表单，必须采用右侧全高抽屉，提供吸附 Header/Footer 与原生垂直滚动流，坚决避免使用绝对居中 Modal 导致顶部被裁切。
-> 2. **大表单嵌套大表单必须使用子级抽屉（`cascadeMode="adjacent"` / `"stack"`）**：若在第一层大表单中需要进一步唤起另一个大表单，必须使用二级抽屉（L1 -> L2），严禁使用 Modal。
-> 3. **小表单与轻量确认操作使用 `Dialog`**：仅包含 1-3 个输入项、状态修改、删除确认等极少操作项时，使用居中 Modal，天然支持多级遮罩堆叠。
-
----
-
-## 五、Pro 增强交互套件（工具栏、审计操作与检视面板）
-
-### 1. `FilterToolbar` & `FilterPillGroup` 复合筛选工具栏
-专用于列表头部容纳快速搜索、分类状态胶囊与重置按钮：
-```tsx
-import { FilterToolbar, FilterPillGroup, SearchInput, Button } from '@abc-design/react'
-
-<FilterToolbar
-  surface
-  hasActiveFilters={Boolean(status || keyword)}
-  onReset={() => { setStatus('all'); setKeyword('') }}
-  search={<SearchInput value={keyword} onChange={(e) => setKeyword(e.target.value)} onClear={() => setKeyword('')} />}
-  filters={
-    <FilterPillGroup
-      value={status}
-      onValueChange={setStatus}
-      options={[
-        { value: 'all', label: '全部' },
-        { value: 'active', label: '运行中', count: 18 },
-        { value: 'pending', label: '待开通', count: 3 },
-      ]}
-    />
-  }
-  trailing={<Button variant="primary">导出报表</Button>}
+    summary: '建议在业务低峰期执行轮换。',
+  }}
 />
 ```
 
-### 2. `ReasonedActionDialog` & `ReasonedActionDrawer` 审计操作套件
-用于高安全操作（如封禁账号、强制作废、调低配额），强制填写审计原因：
-- **小表单/快捷操作**：`<ReasonedActionDialog open={open} onOpenChange={setOpen} title="冻结租户" onConfirm={(reason) => apiFreeze(id, reason)} />`
-- **大表单/级联配置**：`<ReasonedActionDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} title="更新租户配额" onConfirm={(reason) => apiUpdateQuota(id, quota, reason)} />`
+### `WorkflowStepBanner` / `ContextQuickBar` / `QuickSelectBar`
+- `WorkflowStepBanner`: 横向步骤指引条：
+  - `badge: ReactNode`、`title: ReactNode`、`extra?: ReactNode`
+  - `steps: Array<{ step: string | number; title: ReactNode; description: ReactNode }>`
+  - `collapsible?: boolean`、`defaultCollapsed?: boolean`
+- `ContextQuickBar`: 上下文关联快捷跳转条：
+  - `badge: ReactNode`、`title: ReactNode`、`contextTags?: Array<{ key?: string; text?: ReactNode; label?: ReactNode; value?: ReactNode }>`
+  - `actions: Array<{ key?: string; href: string; label: ReactNode }>`
+- `QuickSelectBar`: 列表上方快速分组筛选胶囊栏：
+  - `label: string`、`items: Array<{ id?: string; key?: string; label: ReactNode; code?: string; active?: boolean; count?: number; onSelect?: () => void }>`
+  - `selectedId?: string | null`、`headerAction?: ReactNode`、`onSelect?: (id: string | null) => void`、`onClear?: () => void`、`allLabel?: string`
 
-### 3. `InspectorPanel` & `SplitInspectorLayout` 主从检视面板
-用于主表/右侧详情检视经典布局，支持自适应断点与粘性定位：
+---
+
+## 3. 数据表格 (`DataTable`, `ProTable`, `FilterToolbar`)
+
+### `DataTable<T>`（轻量确定性桌面/移动端双模数据表）
+- **核心 Props (`DataTableProps<T>`)**：
+  - `columns: DataTableColumn<T>[]`（列含 `{ key, header?, title?, render?, cell?, align?, mono?, width?, minWidth?, className?, cellClassName?, headerClassName? }`）
+  - `data?: T[]` / `rows?: T[]`（等价别名）
+  - `keyExtractor?: (item: T, index: number) => string | number` / `rowKey?: ...`
+  - 空状态：`emptyNode?`、`emptyTitle?`、`emptyDescription?`、`emptyAction?`
+  - 状态与外观：`loading?: boolean`、`skeletonRows?: number`（默认 `5`）、`loadingStatusText?: string`、`keepHeaderWhenEmpty?: boolean`、`framed?: boolean`（默认 `true`）、`stickyHeader?: boolean`、`density?: 'compact' | 'comfortable' | 'relaxed' | AbcSize`
+  - 行选中：`onRowClick?: (item: T) => void`（自动带键盘 Enter/Space 激活）、`selectedRowKey?: string | number | null`
+  - 分页集成：`pagination?: PaginationProps`（内联渲染 `SmartPagination`，支持 `offset` 与 `cursor` 双模）
+
+### `ProTable<T, Q, F>`（全功能 CRUD 表格，兼容 `CrudTable` 别名）
+- **核心 Props**：
+  - `storageKey?: string`（别名 `tableId`，本地记住列宽、列序、固定列、显隐与表单草稿）
+  - `columns: AbcColumn<T>[]`、`searchFields?: ProSearchFieldConfig[]`、`formFields?: ProCrudFormField<T>[]`、`formSchema?: ProSchemaLike<F>`
+  - `request?: (params: ProTableRequestParams) => Promise<ProTableRequestResult<T>>` 或 `api?: ProCrudApiConfig<T, Q, F> | ProTableApiInput<T>` 或 `dataSource?: T[]`
+  - 搜索与工具栏：`searchVariant?: 'card' | 'toolbar' | 'none'`、`headerFilterMode?`、`showHeaderFilterToggle?`、`clientFilter?`、`autoRefresh?`、`exportable?`/`showExport?`、`syncToUrl?`
+  - 表单与详情：`formContainer?: 'dialog' | 'drawer'`、`formColumns?: 1 | 2`、`viewable?`/`showView?`、`selectedRowKey?`、`onRowClick?`
+  - 行操作：`rowActions?: ProTableRowAction<T>[]`、`actionButtons?: ProActionButtonConfig<T>[]`、`maxInlineActions?: number`、`showBatchDelete?`
+
+### `FilterToolbar`
+- 紧凑表格上方检索工具条：`surface?: boolean`、`hasActiveFilters?: boolean`、`onReset?: () => void`、`resetLabel?: ReactNode`、`search?: ReactNode`、`filters?: ReactNode`、`trailing?: ReactNode`
+
+---
+
+## 4. 主从分栏检视容器 (`SplitDetailLayout` / `SplitDetailPanel` / `SplitInspectorLayout` / `InspectorPanel`)
+
+> **交互选型**：需要在表格/列表右侧**非阻塞式挤压**展开详情与编辑时，使用 `SplitDetailLayout` + `SplitDetailPanel`；若还包含左侧分组导航树与可拖拽双栏底座，使用 [05 中的 `ProSplitWorkbench`](./05-complex-linkage-and-orchestration.md#32-prosplitworkbench--左树--中表--右侧可挤压详情三栏工作台)。
+
+### `SplitDetailLayout` & `SplitDetailPanel`
+- `SplitDetailLayoutProps`:
+  - `open: boolean`（`false` 时主区占满 100% 宽度）
+  - `expanded?: boolean`（沉浸全宽：隐藏主区并让 `panel` 占满 100%）
+  - `panel?: ReactNode`、`panelWidth?: number | string`（默认 `480`）、`minPanelWidth?: number`（`360`）、`maxPanelWidth?: number`（`760`）
+  - `resizable?: boolean`（默认 `true`）、`storageKey?: string`、`stickyPanel?: boolean`（默认 `true`）、`gap?: 'sm' | 'md' | 'lg'`
+- `SplitDetailPanelProps`:
+  - `title?: ReactNode`、`subtitle?: ReactNode`、`badge?: ReactNode`
+  - `navigation?: { current: number; total: number; onPrev: () => void; onNext: () => void; prevLabel?: string; nextLabel?: string }`
+  - `expandable?: boolean`、`expanded?: boolean`、`onExpandedChange?: (expanded: boolean) => void`
+  - `headerActions?: ReactNode`、`closable?: boolean`（默认 `true`）、`onClose?: () => void`、`loading?: boolean`、`footer?: ReactNode`
+  - 细粒度子原语：`SplitDetailHeader`、`SplitDetailTitle`、`SplitDetailBody`、`SplitDetailFooter`
+
 ```tsx
-import { SplitInspectorLayout, InspectorPanel, DescriptionList } from '@abc-design/react'
-
-<SplitInspectorLayout
-  inspector={
-    selectedRecord ? (
-      <InspectorPanel title="租户详情" onClear={() => setSelectedRecord(null)}>
-        <DescriptionList columns={1} variant="cards" items={...} />
-      </InspectorPanel>
+<SplitDetailLayout
+  open={Boolean(selected)}
+  expanded={expanded}
+  storageKey="orders-split-detail"
+  panel={
+    selected ? (
+      <SplitDetailPanel
+        title={selected.orderNo}
+        badge={<StatusBadge status={selected.status} />}
+        expandable
+        expanded={expanded}
+        onExpandedChange={setExpanded}
+        onClose={() => setSelected(null)}
+        footer={<Button variant="primary" onClick={handleApprove}>通过审核</Button>}
+      >
+        <DescriptionList items={[{ label: '金额', value: selected.amount, mono: true }]} />
+      </SplitDetailPanel>
     ) : null
   }
 >
-  <TableCore ... />
-</SplitInspectorLayout>
+  <DataTable rows={orders} selectedRowKey={selected?.id ?? null} onRowClick={setSelected} columns={cols} />
+</SplitDetailLayout>
 ```
+
+### `SplitInspectorLayout` & `InspectorPanel`
+- `SplitInspectorLayout`: `ratio?: 'default' | 'balanced' | 'wide-master'`、`stickyInspector?: boolean`、`inspector?: ReactNode`
+- `InspectorPanel`: `title?`、`subtitle?`、`badge?`、`headerActions?`、`showClear?: boolean`（**必须传 `true` 才渲染清除按钮**）、`onClear?: () => void`、`hasSelection?`、`isEmpty?`、`emptyMessage?`、`loading?`、`error?`、`footer?`
+
+---
+
+## 5. Pro 表单容器、多选项卡配置页、日志与指令面板
+
+### `ProFormContainer`（别名 `FormDrawerDialog`）
+- 将触发按钮 + 摘要预览卡片 + 弹窗/抽屉载体一体化：
+  - `title: string`、`triggerLabel: string`（均为必填）、`description?: string`
+  - `mode?: 'drawer' | 'modal'`（默认 `'modal'`；大表单请传 `'drawer'`）
+  - `size?: DrawerProps['size']`、`maxWidthClass?: string`、`footer?: ReactNode`
+  - `open?: boolean`、`onOpenChange?: (open: boolean) => void`
+  - `summarySlot?: ReactNode`、`emptySummaryHint?: ReactNode`、`headerActions?: ReactNode`、`modalHeaderActions?: ReactNode`、`inlineInTestEnv?: boolean`
+
+### `ProConfigPage`（别名 `CrudConfigPage`）与 `ProConfigForm`
+- `ProConfigPage<T>`: 左侧垂直选项卡导航 + 远程拉取 (`fetchConfig`) + 权限控制 (`permission` / `hasPermission`) + 全类型配置控件 + 保存反馈：
+  - `title: string`、`subTitle?: string`、`permission?: string`、`hasPermission?: (code?: string) => boolean`
+  - `customUpload?: (file: File) => Promise<{ url: string } | string | undefined>`
+  - `defaultValues: T`、`fetchConfig: () => Promise<any>`、`saveConfig: (payload: any) => Promise<any>`、`transformBeforeSave?: (values: T) => any`
+  - `tabs: ProConfigTabSchema<T>[]`（字段 `type` 支持 `'input' | 'password' | 'number' | 'textarea' | 'select' | 'switch' | 'radio' | 'checkbox-csv' | 'image-url' | 'custom'`）
+- `ProConfigForm<T>`: Schema 驱动分组配置页：`groups: ProConfigGroupSchema[]`、`initialValues: T`、`layoutMode?: 'split' | 'grid'`、`onSubmit: (values: T) => void | Promise<void>`、`submitText?: string`（字段 `type`: `'text' | 'password' | 'number' | 'textarea' | 'switch' | 'select' | 'treeSelect' | 'image'`）
+
+### `ProLogViewer`（别名 `VirtualLogViewer`）
+- 虚拟滚动日志流检视器，内置级别过滤（ALL/INFO/WARN/ERROR）、关键词搜索、自动贴底开关与一键复制：
+  - `logs: Array<LogEntry | string>`（`LogEntry`: `{ seq?, level?, message, detail?, created_at? }`）
+  - `heightClass?: string`（默认 `'h-[440px]'`）、`estimateSize?: number`（默认 `26`）、`overscan?: number`（默认 `12`）
+  - `defaultStickBottom?: boolean`、`labels?: ProLogViewerLabels`
+
+### `ProCommandPalette` & `CommandTriggerButton`
+- 全局 `Cmd+K` / `Ctrl+K` 指令面板与顶部触发按钮：
+  - `ProCommandPalette`: `open?: boolean`、`onOpenChange?: (open: boolean) => void`、`enableShortcut?: boolean`（默认 `true`）、`entityMatchers?: ProCommandEntityMatcher[]`（前缀如 `job_` / `org_` 直达跳转）、`pages?: ProCommandPageItem[]`、`onNavigate?: (to, page) => void`、`actions?: ProCommandActionItem[]`、`labels?: ProCommandPaletteLabels`、`searchQuery?`、`onSearchQueryChange?`
+  - `CommandTriggerButton`: `{ onClick: () => void; placeholder?: string; mobilePlaceholder?: string; ariaLabel?: string }`
+
+---
+
+## 6. 高安全审计与权限字典组件
+
+### `ReasonedActionDialog` & `ReasonedActionDrawer`
+- **`ReasonedActionDialog`**（小范围高危操作强制填审计原因）：
+  - **必填字段**：`open: boolean`、`title: ReactNode`、`description: ReactNode`、`confirmLabel: ReactNode`、`onOpenChange: (open: boolean) => void`、`onConfirm: (reason: string) => void`
+  - 可选字段：`destructive?: boolean`、`variant?: 'default' | 'destructive'`、`minReasonLength?: number`（默认 `8`）、`maxReasonLength?: number`（默认 `512`）、`pending?: boolean`、`confirmDisabled?: boolean`、`error?: string | null`、`reasonLabel?`、`reasonPlaceholder?`、`children?`
+- **`ReasonedActionDrawer`**（复杂大表单 + 强制审计原因，默认支持二级抽屉平级并排展开）：
+  - **必填字段**：`open: boolean`、`onClose: () => void`、`title: ReactNode`、`confirmLabel: ReactNode`、`onConfirm: (reason: string) => void`
+  - 可选字段：`description?: ReactNode`、`cascadeMode?: 'stack' | 'adjacent'`（默认 `'adjacent'`）、`width?: number | string`（默认 `560`）、`destructive?`、`minReasonLength?`、`maxReasonLength?`、`pending?`、`error?`
+
+```tsx
+<ReasonedActionDialog
+  open={open}
+  title="强制吊销租户凭证"
+  description="吊销后正在运行中的推理请求将在 5 秒内收到 401。"
+  confirmLabel="确认吊销"
+  destructive
+  onOpenChange={setOpen}
+  onConfirm={async (reason) => {
+    await api.revokeKey(keyId, reason)
+    setOpen(false)
+  }}
+/>
+```
+
+### `PermissionGuard` (`Permission`) / `DictSelect` / `DictTag`
+- `PermissionGuard`（别名 `Permission`）：`code?: string | string[]`、`mode?: 'any' | 'all'`、`fallback?: ReactNode`（依赖 `AbcProvider.permissionAdapter`）
+- `DictSelect` / `DictTag`：通过 `dictCode`（别名 `dictKey`）自动接入 `AbcProvider.dictAdapter`
+
+---
+
+## 7. 复杂联动与编排组件索引（详见 `05`）
+
+以下组件专门用于跨组件、跨状态、异步防竞态与多阶段流转，完整 API 与端到端可运行 TSX 代码见 [05-complex-linkage-and-orchestration.md](./05-complex-linkage-and-orchestration.md)：
+- 工作台与分栏：`ProSplitWorkbench`、`ResizableSplitPane`
+- 表单编排与动态数组：`useProForm`、`ProFormProvider`、`ProFormDependency`、`ProFormList`、`KeyValueInput`、`ProStepsForm`
+- 表格编辑与规则筛选：`EditableProTable`、`FilterBuilder`（`RuleBuilder`）、`SavedFilterViews`、`ActiveFilterBar`
+- 审阅与批处理追踪：`ConfigDiffViewer`、`BatchActionTracker`

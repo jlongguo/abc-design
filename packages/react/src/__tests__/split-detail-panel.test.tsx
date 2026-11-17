@@ -5,8 +5,9 @@ import { Select } from '../components/form/select/Select'
 import { TreeSelect } from '../components/form/tree-select/TreeSelect'
 import { SplitDetailLayout, SplitDetailPanel } from '../components/layout/SplitDetailPanel'
 import { TableHeadSection } from '../components/table/table-core/TableHeadSection'
+import type { AbcColumn } from '../components/table/TableCore'
 import { TopHorizontalNav } from '../layout/nav-renderers/TopHorizontalNav'
-import { ProTable, type AbcColumn } from '../pro/ProTable'
+import { ProTable } from '../pro/ProTable'
 
 interface DemoRow {
   id: string

@@ -28,13 +28,13 @@ import { BarChart3, Compass, Cpu, FileCode2, Layers, LayoutGrid, Palette, Rotate
 
 const PKG_CARDS = [
   { icon: Palette, pkg: '@abc-design/tokens', val: '3 层语义 Token', desc: '6 大品牌色 · 自定义 Hex · 3 档密度 · 4 档圆角与动效', target: '/overview' },
-  { icon: Cpu, pkg: '@abc-design/core', val: '纯 TS 无头内核', desc: '零框架耦合：拼音首字母检索、树形级联与月历矩阵', target: '/form/tree-cascader' },
-  { icon: Layers, pkg: '@abc-design/react', val: '65+ 企业组件', desc: '覆盖基础原语、导航、表单、反馈、ProTable 与 5 套布局', target: '/nav/buttons' },
+  { icon: Cpu, pkg: '@abc-design/core', val: '纯 TS 无头内核', desc: '拼音首字母检索、树级联、规则 AST 求值、配置 Diff 与键值互转', target: '/linkage/query-builder' },
+  { icon: Layers, pkg: '@abc-design/react', val: '80+ 企业组件', desc: '基础原语、ProTable、5 套布局及 12 大复杂联动编排组件', target: '/linkage/master-detail' },
   { icon: BarChart3, pkg: '@abc-design/charts', val: '自适应可视化', desc: 'ECharts Tree-shaking 容器，随主题色阶与明暗自动同步', target: '/charts/echarts' },
   { icon: FileCode2, pkg: '@abc-design/markdown', val: '双栏 Markdown', desc: '外部化编辑器依赖，支持光标插值与三态分屏预览', target: '/form/uploads-markdown' },
 ]
 
-/** 9 大领域全量文档路由索引（对应 Playground 全部 30 个路由节点） */
+/** 10 大领域全量文档路由索引（对应 Playground 全部 36 个路由节点） */
 const DOMAIN_INDEX_GROUPS = [
   {
     domain: '1. 基础原语 (Foundation)',
@@ -118,6 +118,18 @@ const DOMAIN_INDEX_GROUPS = [
       { path: '/pro/config', title: '分组表单排版与声明式配置页', symbols: ['ProFormLayout', 'ProConfigForm', 'ProConfigPage'] },
       { path: '/pro/logs', title: 'ProLogViewer 虚拟滚动日志', symbols: ['ProLogViewer'] },
       { path: '/templates', title: '5 套开箱企业业务页模板', symbols: ['Dashboard', 'CrudList', 'WizardForm', 'AuditDrawer', 'ExceptionResult'] },
+    ],
+  },
+  {
+    domain: '10. 复杂联动 (Complex Linkage)',
+    badge: '6 页',
+    routes: [
+      { path: '/linkage/master-detail', title: '左树右表与审计四方工作台', symbols: ['ResizableSplitPane', 'ProSplitWorkbench', 'SplitDetailPanel', 'ReasonedActionDrawer'] },
+      { path: '/linkage/dynamic-form', title: '动态表单级联、列表与键值', symbols: ['ProFormProvider', 'ProFormDependency', 'ProFormList', 'KeyValueInput'] },
+      { path: '/linkage/editable-table', title: '行内编辑矩阵与跨列校验汇总', symbols: ['EditableProTable', 'evaluateRuleGroup'] },
+      { path: '/linkage/query-builder', title: '嵌套规则构建器与视图收藏栏', symbols: ['FilterBuilder', 'RuleBuilder', 'SavedFilterViews'] },
+      { path: '/linkage/cross-filter', title: '图表下钻与多源交叉过滤大盘', symbols: ['AbcChart', 'ActiveFilterBar', 'StatCard', 'DataTable'] },
+      { path: '/linkage/wizard-batch', title: '分步校验向导、Diff 与批处理追踪', symbols: ['ProStepsForm', 'ConfigDiffViewer', 'BatchActionTracker'] },
     ],
   },
 ]
@@ -207,8 +219,8 @@ export const OverviewPage: React.FC<{ onJump: (path: string) => void }> = ({ onJ
           <Button variant="secondary" onClick={() => onJump('/foundation/typography')}>
             基础原语文档
           </Button>
-          <Button variant="secondary" onClick={() => onJump('/nav/buttons')}>
-            通用导航文档
+          <Button variant="secondary" onClick={() => onJump('/linkage/master-detail')}>
+            复杂联动矩阵
           </Button>
           <Button variant="primary" onClick={() => onJump('/pro/table')}>
             ProTable 全栈套件
@@ -330,10 +342,10 @@ export const OverviewPage: React.FC<{ onJump: (path: string) => void }> = ({ onJ
           </div>
         </Card>
 
-        {/* 9 大领域 × 27 个文档页全景索引 */}
+        {/* 10 大领域 × 36 个文档页全景索引 */}
         <Card
-          title="9 大领域 × 27 个文档页全景索引"
-          subtitle="点击任意模块卡片即可直达对应交互式组件文档（共覆盖 9 大业务领域与全量路由节点）"
+          title="10 大领域 × 36 个文档页全景索引"
+          subtitle="点击任意模块卡片即可直达对应交互式组件文档（共覆盖 10 大业务领域、36 个路由节点与全量复杂联动场景）"
           extra={<Compass className="h-4 w-4 text-[var(--abc-primary)]" />}
         >
           <div className="space-y-5">
@@ -399,9 +411,11 @@ export const OverviewPage: React.FC<{ onJump: (path: string) => void }> = ({ onJ
 
           <Card title="AI Agent 原生友好体系 (Agent-Ready)" extra={<Sparkles className="h-4 w-4 text-[var(--abc-primary)]" />}>
             <p className="text-xs leading-relaxed text-[var(--abc-fg-secondary)]">
-              仓库内置 <code className="font-mono font-semibold">AGENTS.md</code>、全量上下文{' '}
-              <code className="font-mono font-semibold">llms-full.txt</code>、分层文档{' '}
-              <code className="font-mono font-semibold">docs/agent/*</code> 与技能包{' '}
+              仓库内置 <code className="font-mono font-semibold">AGENTS.md</code>、轻量索引{' '}
+              <code className="font-mono font-semibold">llms.txt</code>、全量上下文{' '}
+              <code className="font-mono font-semibold">llms-full.txt</code>、分层手册{' '}
+              <code className="font-mono font-semibold">docs/agent/01..05</code>（含{' '}
+              <code className="font-mono font-semibold">05-complex-linkage-and-orchestration.md</code> 复杂联动选型指南）与技能包{' '}
               <code className="font-mono font-semibold">skills/abc-design/SKILL.md</code>，确保编码 Agent 零幻觉精准对接。
             </p>
           </Card>
