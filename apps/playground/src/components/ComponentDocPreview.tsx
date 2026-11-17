@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Button, Card, StatusTag, copyToClipboard, useAbcConfig } from '@abc-design/react'
-import { Check, Code2, Copy, Eye, SlidersHorizontal, Table2 } from 'lucide-react'
+import { Check, Code2, Copy, Eye, RotateCcw, SlidersHorizontal, Table2 } from 'lucide-react'
 
 export interface PropApiItem {
   prop: string
@@ -20,10 +20,14 @@ export interface ComponentDocPreviewProps {
     | '@abc-design/core'
     | '@abc-design/markdown'
     | '@abc-design/tokens'
+  /** 覆盖展示的导出组件/API 精确符号列表 */
+  components?: string[]
   /** 核心设计说明与适用场景 */
   description: string
   /** 顶部交互式属性调节面板（Knobs） */
   controls?: React.ReactNode
+  /** 传入后在控制栏最右侧渲染“重置默认”按钮 */
+  onResetKnobs?: () => void
   /** 实时可运行 JSX 代码片段（随 Knobs 动态生成或静态示例） */
   code: string
   /** 结构化 Props / Events API 参考表 */
@@ -39,8 +43,10 @@ export interface ComponentDocPreviewProps {
 export const ComponentDocPreview: React.FC<ComponentDocPreviewProps> = ({
   title,
   pkg = '@abc-design/react',
+  components,
   description,
   controls,
+  onResetKnobs,
   code,
   apiRows,
   children,
@@ -68,6 +74,15 @@ export const ComponentDocPreview: React.FC<ComponentDocPreviewProps> = ({
             <StatusTag tone="info" dot={false} className="font-mono">
               {pkg}
             </StatusTag>
+            {components &&
+              components.map((sym) => (
+                <code
+                  key={sym}
+                  className="rounded border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)] px-1.5 py-0.5 font-mono text-[11px] font-medium text-[var(--abc-fg-secondary)]"
+                >
+                  {sym}
+                </code>
+              ))}
           </div>
           <p className="text-xs leading-relaxed text-[var(--abc-fg-muted)]">{description}</p>
         </div>
@@ -102,12 +117,24 @@ export const ComponentDocPreview: React.FC<ComponentDocPreviewProps> = ({
       {activeTab === 'preview' && (
         <div>
           {controls && (
-            <div className="flex flex-wrap items-center gap-4 border-b border-[var(--abc-border)] bg-[var(--abc-bg-muted)]/60 px-4 py-2.5 text-xs">
-              <span className="inline-flex items-center gap-1 font-semibold text-[var(--abc-fg-secondary)]">
-                <SlidersHorizontal className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
-                Props 实时调节：
-              </span>
-              {controls}
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-[var(--abc-border)] bg-[var(--abc-bg-muted)]/60 px-4 py-2.5 text-xs">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-[var(--abc-fg-secondary)]">
+                  <SlidersHorizontal className="h-3.5 w-3.5 text-[var(--abc-primary)]" />
+                  Props 实时调节：
+                </span>
+                {controls}
+              </div>
+              {onResetKnobs && (
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  leftIcon={<RotateCcw className="h-3 w-3" />}
+                  onClick={onResetKnobs}
+                >
+                  重置默认
+                </Button>
+              )}
             </div>
           )}
           <div className="bg-[var(--abc-bg-surface)] p-5">{children}</div>

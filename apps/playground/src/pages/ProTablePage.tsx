@@ -18,12 +18,6 @@ import {
   SplitInspectorLayout,
   StatusTag,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   useAbcConfig,
   type AbcColumn,
   type ProTableFieldSchema,
@@ -389,9 +383,7 @@ export const ProTablePage: React.FC = () => {
                 variant="primary"
                 size="xs"
                 leftIcon={<Plus className="h-3 w-3" />}
-                onClick={() => {
-                  toast.info('可通过下方 ProTable 新建按钮触发大表单抽屉')
-                }}
+                onClick={() => toast.info('可通过下方 ProTable 新建按钮触发大表单抽屉')}
               >
                 新增网关
               </Button>
@@ -717,44 +709,6 @@ export const ProTablePage: React.FC = () => {
               },
             ]}
           />
-        </Card>
-
-        {/* 4. TablePrimitives 复合基础表格骨架对照 */}
-        <Card
-          variant="bordered"
-          title="TablePrimitives 基础复合表格骨架原语"
-          subtitle="零业务依赖的语义化复合标签（Table / TableHeader / TableBody / TableRow / TableHead / TableCell），适用于轻量数据列表与嵌入式明细排版。"
-        >
-          <Table scrollLabel="专网路由节点简表">
-            <TableHeader sticky>
-              <TableRow>
-                <TableHead>链路编号</TableHead>
-                <TableHead>接入点物理机房</TableHead>
-                <TableHead>承载协议</TableHead>
-                <TableHead>双向抖动</TableHead>
-                <TableHead className="text-right">健康状态</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {[
-                { no: 'LK-SH-01', dc: '上海外高桥金融机房 A 栋', proto: 'BGP EVPN', jitter: '0.45ms', status: 'normal' },
-                { no: 'LK-BJ-02', dc: '北京亦庄云计算中心 B 区', proto: 'OTN 100G', jitter: '0.62ms', status: 'normal' },
-                { no: 'LK-SZ-03', dc: '深圳光明前海数据节点', proto: 'IPSec VPN', jitter: '1.28ms', status: 'degraded' },
-              ].map((row) => (
-                <TableRow key={row.no}>
-                  <TableCell className="font-mono font-medium">{row.no}</TableCell>
-                  <TableCell>{row.dc}</TableCell>
-                  <TableCell><span className="font-mono text-xs">{row.proto}</span></TableCell>
-                  <TableCell className="font-mono text-xs text-[var(--abc-fg-secondary)]">{row.jitter}</TableCell>
-                  <TableCell className="text-right">
-                    <StatusTag tone={row.status === 'normal' ? 'success' : 'warning'} size="xs">
-                      {row.status === 'normal' ? '连通优良' : '链路微降级'}
-                    </StatusTag>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
         </Card>
       </div>
 

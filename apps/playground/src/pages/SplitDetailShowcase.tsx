@@ -86,13 +86,21 @@ const COLUMNS: AbcColumn<DemoTenantRow>[] = [
   },
 ]
 
+export interface SplitDetailShowcaseProps {
+  panelWidth?: number
+  expandable?: boolean
+}
+
 /**
  * 表格右侧内联挤压详情容器演练示例
  *
  * 演示无全局遮罩的主从行联动：点击任意表格行立即在右侧挤出可关闭详情卡片，
  * 支持单次点击不同行快速切换、上下条目导航、拖拽边缘调宽、沉浸全宽及一键关闭还原满宽。
  */
-export const SplitDetailShowcase: React.FC = () => {
+export const SplitDetailShowcase: React.FC<SplitDetailShowcaseProps> = ({
+  panelWidth = 420,
+  expandable = true,
+}) => {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState(false)
 
@@ -114,8 +122,8 @@ export const SplitDetailShowcase: React.FC = () => {
         selectedRowKey={selectedId}
         onRowClick={(row) => setSelectedId(row.id)}
         splitPanelOpen={Boolean(selectedRow)}
-        splitPanelExpanded={expanded}
-        splitPanelWidth={420}
+        splitPanelExpanded={expandable ? expanded : false}
+        splitPanelWidth={panelWidth}
         splitPanel={
           selectedRow ? (
             <SplitDetailPanel
@@ -140,8 +148,8 @@ export const SplitDetailShowcase: React.FC = () => {
                   setSelectedId(DEMO_ROWS[nextIdx].id)
                 },
               }}
-              expandable
-              expanded={expanded}
+              expandable={expandable}
+              expanded={expandable ? expanded : false}
               onExpandedChange={setExpanded}
               onClose={() => {
                 setExpanded(false)
