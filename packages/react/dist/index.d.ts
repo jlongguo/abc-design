@@ -3980,6 +3980,19 @@ export declare interface ProTableProps<T extends Record<string, any> = any, Q ex
     onAfterBatchDelete?: () => void;
     /** 表格整体交互动效规格 */
     motion?: AbcMotionPreset;
+    /** 右侧内联挤压式详情容器节点（通常传入 <SplitDetailPanel>） */
+    splitPanel?: default_2.ReactNode;
+    /** 是否在表格右侧挤出详情容器；关闭时表格自动恢复 100% 宽度 */
+    splitPanelOpen?: boolean;
+    /** 是否进入右侧详情沉浸全宽视图（同步隐藏搜索区与主表） */
+    splitPanelExpanded?: boolean;
+    /** 右侧挤压容器默认宽度（数字按 px 处理，默认 480） */
+    splitPanelWidth?: number | string;
+    splitPanelMinWidth?: number;
+    splitPanelMaxWidth?: number;
+    splitPanelResizable?: boolean;
+    splitPanelStorageKey?: string;
+    splitPanelSticky?: boolean;
     /** 新建/编辑保存回调（无 api 时的轻量直连模式） */
     onSaveRecord?: (values: Record<string, any>, editingRecord: T | null) => void | Promise<void>;
     /** 单行或批量删除回调（无 api 时的轻量直连模式） */
@@ -4546,6 +4559,99 @@ export declare interface SpaceProps extends default_2.HTMLAttributes<HTMLDivElem
     wrap?: boolean;
     align?: 'start' | 'center' | 'end' | 'stretch';
 }
+
+export declare function SplitDetailBody({ className, ...props }: React_2.HTMLAttributes<HTMLDivElement>): React_2.JSX.Element;
+
+export declare function SplitDetailFooter({ className, ...props }: React_2.HTMLAttributes<HTMLDivElement>): React_2.JSX.Element;
+
+export declare function SplitDetailHeader({ className, ...props }: React_2.HTMLAttributes<HTMLDivElement>): React_2.JSX.Element;
+
+/**
+ * 主从内联挤压分栏布局 (SplitDetailLayout)
+ *
+ * 用于替代传统带全屏暗化遮罩的 Drawer，在表格或列表右侧挤出非阻塞式详情容器，
+ * 使操作员可直接单击左侧不同行即时切换右侧详情，关闭后自动释放全部横向宽度。
+ */
+export declare const SplitDetailLayout: React_2.ForwardRefExoticComponent<SplitDetailLayoutProps & React_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface SplitDetailLayoutProps extends React_2.HTMLAttributes<HTMLDivElement> {
+    /** 是否在右侧挤出详情容器；关闭时左侧主区域占满 100% 宽度 */
+    open: boolean;
+    /** 沉浸全宽模式：开启且 open=true 时隐藏左侧主内容，详情面板占满 100% 宽度 */
+    expanded?: boolean;
+    /** 右侧挤出的详情容器节点 */
+    panel?: React_2.ReactNode;
+    /** 桌面端右侧详情容器初始宽度（数字按 px 处理，默认 480） */
+    panelWidth?: number | string;
+    /** 拖拽调节的最小宽度（px，默认 360） */
+    minPanelWidth?: number;
+    /** 拖拽调节的最大宽度（px，默认 760） */
+    maxPanelWidth?: number;
+    /** 是否允许通过左边缘拖拽及键盘方向键调整详情宽度（默认 true） */
+    resizable?: boolean;
+    /** 本地持久化记忆调节宽度的存储键 */
+    storageKey?: string;
+    /** 桌面端右侧详情面板是否粘性随滚（默认 true） */
+    stickyPanel?: boolean;
+    /** 左右分栏间距（默认 'md'） */
+    gap?: 'sm' | 'md' | 'lg';
+    /** 左侧主容器附加类名 */
+    masterClassName?: string;
+    /** 右侧详情容器外层包装附加类名 */
+    asideClassName?: string;
+}
+
+export declare interface SplitDetailNavigation {
+    /** 当前条目位置（1-based，若无匹配则 <= 0） */
+    current: number;
+    /** 总条目数 */
+    total: number;
+    onPrev: () => void;
+    onNext: () => void;
+    prevLabel?: string;
+    nextLabel?: string;
+}
+
+/**
+ * 右侧内联挤压详情容器 (SplitDetailPanel)
+ *
+ * 采用单层紧凑顶栏与独立滚动正文设计，内置上下条目切换、沉浸全宽切换与一键关闭收起。
+ */
+export declare const SplitDetailPanel: React_2.ForwardRefExoticComponent<SplitDetailPanelProps & React_2.RefAttributes<HTMLElement>>;
+
+export declare interface SplitDetailPanelProps extends Omit<React_2.HTMLAttributes<HTMLElement>, 'title'> {
+    'aria-label'?: string;
+    /** 面板标题 */
+    title?: React_2.ReactNode;
+    /** 标题下方副标题 */
+    subtitle?: React_2.ReactNode;
+    /** 标题右侧状态徽标 */
+    badge?: React_2.ReactNode;
+    /** 可选行上下切换器（上一条 / 下一条 与位置指示） */
+    navigation?: SplitDetailNavigation;
+    /** 是否支持沉浸展开切换（与 SplitDetailLayout expanded 状态配合） */
+    expandable?: boolean;
+    expanded?: boolean;
+    onExpandedChange?: (expanded: boolean) => void;
+    expandLabel?: string;
+    restoreLabel?: string;
+    /** 顶部扩展操作区（如“清除选择”或快捷操作） */
+    headerActions?: React_2.ReactNode;
+    /** 是否渲染右上角关闭按钮（默认 true） */
+    closable?: boolean;
+    /** 关闭回调 */
+    onClose?: () => void;
+    closeLabel?: string;
+    /** 加载中状态 */
+    loading?: boolean;
+    loadingText?: React_2.ReactNode;
+    /** 底部吸底操作栏 */
+    footer?: React_2.ReactNode;
+    bodyClassName?: string;
+    headerClassName?: string;
+}
+
+export declare function SplitDetailTitle({ className, ...props }: React_2.HTMLAttributes<HTMLHeadingElement>): React_2.JSX.Element;
 
 /**
  * 主从分栏布局 (SplitInspectorLayout)

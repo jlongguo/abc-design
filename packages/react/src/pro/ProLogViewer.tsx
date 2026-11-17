@@ -198,7 +198,7 @@ export function ProLogViewer({
         <div className="flex min-w-44 flex-1 items-center gap-2">
           <div className="relative max-w-sm flex-1">
             <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
+              className="pointer-events-none absolute inset-y-0 left-2.5 my-auto h-3.5 w-3.5 text-slate-400"
               aria-hidden="true"
             />
             <input
@@ -213,7 +213,7 @@ export function ProLogViewer({
                 type="button"
                 aria-label={mergedLabels.clearSearchLabel}
                 onClick={() => setSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
+                className="absolute inset-y-0 right-2 my-auto flex items-center text-slate-400 hover:text-slate-200 cursor-pointer"
               >
                 <X className="h-3.5 w-3.5" />
               </button>

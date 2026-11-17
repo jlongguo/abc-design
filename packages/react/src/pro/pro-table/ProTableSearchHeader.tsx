@@ -1,6 +1,5 @@
 import {
 ChevronDown,
-ChevronUp,
 Filter,
 RotateCcw,
 Search
@@ -154,11 +153,11 @@ export function ProTableSearchHeader<
                   className="inline-flex items-center gap-0.5 rounded-[var(--abc-radius-xs)] px-2 py-0.5 text-xs font-medium text-[var(--abc-primary)] hover:bg-[var(--abc-bg-subtle)] cursor-pointer select-none"
                 >
                   <span>{searchPanelExpanded ? '收起' : '展开'}</span>
-                  {searchPanelExpanded ? (
-                    <ChevronUp className="h-3.5 w-3.5" />
-                  ) : (
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  )}
+                  <ChevronDown
+                    data-open={searchPanelExpanded ? 'true' : 'false'}
+                    className="abc-chevron h-3.5 w-3.5"
+                    aria-hidden="true"
+                  />
                 </button>
               </div>
 
@@ -221,11 +220,11 @@ export function ProTableSearchHeader<
                               ? `展开 (${searchCollapseMeta.hiddenCount})`
                               : '收起'}
                           </span>
-                          {searchFieldsCollapsed ? (
-                            <ChevronDown className="h-3.5 w-3.5" />
-                          ) : (
-                            <ChevronUp className="h-3.5 w-3.5" />
-                          )}
+                          <ChevronDown
+                            data-open={!searchFieldsCollapsed ? 'true' : 'false'}
+                            className="abc-chevron h-3.5 w-3.5"
+                            aria-hidden="true"
+                          />
                         </button>
                       )}
                     </div>

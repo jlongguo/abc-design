@@ -472,9 +472,9 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           }}
           data-motion={resolvedMotion}
           className={cn(
-            'flex items-center justify-between gap-1.5 cursor-pointer select-none abc-motion-control',
+            'flex items-center justify-between gap-1.5 cursor-pointer select-none',
             size === 'ghost'
-              ? 'h-auto w-auto border-transparent bg-transparent p-0 text-xs text-[var(--abc-fg)] shadow-none focus:outline-none'
+              ? 'h-auto w-auto border-transparent bg-transparent p-0 text-xs text-[var(--abc-fg)] shadow-none transition-colors duration-[var(--abc-motion-fast,140ms)] focus:outline-none'
               : cn(
                   !hideChevron ? 'w-full pl-2.5 py-1' : 'w-full px-2.5 py-1',
                   baseFieldControlClass,
@@ -486,7 +486,9 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             !hideChevron && size !== 'ghost' && className
               ? className.replace(/\bpx-(\S+)/g, 'pl-$1')
               : className,
-            !hideChevron && size !== 'ghost' && (size === 'sm' ? 'pr-7' : 'pr-8')
+            !hideChevron &&
+              size !== 'ghost' &&
+              (resolvedSize === 'xs' ? 'pr-2' : resolvedSize === 'lg' ? 'pr-3' : 'pr-2.5')
           )}
         >
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
@@ -557,9 +559,10 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             )}
             {!hideChevron && (
               <ChevronDown
+                data-open={open ? 'true' : 'false'}
                 className={cn(
-                  'h-3.5 w-3.5 transition-transform duration-150',
-                  open && 'rotate-180'
+                  'abc-chevron h-3.5 w-3.5 shrink-0',
+                  open && 'text-[var(--abc-primary)]'
                 )}
               />
             )}

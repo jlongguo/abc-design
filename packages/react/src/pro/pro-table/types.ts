@@ -405,6 +405,19 @@ export interface ProTableProps<
   onAfterBatchDelete?: () => void
   /** 表格整体交互动效规格 */
   motion?: AbcMotionPreset
+  /** 右侧内联挤压式详情容器节点（通常传入 <SplitDetailPanel>） */
+  splitPanel?: React.ReactNode
+  /** 是否在表格右侧挤出详情容器；关闭时表格自动恢复 100% 宽度 */
+  splitPanelOpen?: boolean
+  /** 是否进入右侧详情沉浸全宽视图（同步隐藏搜索区与主表） */
+  splitPanelExpanded?: boolean
+  /** 右侧挤压容器默认宽度（数字按 px 处理，默认 480） */
+  splitPanelWidth?: number | string
+  splitPanelMinWidth?: number
+  splitPanelMaxWidth?: number
+  splitPanelResizable?: boolean
+  splitPanelStorageKey?: string
+  splitPanelSticky?: boolean
   /** 新建/编辑保存回调（无 api 时的轻量直连模式） */
   onSaveRecord?: (values: Record<string, any>, editingRecord: T | null) => void | Promise<void>
   /** 单行或批量删除回调（无 api 时的轻量直连模式） */

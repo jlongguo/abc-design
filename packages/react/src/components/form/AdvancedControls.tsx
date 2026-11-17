@@ -190,10 +190,8 @@ export const Tree: React.FC<TreeProps> = ({
                       className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-xs text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer abc-motion-control"
                     >
                       <ChevronRight
-                        className={cn(
-                          'h-3.5 w-3.5 transition-transform duration-[var(--abc-motion-fast,140ms)]',
-                          isExpanded && 'rotate-90'
-                        )}
+                        data-open={isExpanded ? 'true' : 'false'}
+                        className="abc-chevron-expand h-3.5 w-3.5"
                       />
                     </button>
                   ) : (

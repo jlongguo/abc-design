@@ -358,7 +358,7 @@ export const DateRangePicker = React.forwardRef<HTMLDivElement, DateRangePickerP
             }
           }}
           className={cn(
-            'relative flex w-full items-center gap-1.5 px-2.5 cursor-pointer select-none abc-motion-control',
+            'relative flex w-full items-center gap-1.5 px-2.5 cursor-pointer select-none',
             baseFieldControlClass,
             SIZE_H[resolvedSize as ControlSize],
             open && 'border-[var(--abc-primary)] ring-2 ring-[var(--abc-ring)]',

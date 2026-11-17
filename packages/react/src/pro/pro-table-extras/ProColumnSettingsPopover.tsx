@@ -158,7 +158,7 @@ export function ProColumnSettingsPopover<T = Record<string, any>>({
           {/* 检索与快捷分类 */}
           <div className="space-y-2 border-b border-[var(--abc-border)] p-3">
             <div className="relative">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-[var(--abc-fg-placeholder)]" />
+              <Search className="pointer-events-none absolute inset-y-0 left-2.5 my-auto h-3.5 w-3.5 text-[var(--abc-fg-placeholder)]" />
               <input
                 type="text"
                 value={keyword}
@@ -171,7 +171,7 @@ export function ProColumnSettingsPopover<T = Record<string, any>>({
                   type="button"
                   aria-label="清空列搜索"
                   onClick={() => setKeyword('')}
-                  className="absolute top-1/2 right-2 -translate-y-1/2 text-[var(--abc-fg-muted)] hover:text-[var(--abc-fg)] cursor-pointer"
+                  className="absolute inset-y-0 right-2 my-auto flex items-center text-[var(--abc-fg-muted)] hover:text-[var(--abc-fg)] cursor-pointer"
                 >
                   <X className="h-3 w-3" />
                 </button>

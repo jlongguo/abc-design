@@ -48,6 +48,7 @@ import {
   useAbcConfig,
 } from '@abc-design/react'
 import { MarkdownEditor, type MarkdownEditorHandle } from '@abc-design/markdown'
+import { DisplayAndFeedbackExtrasDocs } from '../components/DisplayAndFeedbackExtrasDocs'
 import {
   AlertTriangle,
   Bell,
@@ -1288,6 +1289,8 @@ import { MarkdownEditor } from '@abc-design/markdown'
             />
           </div>
         </ComponentDocPreview>
+
+        <DisplayAndFeedbackExtrasDocs />
       </div>
     </PageContainer>
   )

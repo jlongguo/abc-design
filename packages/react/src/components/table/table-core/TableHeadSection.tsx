@@ -244,10 +244,10 @@ export function TableHeadSection<T extends Record<string, any>>({ state }: { sta
                     )}
                   >
                     {showLeftDivider && (
-                      <span className="pointer-events-none absolute top-1/2 left-0 z-10 h-4 w-px -translate-y-1/2 bg-[var(--abc-border-strong)]/65" />
+                      <span className="pointer-events-none absolute inset-y-0 left-0 z-10 my-auto h-3.5 w-px bg-[var(--abc-border-strong)]/65" />
                     )}
                     {showRightDivider && (
-                      <span className="pointer-events-none absolute top-1/2 right-0 z-10 h-4 w-px -translate-y-1/2 bg-[var(--abc-border-strong)]/65" />
+                      <span className="pointer-events-none absolute inset-y-0 right-0 z-10 my-auto h-3.5 w-px bg-[var(--abc-border-strong)]/65" />
                     )}
 
                     <div

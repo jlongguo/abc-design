@@ -22,6 +22,7 @@ import { GeneralAndFormDocsPage } from './pages/GeneralAndFormDocsPage'
 import { LayoutsPage } from './pages/LayoutsPage'
 import { MarkdownAndShellDocsPage } from './pages/MarkdownAndShellDocsPage'
 import { OverviewPage } from './pages/OverviewPage'
+import { PageChromeAndWorkflowPage } from './pages/PageChromeAndWorkflowPage'
 import { ProConfigPage } from './pages/ProConfigPage'
 import { ProOpsSuitePage } from './pages/ProOpsSuitePage'
 import { ProTablePage } from './pages/ProTablePage'
@@ -65,6 +66,13 @@ const MENU_TREE: AbcMenuItem[] = [
       { key: 'pro-table', label: 'ProTable 数据表格', path: '/pro/table', icon: 'table', badge: 'Updated' },
       { key: 'pro-config', label: 'ProConfigForm 配置页', path: '/pro/config', icon: 'config' },
       { key: 'pro-ops', label: 'Pro 命令与虚拟日志套件', path: '/pro/ops', icon: 'layers', badge: 'New' },
+      {
+        key: 'pro-workflow-chrome',
+        label: '页面编排与引导套件',
+        path: '/pro/workflow-chrome',
+        icon: 'layout',
+        badge: 'New',
+      },
       { key: 'templates', label: '5 套开箱业务页模板', path: '/templates', icon: 'sparkles', badge: '5' },
     ],
   },
@@ -183,6 +191,7 @@ export const App: React.FC = () => {
           <ProConfigPage brand={brand} onUpdateBrand={setBrand} />
         )}
         {pathname === '/pro/ops' && <ProOpsSuitePage onJump={setPathname} />}
+        {pathname === '/pro/workflow-chrome' && <PageChromeAndWorkflowPage onJump={setPathname} />}
         {pathname === '/templates' && <TemplatesPage />}
       </ProLayout>
 

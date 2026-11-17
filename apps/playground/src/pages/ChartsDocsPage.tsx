@@ -1,16 +1,34 @@
 import React, { useMemo, useState } from 'react'
-import { AbcChart, StatCard, type EChartsOption } from '@abc-design/charts'
-import { Checkbox, PageContainer, RadioGroup } from '@abc-design/react'
+import {
+  AbcChart,
+  StatCard,
+  buildAbcBaseChartOption,
+  getAbcChartPalette,
+  type EChartsOption,
+} from '@abc-design/charts'
+import {
+  Checkbox,
+  PageContainer,
+  RadioGroup,
+  SkeletonChart,
+  useAbcConfig,
+} from '@abc-design/react'
 import { Activity, Coins, Server, Users } from 'lucide-react'
 import { ComponentDocPreview } from '../components/ComponentDocPreview'
 
 type DemoChartKind = 'line' | 'bar' | 'pie' | 'gauge'
 
 export const ChartsDocsPage: React.FC = () => {
+  const { theme, resolvedTheme } = useAbcConfig()
   const [chartKind, setChartKind] = useState<DemoChartKind>('line')
   const [chartLoading, setChartLoading] = useState(false)
   const [chartEmpty, setChartEmpty] = useState(false)
   const [statLoading, setStatLoading] = useState(false)
+  const [skeletonAnim, setSkeletonAnim] = useState<'wave' | 'pulse'>('wave')
+  const activePalette = useMemo(
+    () => getAbcChartPalette(theme.brand, resolvedTheme === 'dark'),
+    [theme.brand, resolvedTheme]
+  )
 
   const chartOption = useMemo<EChartsOption>(() => {
     if (chartKind === 'bar') {
@@ -229,6 +247,66 @@ export function RevenueTrendChart() {
             empty={chartEmpty}
             emptyDescription="当前筛选时段内暂无监控指标上报"
           />
+        </ComponentDocPreview>
+
+        {/* 3. SkeletonChart + getAbcChartPalette / buildAbcBaseChartOption */}
+        <ComponentDocPreview
+          title="SkeletonChart / getAbcChartPalette / buildAbcBaseChartOption 图表骨架与主题调色板"
+          pkg="@abc-design/charts"
+          description="展示独立可用的报表占位骨架 SkeletonChart，以及跟随 AbcProvider 品牌主色与明暗方案实时合成的 7 序列图表色盘与坐标轴基准配置。"
+          controls={
+            <RadioGroup
+              variant="segmented"
+              value={skeletonAnim}
+              onChange={(v) => setSkeletonAnim(v as 'wave' | 'pulse')}
+              options={[
+                { label: 'wave 流光波纹', value: 'wave' },
+                { label: 'pulse 呼吸闪烁', value: 'pulse' },
+              ]}
+            />
+          }
+          code={`import { SkeletonChart } from '@abc-design/react'
+import { getAbcChartPalette, buildAbcBaseChartOption } from '@abc-design/charts'
+
+const palette = getAbcChartPalette('${theme.brand}', ${resolvedTheme === 'dark'})
+const mergedOption = buildAbcBaseChartOption(rawOption, '${theme.brand}', ${resolvedTheme === 'dark'})
+<SkeletonChart height={220} animation="${skeletonAnim}" />`}
+          apiRows={[
+            { prop: 'SkeletonChart.animation', type: "'wave' | 'pulse' | 'none'", defaultValue: "'wave'", description: '骨架屏流光扫描动画风格' },
+            { prop: 'getAbcChartPalette(brand, isDark)', type: 'string[]', description: '返回随品牌强调色自动协调的 7 色系列调色板' },
+            { prop: 'buildAbcBaseChartOption(option, brand, isDark)', type: 'EChartsOption', description: '为自定义 ECharts 实例注入一致的暗黑坐标轴与浮层基线' },
+          ]}
+        >
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-[var(--abc-fg-secondary)]">
+                当前品牌 ({theme.brand} · {resolvedTheme}) 实时色盘：
+              </span>
+              {activePalette.map((hex, i) => (
+                <span
+                  key={`${hex}-${i}`}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)] px-2 py-0.5 font-mono text-[11px]"
+                >
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: hex }} />
+                  {hex}
+                </span>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <SkeletonChart height={210} animation={skeletonAnim} />
+              <pre className="max-h-[210px] overflow-auto rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)] p-3 font-mono text-[11px] leading-relaxed text-[var(--abc-fg-secondary)]">
+                {JSON.stringify(
+                  buildAbcBaseChartOption(
+                    { xAxis: { type: 'category', data: ['Mon', 'Tue'] }, yAxis: { type: 'value' } },
+                    theme.brand,
+                    resolvedTheme === 'dark'
+                  ),
+                  null,
+                  2
+                )}
+              </pre>
+            </div>
+          </div>
         </ComponentDocPreview>
       </div>
     </PageContainer>

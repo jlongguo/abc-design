@@ -60,10 +60,8 @@ export function WorkflowStepBanner({
                 className="inline-flex items-center gap-1 rounded-md border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-2 py-0.5 text-[11px] font-medium text-[var(--abc-fg-muted)] transition-colors hover:text-[var(--abc-fg)] cursor-pointer"
               >
                 <ChevronDown
-                  className={cn(
-                    'h-3 w-3 transition-transform duration-200 ease-out',
-                    !collapsed && 'rotate-180'
-                  )}
+                  data-open={!collapsed ? 'true' : 'false'}
+                  className="abc-chevron h-3 w-3"
                   aria-hidden="true"
                 />
               </button>

@@ -138,9 +138,10 @@ export const TreeSelectDropdown: React.FC<{ state: TreeSelectState }> = ({ state
                 <Loader2 className="h-3 w-3 animate-spin text-[var(--abc-primary)]" aria-hidden="true" />
               ) : (
                 <ChevronRight
+                  data-open={isExpanded ? 'true' : 'false'}
                   className={cn(
-                    'h-3.5 w-3.5 transition-transform duration-150',
-                    isExpanded && 'rotate-90'
+                    'abc-chevron-expand h-3.5 w-3.5',
+                    isExpanded && 'text-[var(--abc-primary)]'
                   )}
                   aria-hidden="true"
                 />

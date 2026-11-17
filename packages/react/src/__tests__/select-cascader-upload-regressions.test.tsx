@@ -11,6 +11,7 @@ import {
 import { Select } from '../components/form/select/Select'
 import { Cascader, type CascaderOption } from '../components/form/Cascader'
 import { FileUpload, type FileUploadItem } from '../components/form/FileUpload'
+import { Dialog } from '../components/feedback/Dialog'
 
 describe('Select / RadixSelect / Cascader / FileUpload 回归用例', () => {
   it('RadixSelect 在 SelectItem 接收动态 JSX children 时不触发无限重渲染循环', () => {
@@ -166,5 +167,78 @@ describe('Select / RadixSelect / Cascader / FileUpload 回归用例', () => {
         url: 'https://cdn.example/b.txt',
       })
     })
+  })
+
+  it('Cascader 在 Dialog 内打开后按 Escape 仅关闭级联浮层，不误关外层 Dialog', () => {
+    const onDialogClose = vi.fn()
+    const options: CascaderOption[] = [
+      {
+        value: 'apac',
+        label: '亚太地区',
+        children: [
+          {
+            value: 'JP',
+            label: '日本 (JP)',
+            children: [{ value: 'datacenter', label: 'datacenter' }],
+          },
+        ],
+      },
+    ]
+
+    render(
+      <Dialog open onClose={onDialogClose} title="探测配置弹窗">
+        <Cascader ariaLabel="出口预设" options={options} searchable />
+      </Dialog>
+    )
+
+    const trigger = screen.getByRole('combobox', { name: '出口预设' })
+    fireEvent.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+
+    const searchInput = screen.getByLabelText('搜索级联选项')
+    fireEvent.keyDown(searchInput, { key: 'Escape' })
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(onDialogClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('Cascader 开启 searchable 时搜索框 ArrowLeft/ArrowRight 正常透传且 ArrowDown/Enter 可选中搜索结果', () => {
+    const onChange = vi.fn()
+    const options: CascaderOption[] = [
+      {
+        value: 'na',
+        label: '北美洲',
+        children: [{ value: 'US', label: '美国 (US)' }],
+      },
+      {
+        value: 'apac',
+        label: '亚太地区',
+        children: [
+          { value: 'JP', label: '日本 (JP)' },
+          { value: 'SG', label: '新加坡 (SG)' },
+        ],
+      },
+    ]
+
+    render(<Cascader ariaLabel="搜索级联" options={options} searchable onChange={onChange} />)
+
+    const trigger = screen.getByRole('combobox', { name: '搜索级联' })
+    fireEvent.click(trigger)
+
+    const searchInput = screen.getByLabelText('搜索级联选项')
+    fireEvent.change(searchInput, { target: { value: '新加坡' } })
+
+    const leftEvt = new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true })
+    searchInput.dispatchEvent(leftEvt)
+    expect(leftEvt.defaultPrevented).toBe(false)
+
+    const rightEvt = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })
+    searchInput.dispatchEvent(rightEvt)
+    expect(rightEvt.defaultPrevented).toBe(false)
+
+    fireEvent.keyDown(searchInput, { key: 'Enter' })
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0]?.[0]).toEqual(['apac', 'SG'])
   })
 })

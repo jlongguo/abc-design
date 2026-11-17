@@ -101,9 +101,9 @@ const TreeSelectBase = React.forwardRef<HTMLDivElement, TreeSelectProps>((props,
             else openMenu()
           }}
           className={cn(
-            'flex items-center justify-between gap-1.5 cursor-pointer select-none abc-motion-control',
+            'flex items-center justify-between gap-1.5 cursor-pointer select-none',
             size === 'ghost'
-              ? 'h-auto w-auto border-transparent bg-transparent p-0 text-xs text-[var(--abc-fg)] shadow-none focus:outline-none'
+              ? 'h-auto w-auto border-transparent bg-transparent p-0 text-xs text-[var(--abc-fg)] shadow-none transition-colors duration-[var(--abc-motion-fast,140ms)] focus:outline-none'
               : cn(
                   'w-full px-2.5 py-1',
                   baseFieldControlClass,
@@ -179,9 +179,10 @@ const TreeSelectBase = React.forwardRef<HTMLDivElement, TreeSelectProps>((props,
               </button>
             )}
             <ChevronDown
+              data-open={open ? 'true' : 'false'}
               className={cn(
-                'h-3.5 w-3.5 transition-transform duration-150',
-                open && 'rotate-180'
+                'abc-chevron h-3.5 w-3.5 shrink-0',
+                open && 'text-[var(--abc-primary)]'
               )}
               aria-hidden="true"
             />

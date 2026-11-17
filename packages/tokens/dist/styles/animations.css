@@ -121,6 +121,43 @@
         abc-fade-in var(--abc-motion-fast, 140ms) ease-out both;
     }
   }
+
+  /* ==================== 通用指示器旋转类（彻底隔离 Tailwind v4 `rotate` 与宿主 Tailwind v3 `transform` 叠加） ==================== */
+  .abc-chevron,
+  .abc-chevron-expand,
+  .abc-chevron-disclosure {
+    rotate: none !important;
+    transition: transform var(--abc-motion-fast, 150ms) var(--abc-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+  }
+
+  .abc-chevron {
+    transform: rotate(0deg);
+  }
+  .abc-chevron[data-open="true"] {
+    transform: rotate(180deg) !important;
+  }
+
+  .abc-chevron-expand {
+    transform: rotate(0deg);
+  }
+  .abc-chevron-expand[data-open="true"] {
+    transform: rotate(90deg) !important;
+  }
+
+  .abc-chevron-disclosure {
+    transform: rotate(-90deg);
+  }
+  .abc-chevron-disclosure[data-open="true"] {
+    transform: rotate(0deg) !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .abc-chevron,
+    .abc-chevron-expand,
+    .abc-chevron-disclosure {
+      transition-duration: 0ms !important;
+    }
+  }
 }
 
 /* View Transition 主题切换扩散图层重置 */
@@ -387,6 +424,15 @@
 .abc-animate-modal-in[data-motion="none"],
 .abc-motion-pop[data-motion="none"] {
   animation: none !important;
+}
+
+:is([data-abc-motion="none"], [data-motion="none"]) .abc-chevron,
+:is([data-abc-motion="none"], [data-motion="none"]) .abc-chevron-expand,
+:is([data-abc-motion="none"], [data-motion="none"]) .abc-chevron-disclosure,
+.abc-chevron[data-motion="none"],
+.abc-chevron-expand[data-motion="none"],
+.abc-chevron-disclosure[data-motion="none"] {
+  transition-duration: 0ms !important;
 }
 
 .abc-page-fade-slide {

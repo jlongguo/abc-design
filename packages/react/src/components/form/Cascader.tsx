@@ -176,6 +176,7 @@ export const Cascader: React.FC<CascaderProps> = ({
   const [activePath, setActivePath] = useState<CascaderSingleValue>([])
   const [loadingValues, setLoadingValues] = useState<Set<string>>(() => new Set())
   const [focusedCol, setFocusedCol] = useState(0)
+  const [searchActiveIndex, setSearchActiveIndex] = useState(0)
 
   const triggerRef = useRef<HTMLButtonElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -228,14 +229,16 @@ export const Cascader: React.FC<CascaderProps> = ({
   useEffect(() => {
     if (!open) {
       setKeyword('')
+      setSearchActiveIndex(0)
       return
     }
     if (!multiple && selectedPaths[0]) {
       setActivePath(selectedPaths[0])
-    } else if (activePath.length === 0 && options[0]) {
+    } else if (!multiple || selectedPaths.length === 0) {
       setActivePath([])
     }
     setFocusedCol(0)
+    setSearchActiveIndex(0)
     if (searchable) {
       window.setTimeout(() => searchRef.current?.focus(), 0)
     }
@@ -248,8 +251,20 @@ export const Cascader: React.FC<CascaderProps> = ({
       if (triggerRef.current?.contains(target) || popoverRef.current?.contains(target)) return
       setOpen(false)
     }
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        setOpen(false)
+        triggerRef.current?.focus()
+      }
+    }
     document.addEventListener('mousedown', handleOutside)
-    return () => document.removeEventListener('mousedown', handleOutside)
+    document.addEventListener('keydown', handleEsc, true)
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('keydown', handleEsc, true)
+    }
   }, [open])
 
   const commitSingle = (path: CascaderSingleValue) => {
@@ -335,8 +350,50 @@ export const Cascader: React.FC<CascaderProps> = ({
 
     if (e.key === 'Escape') {
       e.preventDefault()
+      e.stopPropagation()
       setOpen(false)
       triggerRef.current?.focus()
+      return
+    }
+
+    if (e.key === 'Tab') {
+      setOpen(false)
+      return
+    }
+
+    const inSearchInput = e.target === searchRef.current
+    if (inSearchInput && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      return
+    }
+
+    if (searchable && keyword.trim()) {
+      const enabledSearchItems = flatSearchPaths
+        .map((item, idx) => ({ item, idx }))
+        .filter(({ item }) => !item.disabled)
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        if (enabledSearchItems.length === 0) return
+        const curPos = enabledSearchItems.findIndex(({ idx }) => idx === searchActiveIndex)
+        const nextEntry = enabledSearchItems[(curPos + 1) % enabledSearchItems.length]
+        if (nextEntry) setSearchActiveIndex(nextEntry.idx)
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        if (enabledSearchItems.length === 0) return
+        const curPos = enabledSearchItems.findIndex(({ idx }) => idx === searchActiveIndex)
+        const prevPos = curPos <= 0 ? enabledSearchItems.length - 1 : curPos - 1
+        const prevEntry = enabledSearchItems[prevPos]
+        if (prevEntry) setSearchActiveIndex(prevEntry.idx)
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        const activeEntry = flatSearchPaths[searchActiveIndex]
+        const targetEntry =
+          activeEntry && !activeEntry.disabled ? activeEntry : enabledSearchItems[0]?.item
+        if (targetEntry) {
+          if (multiple) toggleMultiplePath(targetEntry.path)
+          else commitSingle(targetEntry.path)
+        }
+      }
       return
     }
 
@@ -479,9 +536,10 @@ export const Cascader: React.FC<CascaderProps> = ({
             </span>
           ) : null}
           <ChevronDown
+            data-open={open ? 'true' : 'false'}
             className={cn(
-              'h-3.5 w-3.5 transition-transform duration-150',
-              open && 'rotate-180'
+              'abc-chevron h-3.5 w-3.5 shrink-0',
+              open && 'text-[var(--abc-primary)]'
             )}
           />
         </span>
@@ -494,25 +552,31 @@ export const Cascader: React.FC<CascaderProps> = ({
             ref={popoverRef}
             id={panelId}
             role="listbox"
+            data-abc-floating=""
             aria-multiselectable={multiple || undefined}
             data-side={actualSide}
             data-motion={resolvedMotion}
+            onMouseDown={(e) => e.stopPropagation()}
             style={floatingStyle}
             onKeyDown={handleKeyDown}
             className={cn(
-              'abc-motion-popover z-[1050] overflow-hidden rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] shadow-xl',
+              'abc-motion-popover z-[1500] overflow-hidden rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] shadow-xl',
               isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
             )}
           >
             {searchable ? (
               <div className="border-b border-[var(--abc-border)] p-2">
                 <div className="relative">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--abc-fg-muted)]" />
+                  <Search className="pointer-events-none absolute inset-y-0 left-2.5 my-auto h-3.5 w-3.5 text-[var(--abc-fg-muted)]" />
                   <input
                     ref={searchRef}
                     type="text"
                     value={keyword}
-                    onChange={(e) => setKeyword(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      setKeyword(e.target.value)
+                      setSearchActiveIndex(0)
+                    }}
                     placeholder="搜索全路径或输入拼音首字母..."
                     aria-label="搜索级联选项"
                     className="h-7 w-full rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] pl-8 pr-2.5 text-xs text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] focus:border-[var(--abc-primary)] focus:outline-none"
@@ -526,16 +590,21 @@ export const Cascader: React.FC<CascaderProps> = ({
                 {flatSearchPaths.length === 0 ? (
                   <div className="py-6 text-center text-xs text-[var(--abc-fg-muted)]">{emptyText}</div>
                 ) : (
-                  flatSearchPaths.map((item) => {
+                  flatSearchPaths.map((item, idx) => {
                     const key = item.path.map(String).join('>')
                     const isSelected = selectedPaths.some((p) => samePath(p, item.path))
+                    const isActiveSearch = idx === searchActiveIndex
                     return (
                       <button
                         key={key}
                         type="button"
                         role="option"
                         aria-selected={isSelected}
+                        data-active={isActiveSearch ? 'true' : undefined}
                         disabled={item.disabled}
+                        onMouseEnter={() => {
+                          if (!item.disabled) setSearchActiveIndex(idx)
+                        }}
                         onClick={() =>
                           multiple ? toggleMultiplePath(item.path) : commitSingle(item.path)
                         }
@@ -543,7 +612,9 @@ export const Cascader: React.FC<CascaderProps> = ({
                           'flex w-full items-center justify-between gap-2 rounded px-2.5 py-1.5 text-left text-xs transition-colors',
                           item.disabled
                             ? 'cursor-not-allowed opacity-50'
-                            : 'hover:bg-[var(--abc-bg-muted)]',
+                            : isActiveSearch && !isSelected
+                              ? 'bg-[var(--abc-bg-muted)]'
+                              : 'hover:bg-[var(--abc-bg-muted)]',
                           isSelected && 'bg-[var(--abc-primary-soft)] font-medium text-[var(--abc-primary)]'
                         )}
                       >

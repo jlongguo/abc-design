@@ -28,6 +28,7 @@ import {
   type AbcMotionPreset,
   type AbcSize,
 } from '@abc-design/react'
+import { SurfaceAndVisualEffectsDocs } from '../components/SurfaceAndVisualEffectsDocs'
 import {
   Activity,
   ArrowUpRight,
@@ -725,6 +726,8 @@ export function Demo() {
             </BentoGrid>
           </div>
         </ComponentDocPreview>
+
+        <SurfaceAndVisualEffectsDocs />
       </div>
 
       {/* 体验各种 Motion 预设的 Dialog */}

@@ -230,10 +230,8 @@ export const Collapse: React.FC<CollapseProps> = ({
             >
               <span className="inline-flex min-w-0 items-center gap-2">
                 <ChevronDown
-                  className={cn(
-                    'h-3.5 w-3.5 shrink-0 text-[var(--abc-fg-muted)] transition-transform duration-[var(--abc-motion-fast)]',
-                    isOpen ? 'rotate-0' : '-rotate-90'
-                  )}
+                  data-open={isOpen ? 'true' : 'false'}
+                  className="abc-chevron-disclosure h-3.5 w-3.5 shrink-0 text-[var(--abc-fg-muted)]"
                 />
                 <span className="truncate">{item.label}</span>
               </span>

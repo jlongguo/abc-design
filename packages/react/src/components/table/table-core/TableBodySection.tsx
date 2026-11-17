@@ -152,9 +152,11 @@ export function TableBodySection<T extends Record<string, any>>({ state }: { sta
                           'border-l-4 border-l-amber-400 bg-amber-50/75 dark:border-l-amber-500 dark:bg-amber-950/20',
                         onRowClick &&
                           'cursor-pointer focus-visible:bg-[var(--abc-bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--abc-primary)]',
-                        isSelected || isRowActive
-                          ? 'bg-[var(--abc-primary-soft)]/60'
-                          : 'hover:bg-[var(--abc-bg-muted)]/85',
+                        isRowActive && !isSelected
+                          ? 'bg-[var(--abc-primary-soft)]/75 shadow-[inset_3px_0_0_0_var(--abc-primary)]'
+                          : isSelected
+                            ? 'bg-[var(--abc-primary-soft)]/60'
+                            : 'hover:bg-[var(--abc-bg-muted)]/85',
                         customRowProps.className
                       )}
                     >
@@ -199,9 +201,10 @@ export function TableBodySection<T extends Record<string, any>>({ state }: { sta
                               className="inline-flex h-6 w-6 items-center justify-center rounded-[var(--abc-radius-xs)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
                             >
                               <ChevronRight
+                                data-open={isExpanded ? 'true' : 'false'}
                                 className={cn(
-                                  'h-3.5 w-3.5 transition-transform duration-150',
-                                  isExpanded && 'rotate-90 text-[var(--abc-primary)]'
+                                  'abc-chevron-expand h-3.5 w-3.5',
+                                  isExpanded && 'text-[var(--abc-primary)]'
                                 )}
                               />
                             </button>
@@ -280,9 +283,10 @@ export function TableBodySection<T extends Record<string, any>>({ state }: { sta
                                     className="inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-[var(--abc-radius-xs)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
                                   >
                                     <ChevronRight
+                                      data-open={isExpanded ? 'true' : 'false'}
                                       className={cn(
-                                        'h-3 w-3 transition-transform duration-150',
-                                        isExpanded && 'rotate-90 text-[var(--abc-primary)]'
+                                        'abc-chevron-expand h-3 w-3',
+                                        isExpanded && 'text-[var(--abc-primary)]'
                                       )}
                                     />
                                   </button>

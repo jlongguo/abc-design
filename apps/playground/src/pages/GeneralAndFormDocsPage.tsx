@@ -43,6 +43,7 @@ import {
 } from '@abc-design/react'
 import { ArrowRight, Download, RefreshCw, Search, Sparkles } from 'lucide-react'
 import { ComponentDocPreview } from '../components/ComponentDocPreview'
+import { FormAndTypographyExtrasDocs } from '../components/FormAndTypographyExtrasDocs'
 import { EnterpriseFormWidgetsDocs } from '../components/EnterpriseFormWidgetsDocs'
 
 const ORG_TREE: AbcTreeNode[] = [
@@ -1004,6 +1005,7 @@ const { preference, resolvedScheme, toggleScheme } = useColorScheme()
         </ComponentDocPreview>
 
         <EnterpriseFormWidgetsDocs />
+        <FormAndTypographyExtrasDocs />
       </div>
     </PageContainer>
   )

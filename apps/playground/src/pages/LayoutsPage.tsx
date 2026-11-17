@@ -13,6 +13,7 @@ import {
   type AbcLayoutSettings,
 } from '@abc-design/react'
 import { Check, Lock, User } from 'lucide-react'
+import { SplitDetailShowcase } from './SplitDetailShowcase'
 
 const MODES: Array<{
   mode: AbcLayoutMode
@@ -187,6 +188,8 @@ export const LayoutsPage: React.FC<{
             </AuthLayout>
           </div>
         </Card>
+
+        <SplitDetailShowcase />
       </div>
     </PageContainer>
   )

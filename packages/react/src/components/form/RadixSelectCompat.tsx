@@ -149,7 +149,11 @@ export const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerPr
         {children}
         <ChevronDown
           aria-hidden="true"
-          className="h-4 w-4 shrink-0 text-[var(--abc-fg-muted)] transition-transform duration-150 group-data-[state=open]:rotate-180"
+          data-open={ctx?.open ? 'true' : 'false'}
+          className={cn(
+            'abc-chevron h-4 w-4 shrink-0 text-[var(--abc-fg-muted)]',
+            ctx?.open && 'text-[var(--abc-primary)]'
+          )}
         />
       </button>
     )

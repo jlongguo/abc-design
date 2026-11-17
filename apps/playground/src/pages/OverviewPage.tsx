@@ -34,6 +34,9 @@ export const OverviewPage: React.FC<{
       }
       extra={
         <>
+          <Button variant="secondary" onClick={() => onJump('/pro/workflow-chrome')}>
+            预览页面编排与引导套件
+          </Button>
           <Button variant="secondary" onClick={() => onJump('/docs/markdown-shell')}>
             预览最新 Markdown 与壳层组件
           </Button>
