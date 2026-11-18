@@ -79,26 +79,56 @@ export interface FilterPillOption<T extends string = string> {
   disabled?: boolean
 }
 
-export interface FilterPillGroupProps<T extends string = string>
+export interface FilterPillGroupSingleProps<T extends string = string>
   extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> {
+  /** 是否开启多选模式（默认 false 为单选互斥模式） */
+  multiple?: false
   options: ReadonlyArray<FilterPillOption<T>>
   value: T
   onValueChange: (value: T) => void
-  size?: 'sm' | 'md'
+  size?: 'xs' | 'sm' | 'md'
 }
 
+export interface FilterPillGroupMultipleProps<T extends string = string>
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> {
+  /** 开启多选胶囊模式（点击已选胶囊取消选中，点击未选胶囊追加选中） */
+  multiple: true
+  options: ReadonlyArray<FilterPillOption<T>>
+  value: ReadonlyArray<string>
+  onValueChange: (value: T[]) => void
+  size?: 'xs' | 'sm' | 'md'
+}
+
+export type FilterPillGroupProps<T extends string = string> =
+  | FilterPillGroupSingleProps<T>
+  | FilterPillGroupMultipleProps<T>
+
 /**
- * 分类胶囊单选组 (FilterPillGroup)
- * 用于状态过滤（如 全部/待审批/已通过/已拒绝）的快速切换
+ * 分类胶囊单选/多选组 (FilterPillGroup)
+ * 用于状态过滤（单选互斥）或标签集合勾选（multiple 多选）的快速切换
  */
+export function FilterPillGroup<T extends string = string>(
+  props: FilterPillGroupSingleProps<T>
+): React.ReactElement
+export function FilterPillGroup<T extends string = string>(
+  props: FilterPillGroupMultipleProps<T>
+): React.ReactElement
 export function FilterPillGroup<T extends string = string>({
+  multiple = false,
   options,
   value,
   onValueChange,
   size = 'sm',
   className,
   ...props
-}: FilterPillGroupProps<T>) {
+}: FilterPillGroupProps<T>): React.ReactElement {
+  const sizeClass =
+    size === 'xs'
+      ? 'px-2 py-0.5 text-[11px]'
+      : size === 'sm'
+        ? 'px-2.5 py-0.5 text-xs'
+        : 'px-3 py-1 text-xs'
+
   return (
     <div
       role="group"
@@ -107,18 +137,37 @@ export function FilterPillGroup<T extends string = string>({
       {...props}
     >
       {options.map((option) => {
-        const selected = option.value === value
+        const selected = multiple
+          ? (value as ReadonlyArray<string>).includes(option.value)
+          : option.value === value
         return (
           <button
             key={option.value}
             type="button"
             disabled={option.disabled}
             aria-pressed={selected}
-            onClick={() => onValueChange(option.value)}
+            onClick={() => {
+              if (multiple) {
+                const currentList = value as ReadonlyArray<string>
+                const nextValues = selected
+                  ? options
+                      .map((opt) => opt.value)
+                      .filter((v) => currentList.includes(v) && v !== option.value)
+                  : [
+                      ...options
+                        .map((opt) => opt.value)
+                        .filter((v) => currentList.includes(v)),
+                      option.value,
+                    ]
+                ;(onValueChange as (next: T[]) => void)(nextValues)
+              } else {
+                ;(onValueChange as (next: T) => void)(option.value)
+              }
+            }}
             className={cn(
               'inline-flex cursor-pointer select-none items-center gap-1.5 rounded-full border font-medium transition-all outline-none',
               'focus-visible:ring-1 focus-visible:ring-[var(--abc-primary)] disabled:cursor-not-allowed disabled:opacity-40',
-              size === 'sm' ? 'px-2.5 py-0.5 text-xs' : 'px-3 py-1 text-xs',
+              sizeClass,
               selected
                 ? 'border-[var(--abc-primary)] bg-[var(--abc-primary)] text-[var(--abc-primary-contrast,#ffffff)] shadow-2xs font-semibold'
                 : 'border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg-secondary)] hover:border-[var(--abc-border-hover,#cbd5e1)] hover:text-[var(--abc-fg)]'

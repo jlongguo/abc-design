@@ -13,11 +13,14 @@ export interface ActionCardProps {
   extra?: React.ReactNode
   href?: string
   target?: string
+  /** 是否处于选中激活状态（用于预设档位/导航菜单卡片高亮） */
+  selected?: boolean
   disabled?: boolean
   onClick?: () => void
   size?: AbcSize
   motion?: AbcMotionPreset
   className?: string
+  'data-testid'?: string
 }
 
 /**
@@ -32,11 +35,13 @@ export const ActionCard: React.FC<ActionCardProps> = ({
   extra,
   href,
   target,
+  selected = false,
   disabled = false,
   onClick,
   size,
   motion,
   className,
+  'data-testid': dataTestId,
 }) => {
   const resolvedSize = useAbcSize(size, 'md')
   const resolvedMotion = useAbcMotion(motion)
@@ -49,8 +54,13 @@ export const ActionCard: React.FC<ActionCardProps> = ({
     <article
       data-motion={resolvedMotion}
       data-size={resolvedSize}
+      data-selected={selected ? 'true' : undefined}
+      data-testid={dataTestId}
       className={cn(
-        '@container relative flex flex-col justify-between rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] shadow-[var(--abc-shadow-card)]',
+        '@container relative flex flex-col justify-between rounded-[var(--abc-radius-lg)] border bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] shadow-[var(--abc-shadow-card)]',
+        selected
+          ? 'border-[var(--abc-primary)] bg-[var(--abc-primary-soft)]/35 ring-2 ring-[var(--abc-primary)]/20'
+          : 'border-[var(--abc-border)]',
         SURFACE_PAD[resolvedSize],
         isInteractive &&
           'abc-motion-surface cursor-pointer transition-all duration-[var(--abc-motion-fast)] hover:border-[var(--abc-primary)]/60 hover:shadow-sm',
@@ -85,8 +95,13 @@ export const ActionCard: React.FC<ActionCardProps> = ({
               ) : onClick && !disabled ? (
                 <button
                   type="button"
+                  aria-pressed={selected || undefined}
                   onClick={onClick}
-                  className={cn(triggerClass, 'cursor-pointer hover:text-[var(--abc-primary)]')}
+                  className={cn(
+                    triggerClass,
+                    'cursor-pointer hover:text-[var(--abc-primary)]',
+                    selected && 'text-[var(--abc-primary)]'
+                  )}
                 >
                   {title}
                 </button>

@@ -1,7 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { AbcMotionPreset } from '@abc-design/tokens'
-import { GripVertical, Layers, Maximize2, Minimize2, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, GripVertical, Layers, Maximize2, Minimize2, X } from 'lucide-react'
 import { useAbcDrawerCascadeMode, useAbcMotion } from '../../hooks'
 import { usePresence } from '../../hooks/usePresence'
 import { cn } from '../../utils/cn'
@@ -43,12 +43,35 @@ function removeDrawerFromStack(id: string) {
 
 export type DrawerSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'
 
+export interface DrawerNavigation {
+  /** 当前条目位置（1-based，若无匹配则 <= 0） */
+  current: number
+  /** 总条目数 */
+  total: number
+  onPrev: () => void
+  onNext: () => void
+  prevLabel?: string
+  nextLabel?: string
+}
+
 export interface DrawerProps {
   open?: boolean
   visible?: boolean
   onClose: () => void
   title?: React.ReactNode
   description?: React.ReactNode
+  /** 标题右侧状态徽标 */
+  badge?: React.ReactNode
+  /** 顶栏行上下快速切换器（上一条 / 下一条 与位置指示） */
+  navigation?: DrawerNavigation
+  /** 顶栏右侧扩展操作区（如“清除选择”或快捷动作） */
+  headerActions?: React.ReactNode
+  /** 关闭按钮无障碍文案 */
+  closeLabel?: string
+  /** 全宽展开按钮无障碍文案 */
+  expandLabel?: string
+  /** 还原默认宽度按钮无障碍文案 */
+  restoreLabel?: string
   children: React.ReactNode
   footer?: React.ReactNode
   size?: DrawerSize
@@ -102,6 +125,12 @@ export const Drawer: React.FC<DrawerProps> = ({
   onClose,
   title,
   description,
+  badge,
+  navigation,
+  headerActions,
+  closeLabel = '关闭抽屉',
+  expandLabel = '全宽展开',
+  restoreLabel = '还原默认宽度',
   children,
   footer,
   size = 'md',
@@ -371,17 +400,45 @@ export const Drawer: React.FC<DrawerProps> = ({
                   {title}
                 </h2>
               )}
+              {badge}
             </div>
             {description && (
-              <p className="mt-0.5 text-xs text-[var(--abc-fg-muted)]">{description}</p>
+              <div className="mt-0.5 text-xs text-[var(--abc-fg-muted)]">{description}</div>
             )}
           </div>
 
           <div className="flex shrink-0 items-center gap-1">
+            {navigation && navigation.total > 0 && (
+              <div className="mr-0.5 inline-flex items-center gap-0.5 rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-muted)]/60 px-1 py-0.5 text-xs text-[var(--abc-fg-muted)]">
+                <button
+                  type="button"
+                  onClick={navigation.onPrev}
+                  title={navigation.prevLabel ?? '上一条'}
+                  aria-label={navigation.prevLabel ?? '上一条'}
+                  className="inline-flex h-5 w-5 items-center justify-center rounded text-[var(--abc-fg-muted)] transition-colors hover:bg-[var(--abc-bg-surface)] hover:text-[var(--abc-fg)] cursor-pointer"
+                >
+                  <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={navigation.onNext}
+                  title={navigation.nextLabel ?? '下一条'}
+                  aria-label={navigation.nextLabel ?? '下一条'}
+                  className="inline-flex h-5 w-5 items-center justify-center rounded text-[var(--abc-fg-muted)] transition-colors hover:bg-[var(--abc-bg-surface)] hover:text-[var(--abc-fg)] cursor-pointer"
+                >
+                  <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+                <span className="px-1 font-mono text-[11px] tabular-nums text-[var(--abc-fg-secondary)]">
+                  {navigation.current > 0 ? navigation.current : '—'} / {navigation.total}
+                </span>
+              </div>
+            )}
+            {headerActions}
             {resizable && (
               <button
                 type="button"
-                aria-label={isFullWidth ? '还原默认宽度' : '全宽展开'}
+                title={isFullWidth ? restoreLabel : expandLabel}
+                aria-label={isFullWidth ? restoreLabel : expandLabel}
                 onClick={() => setIsFullWidth((v) => !v)}
                 className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--abc-radius-sm)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
               >
@@ -390,7 +447,8 @@ export const Drawer: React.FC<DrawerProps> = ({
             )}
             <button
               type="button"
-              aria-label="关闭抽屉"
+              title={closeLabel}
+              aria-label={closeLabel}
               onClick={onClose}
               className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--abc-radius-sm)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
             >

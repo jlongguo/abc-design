@@ -11,6 +11,7 @@ import {
 import { Activity, Cpu, ShieldCheck } from 'lucide-react'
 import { ComponentDocPreview } from '../../components/ComponentDocPreview'
 import { KnobSegmented, KnobSwitch } from '../../components/PropKnobs'
+import { SortableCardsDemoSection } from './SortableCardsDemoSection'
 
 interface GatewayPolicyRow {
   id: string
@@ -282,6 +283,10 @@ export const EditableTableLinkagePage: React.FC = () => {
           />
         </div>
       </ComponentDocPreview>
+
+      <div className="mt-5">
+        <SortableCardsDemoSection />
+      </div>
     </PageContainer>
   )
 }

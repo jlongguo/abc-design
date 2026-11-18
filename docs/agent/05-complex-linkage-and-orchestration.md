@@ -17,6 +17,7 @@
 | **5. 分步向导表单 × 跨步骤校验 × 提交审阅** | 多步骤表单状态保留、异步校验阻断、防双击提交锁、末步汇总前后差异对比 | `ProStepsForm` + `ConfigDiffViewer` + `computeObjectDiff` | ❌ 拆成多个组件局部 `useState` 导致点击“上一步”丢失草稿；❌ 手写 `submitting` 防重锁和步进错误提示条 |
 | **6. 配置差异审阅与密钥自动脱敏** | 结构化对象字段对比 + 代码/YAML/JSON 逐行 LCS 对比 + 密钥自动打码 | `ConfigDiffViewer` + `computeObjectDiff` + `computeLineDiff` (`@abc-design/core`) | ❌ 扁平化 `Object.keys` 对比导致漏检嵌套变更；❌ 将 `apiKey` / `secret` / `token` 明文直接渲染到审阅 Diff 面板 |
 | **7. 异步批量任务队列追踪与失败重试** | 批量下发任务进度条、排队/运行/成功/失败筛选、单条或批量失败项一键重试 | `BatchActionTracker` (`variant="inline" \| "floating"`) | ❌ 页面右下角手写固定浮窗、`queued/running/succeeded/failed` 状态计数器和批处理进度统计 |
+| **8. 多卡片表单空间压缩、拖拽排序暂存与右侧挤压编辑** | 支付渠道、通知规则、网关策略等多卡片配置既要拖拽调序又要避免全量平铺占屏 | `SortableSplitEditor` + `SortableList` + `SplitDetailPanel` + `arrayMove` / `reconcileStagedOrder` | ❌ 将每张卡片 8~10 个输入框常驻展开导致整屏只容得下 2~3 张卡；❌ 手写无指针捕获或无落点线的粗糙拖拽 |
 
 ---
 
@@ -844,6 +845,62 @@ export function BatchUpgradeTracker() {
 
 ---
 
+### 3.13 `SortableList<T>` & `SortableSplitEditor<T>` — 紧凑可拖拽暂存列表 × 右侧内联挤压表单
+
+- **配套 `@abc-design/core` 无头纯函数（`sortable.ts`）**：
+  - `arrayMove<T>(items, fromIndex, toIndex): T[]`
+  - `isOrderDirty<T>(committed, staged, getKey): boolean`
+  - `reconcileStagedOrder<T>(committed, stagedKeys, getKey): T[]`
+- **`SortableSplitEditor<T>` 核心 Props**：
+  - `items: ReadonlyArray<T>`、`rowKey?: (keyof T & string) | ((item: T) => string | number)`
+  - `title?: ReactNode`、`description?: ReactNode`、`allowCreate?: boolean`
+  - `onSaveOrder?: (orderedItems: T[]) => void | Promise<void>`（拖拽后仅在前端暂存新顺序，顶栏自动浮现“顺序未保存”徽标与“重置顺序 / 保存排序”按钮，点击后统一调用）
+  - `renderItem: (item: T, meta) => ReactNode`、`renderItemActions?: (item: T, meta) => ReactNode`
+  - `renderEditor: ({ mode: 'edit' | 'create', item, index, total, close }) => ReactNode`
+  - `renderPanelFooter?`、`renderPanelSubtitle?`、`renderPanelBadge?`、`panelWidth?: number | string`、`storageKey?: string`、`showMoveButtons?: boolean`、`labels?: SortableSplitEditorLabels`
+
+```tsx
+import React, { useState } from 'react'
+import { Button, Input, SortableSplitEditor } from '@abc-design/react'
+
+interface ChannelCard {
+  id: string
+  provider: string
+  title: string
+}
+
+export function CompactChannelManager() {
+  const [channels, setChannels] = useState<ChannelCard[]>([
+    { id: 'stripe', provider: 'stripe', title: '银行卡支付' },
+    { id: 'paddle', provider: 'paddle', title: 'Paddle 支付' },
+  ])
+
+  return (
+    <SortableSplitEditor<ChannelCard>
+      title="付款方式"
+      items={channels}
+      allowCreate
+      onSaveOrder={async (ordered) => {
+        setChannels(ordered)
+      }}
+      renderItem={(c) => (
+        <div>
+          <span className="font-mono text-xs">{c.provider}</span> · <strong>{c.title}</strong>
+        </div>
+      )}
+      renderEditor={({ mode, item, close }) => (
+        <div className="space-y-2">
+          <Input label="渠道名称" defaultValue={mode === 'edit' ? item?.title : ''} />
+          <Button size="sm" onClick={close}>关闭</Button>
+        </div>
+      )}
+    />
+  )
+}
+```
+
+---
+
 ## 第四章：Playground 联动示范页源码索引
 
 在编写复杂联动页面前，推荐直接参考仓库内第 10 大领域「复杂联动」的 **6 套端到端联动演练实现**（对应路由 `/linkage/*`）：
@@ -852,8 +909,8 @@ export function BatchUpgradeTracker() {
   `apps/playground/src/pages/linkage/MasterDetailWorkbenchPage.tsx`
 - `/linkage/dynamic-form` — 动态表单编排与键值对（`useProForm` + `ProFormProvider` + `ProFormDependency` + `ProFormList` + `KeyValueInput`）：
   `apps/playground/src/pages/linkage/DynamicFormOrchestrationPage.tsx`
-- `/linkage/editable-table` — 可编辑表格双模式与外侧配额实时联动（`EditableProTable` + `ProgressBar` + `StatCard`）：
-  `apps/playground/src/pages/linkage/EditableTableLinkagePage.tsx`
+- `/linkage/editable-table` — 可编辑表格双模式与可拖拽挤压卡片工作台（`EditableProTable` + `SortableSplitEditor` + `SortableList`）：
+  `apps/playground/src/pages/linkage/EditableTableLinkagePage.tsx`、`apps/playground/src/pages/linkage/SortableCardsDemoSection.tsx`
 - `/linkage/query-builder` — 嵌套规则构建器 × 视图收藏 × 客户端求值（`FilterBuilder` / `RuleBuilder` + `SavedFilterViews` + `evaluateRuleGroup` + `DataTable`）：
   `apps/playground/src/pages/linkage/QueryBuilderAndViewsPage.tsx`
 - `/linkage/cross-filter` — 图表点击下钻 × 多源激活筛选栏 × 明细联动（`AbcChart` + `ActiveFilterBar` + `StatCard` + `DataTable`）：

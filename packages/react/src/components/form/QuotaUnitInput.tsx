@@ -1,6 +1,6 @@
 import * as React from 'react'
-import { ChevronDown } from 'lucide-react'
 import { cn } from '../../utils/cn'
+import { Select } from './select/Select'
 
 export type ByteUnit = 'B' | 'KB' | 'MB' | 'GB' | 'TB'
 export type DurationUnit = 's' | 'm' | 'h' | 'd'
@@ -223,12 +223,15 @@ function QuotaUnitControl<U extends string>({
     onChange(nextRaw)
   }
 
-  const handleUnitChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const nextUnit = event.target.value as U
+  const applyNextUnit = (nextUnit: U) => {
     if (!allowedUnits.includes(nextUnit)) return
     setUnit(nextUnit)
     const nextFactor = factors[nextUnit]
     setDraft(safeValue === 0 ? '0' : formatDecimalTrimmed(safeValue / nextFactor, 2))
+  }
+
+  const handleUnitChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    applyNextUnit(event.target.value as U)
   }
 
   const handleBlur = () => {
@@ -244,8 +247,8 @@ function QuotaUnitControl<U extends string>({
     <div className={cn('space-y-1', className)}>
       <div
         className={cn(
-          'flex items-stretch rounded-[var(--abc-radius-md,8px)] border border-[var(--abc-border,#e2e8f0)] bg-[var(--abc-bg-surface,#ffffff)] shadow-2xs transition-colors focus-within:border-[var(--abc-primary,#2563eb)] focus-within:ring-1 focus-within:ring-[var(--abc-primary,#2563eb)] overflow-hidden w-full',
-          disabled && 'opacity-50 cursor-not-allowed',
+          'flex items-stretch rounded-[var(--abc-radius-md,8px)] border border-[var(--abc-border,#e2e8f0)] bg-[var(--abc-bg-surface,#ffffff)] shadow-2xs transition-all duration-[var(--abc-motion-fast,140ms)] hover:border-[var(--abc-border-strong,#cbd5e1)] focus-within:border-[var(--abc-primary,#2563eb)] focus-within:ring-2 focus-within:ring-[var(--abc-ring,rgba(37,99,235,0.2))] overflow-hidden w-full',
+          disabled && 'opacity-50 cursor-not-allowed bg-[var(--abc-bg-muted,#f8fafc)]',
           size === 'sm' ? 'h-8' : 'h-9',
         )}
       >
@@ -276,31 +279,26 @@ function QuotaUnitControl<U extends string>({
         />
         {/* 分割线：高度贴合 */}
         <div className="w-[1px] bg-[var(--abc-border,#e2e8f0)] shrink-0 self-stretch my-1.5" />
-        {/* 单位选择下拉框：右侧内嵌，固定宽度，文字精准居中，配独立下拉箭头 */}
-        <div className="relative flex items-center shrink-0">
-          <select
+        {/* 单位选择器：由 ABC Design Select (ghost 模式 + Portal 浮层) 驱动，杜绝操作系统原生 <select> 下拉菜单 */}
+        <div className="flex items-center shrink-0">
+          <Select
+            size="ghost"
             aria-label={resolvedUnitLabel}
             disabled={disabled}
             value={unit}
+            onValueChange={(nextVal) => applyNextUnit(nextVal as U)}
             onChange={handleUnitChange}
-            style={{
-              appearance: 'none',
-              MozAppearance: 'none',
-              WebkitAppearance: 'none',
-              border: 'none',
-              outline: 'none',
-              boxShadow: 'none',
-              background: 'transparent',
-            }}
-            className="w-20 min-w-[76px] shrink-0 border-0 bg-transparent pl-2.5 pr-6 text-center text-xs font-mono font-semibold text-[var(--abc-fg-secondary,#334155)] outline-none focus:outline-none cursor-pointer hover:text-[var(--abc-fg,#0f172a)] [appearance:none] [&::-ms-expand]:hidden"
+            matchWidth={false}
+            dropdownClassName="min-w-[104px]"
+            wrapperClassName="h-full shrink-0 flex items-center"
+            className="h-full min-w-[74px] px-2.5 font-mono font-semibold text-xs text-[var(--abc-fg-secondary,#334155)] hover:bg-[var(--abc-bg-subtle,#f8fafc)] hover:text-[var(--abc-fg,#0f172a)]"
           >
             {allowedUnits.map((item) => (
-              <option key={item} value={item} className="bg-[var(--abc-bg-surface,#ffffff)] text-[var(--abc-fg,#0f172a)]">
+              <option key={item} value={item}>
                 {formatUnitLabel(item)}
               </option>
             ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2 h-3 w-3 text-[var(--abc-fg-muted,#94a3b8)] opacity-70" />
+          </Select>
         </div>
       </div>
       {!hideHint && (

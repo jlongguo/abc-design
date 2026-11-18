@@ -5,4 +5,5 @@ export * from './calendar.js';
 export * from './queryBuilder.js';
 export * from './diff.js';
 export * from './keyValue.js';
+export * from './sortable.js';
 //# sourceMappingURL=index.js.map

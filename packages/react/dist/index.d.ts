@@ -502,11 +502,14 @@ export declare interface ActionCardProps {
     extra?: default_2.ReactNode;
     href?: string;
     target?: string;
+    /** 是否处于选中激活状态（用于预设档位/导航菜单卡片高亮） */
+    selected?: boolean;
     disabled?: boolean;
     onClick?: () => void;
     size?: AbcSize;
     motion?: AbcMotionPreset;
     className?: string;
+    'data-testid'?: string;
 }
 
 /** 全局活跃抽屉栈项：支撑多级抽屉自动计算宽度与平级并排/层叠推挤 */
@@ -1815,12 +1818,35 @@ export declare function DrawerFooter({ className, ...props }: default_2.HTMLAttr
 
 export declare function DrawerHeader({ className, ...props }: default_2.HTMLAttributes<HTMLDivElement>): default_2.JSX.Element;
 
+export declare interface DrawerNavigation {
+    /** 当前条目位置（1-based，若无匹配则 <= 0） */
+    current: number;
+    /** 总条目数 */
+    total: number;
+    onPrev: () => void;
+    onNext: () => void;
+    prevLabel?: string;
+    nextLabel?: string;
+}
+
 export declare interface DrawerProps {
     open?: boolean;
     visible?: boolean;
     onClose: () => void;
     title?: default_2.ReactNode;
     description?: default_2.ReactNode;
+    /** 标题右侧状态徽标 */
+    badge?: default_2.ReactNode;
+    /** 顶栏行上下快速切换器（上一条 / 下一条 与位置指示） */
+    navigation?: DrawerNavigation;
+    /** 顶栏右侧扩展操作区（如“清除选择”或快捷动作） */
+    headerActions?: default_2.ReactNode;
+    /** 关闭按钮无障碍文案 */
+    closeLabel?: string;
+    /** 全宽展开按钮无障碍文案 */
+    expandLabel?: string;
+    /** 还原默认宽度按钮无障碍文案 */
+    restoreLabel?: string;
     children: default_2.ReactNode;
     footer?: default_2.ReactNode;
     size?: DrawerSize;
@@ -2181,16 +2207,31 @@ export declare interface FilterBuilderProps {
 export declare const filterCardClass = "rounded-[var(--abc-radius-lg,0.75rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] p-4 shadow-[var(--abc-shadow-card)]";
 
 /**
- * 分类胶囊单选组 (FilterPillGroup)
- * 用于状态过滤（如 全部/待审批/已通过/已拒绝）的快速切换
+ * 分类胶囊单选/多选组 (FilterPillGroup)
+ * 用于状态过滤（单选互斥）或标签集合勾选（multiple 多选）的快速切换
  */
-export declare function FilterPillGroup<T extends string = string>({ options, value, onValueChange, size, className, ...props }: FilterPillGroupProps<T>): React_2.JSX.Element;
+export declare function FilterPillGroup<T extends string = string>(props: FilterPillGroupSingleProps<T>): React_2.ReactElement;
 
-export declare interface FilterPillGroupProps<T extends string = string> extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'onChange'> {
+export declare function FilterPillGroup<T extends string = string>(props: FilterPillGroupMultipleProps<T>): React_2.ReactElement;
+
+export declare interface FilterPillGroupMultipleProps<T extends string = string> extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'onChange'> {
+    /** 开启多选胶囊模式（点击已选胶囊取消选中，点击未选胶囊追加选中） */
+    multiple: true;
+    options: ReadonlyArray<FilterPillOption<T>>;
+    value: ReadonlyArray<string>;
+    onValueChange: (value: T[]) => void;
+    size?: 'xs' | 'sm' | 'md';
+}
+
+export declare type FilterPillGroupProps<T extends string = string> = FilterPillGroupSingleProps<T> | FilterPillGroupMultipleProps<T>;
+
+export declare interface FilterPillGroupSingleProps<T extends string = string> extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'onChange'> {
+    /** 是否开启多选模式（默认 false 为单选互斥模式） */
+    multiple?: false;
     options: ReadonlyArray<FilterPillOption<T>>;
     value: T;
     onValueChange: (value: T) => void;
-    size?: 'sm' | 'md';
+    size?: 'xs' | 'sm' | 'md';
 }
 
 export declare interface FilterPillOption<T extends string = string> {
@@ -4747,6 +4788,8 @@ export declare function resolveFieldKey(field: {
 
 export declare function resolveSemanticLucideIcon(token?: string | null): LucideIcon;
 
+export declare function resolveSortableKey<T>(item: T, rowKey?: SortableRowKey<T>): string | number;
+
 export declare function resolveStatusBadgeVariant(status: string): StatusBadgeVariant;
 
 /**
@@ -5130,6 +5173,199 @@ export declare const sonnerToast: ((title: React_2.ReactNode, opts?: {
     }) => string | number;
     dismiss: (id?: string | number) => void;
 };
+
+export declare interface SortableItemRenderMeta {
+    index: number;
+    total: number;
+    selected: boolean;
+    dragging: boolean;
+    grabbed: boolean;
+}
+
+/**
+ * 可拖拽重排紧凑卡片列表原语 (SortableList)
+ *
+ * 遵循现代 Web 拖拽与动态排序无障碍规范：
+ * 1. 独立拖拽手柄（限定 touch-action: none 与 user-select: none，保留正文选择与滚屏）；
+ * 2. 单指针捕获 + 布局中点计算落点 + CSS ::before/::after 缝隙落点指示线（拖拽中不抖动重排 DOM，松手一次性提交）；
+ * 3. 完整支持键盘 Space 抓取 / 方向键移动 / Esc 取消回滚及单条 sr-only role="status" 礼貌播报。
+ */
+export declare function SortableList<T>({ items, rowKey, onReorder, getItemLabel, selectedKey, onSelect, renderItem, renderActions, showMoveButtons, showIndexBadge, disabled, emptyNode, labels: customLabels, className, itemClassName, ...rest }: SortableListProps<T>): React_2.JSX.Element;
+
+export declare namespace SortableList {
+    var displayName: string;
+}
+
+export declare interface SortableListLabels {
+    /** 拖拽手柄无障碍标签 */
+    dragHandleLabel?: (itemLabel: string, position: number, total: number) => string;
+    /** 键盘聚焦未抓取时的提示文案 */
+    idleFocusHint?: string;
+    /** 键盘抓取态提示文案 */
+    grabbedHint?: string;
+    /** 屏幕阅读器抓取播报 */
+    grabbedAnnouncement?: (itemLabel: string, position: number, total: number) => string;
+    /** 屏幕阅读器移动后播报 */
+    movedAnnouncement?: (itemLabel: string, position: number, total: number) => string;
+    /** 屏幕阅读器放下播报 */
+    droppedAnnouncement?: (itemLabel: string, position: number, total: number) => string;
+    /** 屏幕阅读器取消重排播报 */
+    cancelledAnnouncement?: (itemLabel: string) => string;
+    /** 显式上移按钮标签 */
+    moveUpLabel?: (itemLabel: string) => string;
+    /** 显式下移按钮标签 */
+    moveDownLabel?: (itemLabel: string) => string;
+}
+
+export declare interface SortableListProps<T> extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'onSelect' | 'children'> {
+    /** 列表数据源 */
+    items: ReadonlyArray<T>;
+    /** 行唯一键字段名或提取器（默认 'id'） */
+    rowKey?: SortableRowKey<T>;
+    /** 重排完成回调 */
+    onReorder: (nextItems: T[], meta: SortableMoveMeta) => void;
+    /** 获取条目的纯文本名称（用于无障碍手柄命名与状态播报） */
+    getItemLabel?: (item: T, index: number) => string;
+    /** 当前激活/选中的条目键（用于配合右侧详情面板高亮） */
+    selectedKey?: string | number | null;
+    /** 点击条目主内容区触发选中回调 */
+    onSelect?: (item: T, index: number) => void;
+    /** 渲染条目紧凑摘要内容 */
+    renderItem: (item: T, meta: SortableItemRenderMeta) => React_2.ReactNode;
+    /** 渲染条目右侧独立快捷动作槽（点击不会触发行选中） */
+    renderActions?: (item: T, meta: SortableItemRenderMeta) => React_2.ReactNode;
+    /** 是否在右侧同时显示显式上移/下移微按钮（默认 false） */
+    showMoveButtons?: boolean;
+    /** 是否显示左侧序号徽标（默认 true） */
+    showIndexBadge?: boolean;
+    /** 禁用拖拽与排序操作 */
+    disabled?: boolean;
+    /** 空列表占位节点 */
+    emptyNode?: React_2.ReactNode;
+    /** 多语言与无障碍文案覆写 */
+    labels?: SortableListLabels;
+    /** 单条卡片附加类名 */
+    itemClassName?: string;
+}
+
+export declare interface SortableMoveMeta {
+    fromIndex: number;
+    toIndex: number;
+    key: string | number;
+    trigger: 'pointer' | 'keyboard' | 'button';
+}
+
+export declare type SortableRowKey<T> = (keyof T & string) | ((item: T) => string | number);
+
+/**
+ * 紧凑可拖拽排序列表 × 右侧内联挤压编辑工作台 (SortableSplitEditor)
+ *
+ * 专为多卡片表单（如支付渠道配置、路由策略、通知钩子等）的空间压缩与顺序编排设计：
+ * - 左侧仅展示单行高密度摘要卡片并支持拖拽/键盘重排；
+ * - 拖拽后在前端暂存新顺序，顶栏自动浮现“顺序未保存”徽标与“重置顺序 / 保存排序”按钮统一提交；
+ * - 点击任意条目或顶栏“新建”按钮时，在右侧平滑挤出非阻塞式 SplitDetailPanel（支持上下条快捷切换与一键收起释放全宽）。
+ */
+export declare function SortableSplitEditor<T>({ items, rowKey, title, description, headerExtra, getItemLabel, renderItem, renderItemActions, renderEditor, renderPanelFooter, renderPanelTitle, renderPanelSubtitle, renderPanelBadge, onSaveOrder, onStagedOrderChange, selectedKey: controlledSelectedKey, defaultSelectedKey, onSelectedKeyChange, allowCreate, creating: controlledCreating, onCreatingChange, showMoveButtons, showIndexBadge, disabled, loading, errorNode, emptyNode, panelWidth, storageKey, labels: customLabels, className, ...rest }: SortableSplitEditorProps<T>): React_2.JSX.Element;
+
+export declare namespace SortableSplitEditor {
+    var displayName: string;
+}
+
+export declare interface SortableSplitEditorLabels extends SortableListLabels {
+    /** 顺序变更待保存徽标文案 */
+    unsavedOrderBadge?: string;
+    /** 保存排序按钮文案 */
+    saveOrderButton?: string;
+    /** 重置排序按钮文案 */
+    resetOrderButton?: string;
+    /** 新建按钮文案 */
+    addButton?: string;
+    /** 新建态右侧面板默认标题 */
+    createPanelTitle?: string;
+    /** 编辑态右侧面板默认标题 */
+    editPanelTitle?: (itemLabel: string) => string;
+    /** 右侧面板关闭按钮无障碍标签 */
+    closePanelLabel?: string;
+    /** 上一条按钮标签 */
+    prevItemLabel?: string;
+    /** 下一条按钮标签 */
+    nextItemLabel?: string;
+    /** 沉浸展开按钮标签 */
+    expandPanelLabel?: string;
+    /** 还原分栏按钮标签 */
+    restorePanelLabel?: string;
+}
+
+export declare interface SortableSplitEditorProps<T> extends Omit<React_2.HTMLAttributes<HTMLElement>, 'title' | 'onSelect' | 'children'> {
+    /** 已持久化的基准列表数据 */
+    items: ReadonlyArray<T>;
+    /** 行唯一键（默认 'id'） */
+    rowKey?: SortableRowKey<T>;
+    /** 区块标题 */
+    title?: React_2.ReactNode;
+    /** 区块说明副标题 */
+    description?: React_2.ReactNode;
+    /** 顶栏右侧自定义扩展节点 */
+    headerExtra?: React_2.ReactNode;
+    /** 获取条目的纯文本名称 */
+    getItemLabel?: (item: T, index: number) => string;
+    /** 渲染左侧单行紧凑摘要内容 */
+    renderItem: (item: T, meta: SortableItemRenderMeta) => React_2.ReactNode;
+    /** 渲染左侧单行右侧独立动作区（如启停状态胶囊） */
+    renderItemActions?: (item: T, meta: SortableItemRenderMeta) => React_2.ReactNode;
+    /** 渲染右侧 SplitDetailPanel 内的详情/表单内容 */
+    renderEditor: (ctx: SortableSplitEditorRenderContext<T>) => React_2.ReactNode;
+    /** 渲染右侧 SplitDetailPanel 底部固定操作栏 */
+    renderPanelFooter?: (ctx: SortableSplitEditorRenderContext<T>) => React_2.ReactNode;
+    /** 自定义右侧面板标题 */
+    renderPanelTitle?: (ctx: SortableSplitEditorRenderContext<T>) => React_2.ReactNode;
+    /** 自定义右侧面板副标题 */
+    renderPanelSubtitle?: (ctx: SortableSplitEditorRenderContext<T>) => React_2.ReactNode;
+    /** 自定义右侧面板徽标 */
+    renderPanelBadge?: (ctx: SortableSplitEditorRenderContext<T>) => React_2.ReactNode;
+    /** 点击顶栏“保存排序”提交暂存顺序回调 */
+    onSaveOrder?: (orderedItems: T[]) => void | Promise<void>;
+    /** 暂存顺序变化通知回调 */
+    onStagedOrderChange?: (orderedItems: T[], orderDirty: boolean) => void;
+    /** 受控当前选中条目键 */
+    selectedKey?: string | number | null;
+    /** 初始选中条目键 */
+    defaultSelectedKey?: string | number | null;
+    /** 选中条目变更回调 */
+    onSelectedKeyChange?: (key: string | number | null) => void;
+    /** 是否允许顶栏显示“新建”按钮并切入右侧新建模式（默认 false） */
+    allowCreate?: boolean;
+    /** 受控新建模式开关 */
+    creating?: boolean;
+    /** 新建模式变更回调 */
+    onCreatingChange?: (creating: boolean) => void;
+    /** 是否显示左侧显式上下移微按钮（默认 false） */
+    showMoveButtons?: boolean;
+    /** 是否显示左侧序号徽标（默认 true） */
+    showIndexBadge?: boolean;
+    /** 禁用排序 */
+    disabled?: boolean;
+    /** 列表加载态 */
+    loading?: boolean;
+    /** 顶部错误提示节点 */
+    errorNode?: React_2.ReactNode;
+    /** 空列表占位节点 */
+    emptyNode?: React_2.ReactNode;
+    /** 右侧内联挤压详情面板初始宽度（默认 460） */
+    panelWidth?: number | string;
+    /** 持久化右侧面板宽度的存储键 */
+    storageKey?: string;
+    /** 多语言与无障碍文案覆写 */
+    labels?: SortableSplitEditorLabels;
+}
+
+export declare interface SortableSplitEditorRenderContext<T> {
+    mode: 'edit' | 'create';
+    item: T | null;
+    index: number;
+    total: number;
+    close: () => void;
+}
 
 export declare type SortDirection = 'asc' | 'desc' | null;
 

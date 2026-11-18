@@ -193,3 +193,4 @@ export function AdminShell() {
 | **5. 大盘图表点击下钻与多源筛选联动** | `AbcChart` (`onEvents`) + `ActiveFilterBar` (`source: 'chart'`) + `StatCard` + `DataTable` | 每个大盘页重复手写各色过滤胶囊与统计汇总条 |
 | **6. 跨步校验向导表单与变更 Diff 审阅确认** | `ProStepsForm`（含步间异步 `validate` 守卫与草稿无损保留） + `ConfigDiffViewer`（对象字段 + 代码 LCS 双视图与自动脱敏） | 手写步骤条状态同步逻辑或手写对象键值/文本差异比对算法 |
 | **7. 跨分页批量操作队列监控与失败局部重试** | `ProTable` / `TableCore` 多选 + `BatchActionTracker`（`inline` / `floating` 进度追踪、错误过滤与 `onRetryFailed`） | 为每个批量操作弹窗手写一套带重试队列的状态浮窗 |
+| **8. 多卡片大表单空间压缩、拖拽排序暂存与右侧挤压编辑** | `SortableSplitEditor` + `SortableList` + `@abc-design/core/sortable`（`arrayMove` / `isOrderDirty` / `reconcileStagedOrder`） + `SplitDetailPanel` | 平铺多张巨型全量表单卡片撑爆视口，或只做上下移按钮而缺少手柄拖拽与暂存排序 |

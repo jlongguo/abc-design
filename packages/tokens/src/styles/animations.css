@@ -482,3 +482,64 @@
     pointer-events: none;
   }
 }
+
+/* ============================================================================
+ * 可拖拽排序列表与落点指示线 (SortableList & Drop Marker)
+ * ============================================================================ */
+.abc-sortable-dragging,
+.abc-sortable-dragging * {
+  cursor: grabbing !important;
+}
+
+.abc-sortable-handle {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.abc-sortable-list {
+  --abc-drop-color: var(--abc-primary);
+}
+
+@media (forced-colors: active) {
+  .abc-sortable-list {
+    --abc-drop-color: Highlight;
+  }
+}
+
+.abc-sortable-list[data-drop="true"]::before,
+.abc-sortable-list[data-drop="true"]::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  z-index: 60;
+}
+
+/* 左侧落点圆环 */
+.abc-sortable-list[data-drop="true"]::before {
+  left: calc(var(--abc-drop-x, 0px) - 4px);
+  top: calc(var(--abc-drop-y, 0px) - 4px);
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  border: 2px solid var(--abc-drop-color);
+  background: var(--abc-bg-surface);
+}
+
+/* 缝隙水平指示线 */
+.abc-sortable-list[data-drop="true"]::after {
+  left: calc(var(--abc-drop-x, 0px) + 4px);
+  top: calc(var(--abc-drop-y, 0px) - 1px);
+  width: calc(var(--abc-drop-w, 0px) - 4px);
+  height: 2px;
+  border-radius: 9999px;
+  background: var(--abc-drop-color);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

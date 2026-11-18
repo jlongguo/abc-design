@@ -126,7 +126,7 @@ const DOMAIN_INDEX_GROUPS = [
     routes: [
       { path: '/linkage/master-detail', title: '左树右表与审计四方工作台', symbols: ['ResizableSplitPane', 'ProSplitWorkbench', 'SplitDetailPanel', 'ReasonedActionDrawer'] },
       { path: '/linkage/dynamic-form', title: '动态表单级联、列表与键值', symbols: ['ProFormProvider', 'ProFormDependency', 'ProFormList', 'KeyValueInput'] },
-      { path: '/linkage/editable-table', title: '行内编辑矩阵与跨列校验汇总', symbols: ['EditableProTable', 'evaluateRuleGroup'] },
+      { path: '/linkage/editable-table', title: '行内编辑矩阵与可拖拽分栏卡片', symbols: ['EditableProTable', 'SortableSplitEditor', 'SortableList'] },
       { path: '/linkage/query-builder', title: '嵌套规则构建器与视图收藏栏', symbols: ['FilterBuilder', 'RuleBuilder', 'SavedFilterViews'] },
       { path: '/linkage/cross-filter', title: '图表下钻与多源交叉过滤大盘', symbols: ['AbcChart', 'ActiveFilterBar', 'StatCard', 'DataTable'] },
       { path: '/linkage/wizard-batch', title: '分步校验向导、Diff 与批处理追踪', symbols: ['ProStepsForm', 'ConfigDiffViewer', 'BatchActionTracker'] },
