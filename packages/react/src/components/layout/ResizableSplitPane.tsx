@@ -287,22 +287,28 @@ export const ResizableSplitPane = React.forwardRef<HTMLDivElement, ResizableSpli
             >
               <span
                 aria-hidden="true"
+                data-slot="split-resize-line"
                 className={cn(
                   'rounded-full bg-[var(--abc-border)] transition-colors group-hover:bg-[var(--abc-primary)] group-focus-visible:bg-[var(--abc-primary)]',
                   isHorizontal ? 'h-full w-px group-hover:w-0.5' : 'h-px w-full group-hover:h-0.5'
                 )}
               />
-              {isHorizontal ? (
-                <GripVertical
-                  aria-hidden="true"
-                  className="pointer-events-none absolute h-3.5 w-3.5 text-[var(--abc-fg-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-                />
-              ) : (
-                <GripHorizontal
-                  aria-hidden="true"
-                  className="pointer-events-none absolute h-3.5 w-3.5 text-[var(--abc-fg-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-                />
-              )}
+              <span
+                aria-hidden="true"
+                data-slot="split-resize-handle"
+                className={cn(
+                  'pointer-events-none absolute z-10 inline-flex items-center justify-center rounded-full border border-[var(--abc-border-strong,var(--abc-border))] bg-[var(--abc-bg-surface)] text-[var(--abc-fg-muted)] shadow-2xs transition-all',
+                  'group-hover:border-[var(--abc-primary)] group-hover:text-[var(--abc-primary)] group-hover:shadow-sm group-focus-visible:border-[var(--abc-primary)] group-focus-visible:text-[var(--abc-primary)]',
+                  isHorizontal ? 'h-7 w-3.5' : 'h-3.5 w-7',
+                  collapsible && (isHorizontal ? '-translate-y-7' : '-translate-x-7')
+                )}
+              >
+                {isHorizontal ? (
+                  <GripVertical className="h-3 w-3" />
+                ) : (
+                  <GripHorizontal className="h-3 w-3" />
+                )}
+              </span>
             </div>
           )}
 

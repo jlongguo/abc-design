@@ -15,7 +15,6 @@ import {
   ChevronsUpDown,
   RotateCw,
   Search,
-  X,
 } from 'lucide-react'
 import { useAbcMotion, useAbcSize } from '../../hooks/useAbcDefaults'
 import { useAbcConfig } from '../../provider/AbcProvider'
@@ -23,7 +22,7 @@ import type { AbcCaptchaAdapter, AbcCaptchaData } from '../../provider/types'
 import { cn } from '../../utils/cn'
 import Icon from '../icon/Icon'
 import { Checkbox } from './Controls'
-import { Input, baseFieldControlClass } from './Input'
+import { Input } from './Input'
 
 export type { AbcTreeNode }
 
@@ -288,129 +287,9 @@ export const Tree: React.FC<TreeProps> = ({
   )
 }
 
-/* ==================== 2. TagInput 多标签回车输入器 ==================== */
+/* ==================== 2. TagInput 多标签回车输入器（独立拆分为 ./TagInput） ==================== */
 
-export interface TagInputProps {
-  value?: string[]
-  defaultValue?: string[]
-  onChange?: (tags: string[]) => void
-  placeholder?: string
-  maxTags?: number
-  disabled?: boolean
-  size?: AbcSize
-  motion?: AbcMotionPreset
-  className?: string
-}
-
-const TAG_INPUT_MIN_H: Record<AbcSize, string> = {
-  xs: 'min-h-[var(--abc-control-h-xs)] text-xs',
-  sm: 'min-h-[var(--abc-control-h-sm)] text-xs',
-  md: 'min-h-[var(--abc-control-h-md)] text-sm',
-  lg: 'min-h-[var(--abc-control-h-lg)] text-sm',
-}
-
-const TAG_CHIP_SIZE: Record<AbcSize, string> = {
-  xs: 'px-1.5 py-0 text-[11px]',
-  sm: 'px-2 py-0.5 text-xs',
-  md: 'px-2.5 py-0.5 text-xs',
-  lg: 'px-2.5 py-1 text-sm',
-}
-
-/**
- * 多标签胶囊输入框 (TagInput)
- * 支持四档规格、动效规格、回车或英文逗号生成标签、自动去重与退格删除末尾项
- */
-export const TagInput: React.FC<TagInputProps> = ({
-  value: controlledValue,
-  defaultValue = [],
-  onChange,
-  placeholder = '输入后按回车添加标签...',
-  maxTags = 20,
-  disabled = false,
-  size,
-  motion,
-  className,
-}) => {
-  const resolvedSize = useAbcSize(size, 'sm')
-  const resolvedMotion = useAbcMotion(motion)
-  const [internalTags, setInternalTags] = useState<string[]>(defaultValue)
-  const [draft, setDraft] = useState('')
-  const tags = controlledValue !== undefined ? controlledValue : internalTags
-
-  const commitTags = (next: string[]) => {
-    if (controlledValue === undefined) setInternalTags(next)
-    onChange?.(next)
-  }
-
-  const addDraft = () => {
-    const clean = draft.trim()
-    if (!clean || disabled) return
-    if (tags.includes(clean) || tags.length >= maxTags) {
-      setDraft('')
-      return
-    }
-    commitTags([...tags, clean])
-    setDraft('')
-  }
-
-  const removeAt = (idx: number) => {
-    if (disabled) return
-    commitTags(tags.filter((_, i) => i !== idx))
-  }
-
-  return (
-    <div
-      data-motion={resolvedMotion}
-      className={cn(
-        'flex flex-wrap items-center gap-1.5 px-2 py-1',
-        TAG_INPUT_MIN_H[resolvedSize],
-        baseFieldControlClass,
-        disabled && 'opacity-65 cursor-not-allowed',
-        className
-      )}
-    >
-      {tags.map((tag, idx) => (
-        <span
-          key={`${tag}_${idx}`}
-          className={cn(
-            'inline-flex items-center gap-1 rounded-[var(--abc-radius-xs)] bg-[var(--abc-primary-soft)] font-medium text-[var(--abc-primary)] abc-motion-pop',
-            TAG_CHIP_SIZE[resolvedSize]
-          )}
-        >
-          <span>{tag}</span>
-          {!disabled && (
-            <button
-              type="button"
-              aria-label={`移除标签 ${tag}`}
-              onClick={() => removeAt(idx)}
-              className="rounded-full hover:opacity-75 cursor-pointer"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          )}
-        </span>
-      ))}
-      <input
-        type="text"
-        aria-label="添加标签输入"
-        disabled={disabled || tags.length >= maxTags}
-        value={draft}
-        placeholder={tags.length === 0 ? placeholder : ''}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={addDraft}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ',') {
-            e.preventDefault()
-            addDraft()
-          } else if (e.key === 'Backspace' && !draft && tags.length > 0) {
-            removeAt(tags.length - 1)
-          }
-        }}
-        className="min-w-[110px] flex-1 bg-transparent text-inherit text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] focus:outline-none"
-      />
-    </div>
-  )
-}
+export { TagInput, type TagInputProps } from './TagInput'
 
 /* ==================== 3. SliderVerify 滑块拼图安全验证组件 ==================== */
 

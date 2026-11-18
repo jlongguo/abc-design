@@ -143,6 +143,11 @@ export function useProTableSetup<
   motion,
   onSaveRecord,
   onDeleteRecords,
+  emptyText,
+  emptyDescription,
+  emptyAction,
+  emptyNode,
+  onEmptyReset,
 } = props
   const storageKey = propStorageKey ?? tableId
   const { toast } = useAbcConfig()
@@ -816,6 +821,11 @@ export function useProTableSetup<
     motion,
     onSaveRecord,
     onDeleteRecords,
+    emptyText,
+    emptyDescription,
+    emptyAction,
+    emptyNode,
+    onEmptyReset,
     toast,
     resolvedMotion,
     abcHasPermission,

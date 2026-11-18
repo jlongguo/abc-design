@@ -12,9 +12,10 @@
 
 ### `ProLayout`（多布局统一应用外壳）
 - **核心 Props**：
-  - `brand?: AbcBrandInfo`、`menuItems: AbcMenuItem[]`、`pathname: string`、`onNavigate: (path: string, item?: AbcMenuItem) => void`
+  - `brand?: AbcBrandInfo`、`menuItems: AbcMenuItem[]`（`AbcMenuItem` 支持 `keywords?: string | string[]` 组件/同义词检索词，透传至侧边栏筛选与 `⌘K` 全局面板）、`pathname: string`、`onNavigate: (path: string, item?: AbcMenuItem) => void`
   - `settings?: Partial<AbcLayoutSettings>`、`defaultSettings?: Partial<AbcLayoutSettings>`、`onSettingsChange?: (next: AbcLayoutSettings) => void`
-  - `user?: AbcUserInfo`、`headerExtra?: ReactNode`、`commandActions?: CommandActionItem[]`
+  - `user?: AbcUserInfo`、`headerExtra?: ReactNode`、`commandActions?: CommandActionItem[]`（`CommandActionItem` 支持 `symbol?: string` 精确符号提权、`badge?: string` 与 `priority?: number`）
+  - 搜索与侧栏检索：`searchPlaceholder?: string`、`commandPlaceholder?: string`、`sidebarSearch?: boolean`（展开态侧边栏顶部渲染分类/组件实时筛选框，自动展示匹配 `commandActions` 的「匹配组件直达」并支持向 `⌘K` 透传检索词）、`sidebarSearchPlaceholder?: string`
   - `tabs?: AbcTabItem[]`、`onTabsChange?: (tabs: AbcTabItem[]) => void`
   - `authRender?: ReactNode`、`authProps?: Partial<AuthLayoutProps>`、`showCustomizerTrigger?: boolean`
   - `isolateTabError?: boolean`（默认 `true`，为多页签注入 `TabErrorBoundary`）、`homePath?: string`（默认 `'/'`）
@@ -113,7 +114,7 @@
   - `columns: DataTableColumn<T>[]`（列含 `{ key, header?, title?, render?, cell?, align?, mono?, width?, minWidth?, className?, cellClassName?, headerClassName? }`）
   - `data?: T[]` / `rows?: T[]`（等价别名）
   - `keyExtractor?: (item: T, index: number) => string | number` / `rowKey?: ...`
-  - 空状态：`emptyNode?`、`emptyTitle?`、`emptyDescription?`、`emptyAction?`
+  - 空状态：`emptyNode?`、`emptyTitle?`、`emptyDescription?`、`emptyIcon?`、`emptyAction?`、`onEmptyReset?`、`emptyResetText?`
   - 状态与外观：`loading?: boolean`、`skeletonRows?: number`（默认 `5`）、`loadingStatusText?: string`、`keepHeaderWhenEmpty?: boolean`、`framed?: boolean`（默认 `true`）、`stickyHeader?: boolean`、`density?: 'compact' | 'comfortable' | 'relaxed' | AbcSize`
   - 行选中：`onRowClick?: (item: T) => void`（自动带键盘 Enter/Space 激活）、`selectedRowKey?: string | number | null`
   - 分页集成：`pagination?: PaginationProps`（内联渲染 `SmartPagination`，支持 `offset` 与 `cursor` 双模）
@@ -126,6 +127,7 @@
   - 搜索与工具栏：`searchVariant?: 'card' | 'toolbar' | 'none'`、`headerFilterMode?`、`showHeaderFilterToggle?`、`clientFilter?`、`autoRefresh?`、`exportable?`/`showExport?`、`syncToUrl?`
   - 表单与详情：`formContainer?: 'dialog' | 'drawer'`、`formColumns?: 1 | 2`、`viewable?`/`showView?`、`selectedRowKey?`、`onRowClick?`
   - 行操作：`rowActions?: ProTableRowAction<T>[]`、`actionButtons?: ProActionButtonConfig<T>[]`、`maxInlineActions?: number`、`showBatchDelete?`
+  - 空状态：`emptyText?: ReactNode`、`emptyDescription?: ReactNode`、`emptyAction?: ReactNode`、`emptyNode?: ReactNode`、`onEmptyReset?: () => void`
 
 ### `FilterToolbar`
 - 紧凑表格上方检索工具条：`surface?: boolean`、`hasActiveFilters?: boolean`、`onReset?: () => void`、`resetLabel?: ReactNode`、`search?: ReactNode`、`filters?: ReactNode`、`trailing?: ReactNode`
@@ -204,8 +206,11 @@
   - `heightClass?: string`（默认 `'h-[440px]'`）、`estimateSize?: number`（默认 `26`）、`overscan?: number`（默认 `12`）
   - `defaultStickBottom?: boolean`、`labels?: ProLogViewerLabels`
 
-### `ProCommandPalette` & `CommandTriggerButton`
-- 全局 `Cmd+K` / `Ctrl+K` 指令面板与顶部触发按钮：
+### `CommandPalette` / `ProCommandPalette` & `CommandTriggerButton`
+- `CommandPalette`（`ProLayout` 内置 Spotlight 级 720px 指令与组件检索引擎）：
+  - `open: boolean`、`onClose: () => void`、`placeholder?: string`、`menuItems?: AbcMenuItem[]`、`extraActions?: CommandActionItem[]`、`onNavigate?: (path, item) => void`
+  - `CommandActionItem`: `{ id, title, subtitle?, badge?, icon?, shortcut?, keywords?, group?, priority?, onTrigger }`（支持空格多分词 AND 拼音/英文混合检索、主符号精确/前缀加权排序、分组命中计数胶囊与最近访问持久化）
+- `ProCommandPalette`（独立实体直达与动作面板）与顶部触发按钮：
   - `ProCommandPalette`: `open?: boolean`、`onOpenChange?: (open: boolean) => void`、`enableShortcut?: boolean`（默认 `true`）、`entityMatchers?: ProCommandEntityMatcher[]`（前缀如 `job_` / `org_` 直达跳转）、`pages?: ProCommandPageItem[]`、`onNavigate?: (to, page) => void`、`actions?: ProCommandActionItem[]`、`labels?: ProCommandPaletteLabels`、`searchQuery?`、`onSearchQueryChange?`
   - `CommandTriggerButton`: `{ onClick: () => void; placeholder?: string; mobilePlaceholder?: string; ariaLabel?: string }`
 

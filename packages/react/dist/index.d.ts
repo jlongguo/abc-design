@@ -4,6 +4,7 @@ import { AbcDensity } from '@abc-design/tokens';
 import { AbcDiffKind } from '@abc-design/core';
 import { AbcFieldDiffEntry } from '@abc-design/core';
 import { AbcFontScale } from '@abc-design/tokens';
+import { AbcJsonPathFormat } from '@abc-design/core';
 import { AbcKeyValueEntry } from '@abc-design/core';
 import { AbcKeyValueFormat } from '@abc-design/core';
 import { AbcLineDiffEntry } from '@abc-design/core';
@@ -37,6 +38,8 @@ import * as React_2 from 'react';
 import { ReactElement } from 'react';
 import { ReactNode } from 'react';
 import { ReactPortal } from 'react';
+import { RejectedTagItem } from '@abc-design/core';
+import { TagRejectReason } from '@abc-design/core';
 
 export declare const ABC_HEADER_HEIGHT_BY_SIZE: Record<AbcSize, number>;
 
@@ -272,6 +275,8 @@ export declare interface AbcLayoutSettings {
     sidebarTone: AbcSidebarTone;
     sidebarCollapsed: boolean;
     sidebarAccordion: boolean;
+    /** 是否在展开态侧边栏顶部渲染快捷菜单/组件过滤输入框 */
+    sidebarSearch?: boolean;
     showTabs: boolean;
     tabStyle?: AbcTabStyle;
     keepAlive: boolean;
@@ -299,6 +304,8 @@ export declare interface AbcMenuItem {
     path?: string;
     icon?: string | default_2.ReactNode;
     badge?: string | number;
+    /** 附加检索关键词（如本路由包含的组件符号、英文别名或业务术语，供侧栏筛选与 ⌘K 搜索匹配） */
+    keywords?: string | string[];
     disabled?: boolean;
     groupTitle?: string;
     children?: AbcMenuItem[];
@@ -1115,9 +1122,10 @@ export declare function clearToasts(): void;
 export declare function cn(...inputs: ClassValue[]): string;
 
 /**
- * 统一深色终端/代码块展示组件 (CodeBlock)
+ * 统一终端/代码块展示组件 (CodeBlock)
+ * 支持深色终端风格与亮/暗双主题语义表面风格、行号、折行、折叠与一键复制
  */
-export declare function CodeBlock({ code, title, language, copyable, copyLabel, copiedLabel, copyAriaLabel, headerAction, preClassName, maxHeightClassName, showLineNumbers, wrapLongLines, className, children, ...props }: CodeBlockProps): React_2.JSX.Element;
+export declare function CodeBlock({ code, title, language, variant, copyable, copyLabel, copiedLabel, copyAriaLabel, onCopySuccess, onCopyError, headerAction, preClassName, maxHeightClassName, maxHeight, collapsible, defaultCollapsed, emptyText, showLineNumbers, wrapLongLines, className, children, ...props }: CodeBlockProps): React_2.JSX.Element;
 
 export declare interface CodeBlockProps extends Omit<React_2.HTMLAttributes<HTMLDivElement>, 'title'> {
     /** 代码文本内容（同时作为一键复制的数据源） */
@@ -1126,6 +1134,8 @@ export declare interface CodeBlockProps extends Omit<React_2.HTMLAttributes<HTML
     title?: React_2.ReactNode;
     /** 语言或格式标识（如 bash / json / ts） */
     language?: string;
+    /** 外观变体：'terminal' 深色终端（默认） | 'surface' 跟随亮/暗语义表面 */
+    variant?: 'terminal' | 'surface';
     /** 是否显示一键复制按钮，默认开启 */
     copyable?: boolean;
     /** 未复制时的按钮文案 */
@@ -1134,12 +1144,24 @@ export declare interface CodeBlockProps extends Omit<React_2.HTMLAttributes<HTML
     copiedLabel?: string;
     /** 复制按钮的无障碍名称 */
     copyAriaLabel?: string;
+    /** 复制成功回调 */
+    onCopySuccess?: () => void;
+    /** 复制失败回调 */
+    onCopyError?: () => void;
     /** 顶部右侧附加操作区插槽 */
     headerAction?: React_2.ReactNode;
     /** pre 元素附加样式（如高度限制 max-h-96） */
     preClassName?: string;
     /** pre 元素最大高度限制类名（兼容别名） */
     maxHeightClassName?: string;
+    /** 代码区最大滚动高度（数字按 px 处理） */
+    maxHeight?: number | string;
+    /** 是否支持折叠/展开代码块内容 */
+    collapsible?: boolean;
+    /** 初始是否折叠（配合 collapsible 使用） */
+    defaultCollapsed?: boolean;
+    /** code 为空字符串且未传 children 时的占位内容 */
+    emptyText?: React_2.ReactNode;
     /** 是否展示行号列（仅在未传自定义 children 时生效） */
     showLineNumbers?: boolean;
     /** 是否允许长行自动折行 */
@@ -1202,15 +1224,22 @@ export declare type ColorSchemePreference = 'system' | 'light' | 'dark';
 export declare interface CommandActionItem {
     id: string;
     title: string;
+    /** 可选精确组件或 API 符号名（如 'Select'、'JsonTreeViewer'），用于精确符号搜索置顶提权与侧栏直达展示 */
+    symbol?: string;
     group?: string;
     subtitle?: string;
+    /** 右侧附加胶囊角标（如所属 npm 包名或 New 标记） */
+    badge?: string;
     icon?: string | default_2.ReactNode;
     keywords?: string;
+    /** 基础排序权重微调（数值越大越靠前） */
+    priority?: number;
     onTrigger: () => void;
 }
 
 /**
- * 企业级 Spotlight 全局指令与菜单快速跳转中心（支持 ⌘K / Ctrl+K 唤醒、中文拼音首字母检索、分组筛选与最近访问记忆）
+ * 企业级 Spotlight 全局指令、组件与菜单快速跳转中心
+ * 支持 ⌘K / Ctrl+K 唤醒、多分词中文拼音首字母检索、精确前缀相关度排序、分组筛选与最近访问记忆
  */
 export declare const CommandPalette: default_2.FC<CommandPaletteProps>;
 
@@ -1220,6 +1249,10 @@ export declare interface CommandPaletteProps {
     menuItems?: AbcMenuItem[];
     onNavigate?: (path: string, item: AbcMenuItem) => void;
     extraActions?: CommandActionItem[];
+    /** 搜索输入框占位提示文案 */
+    placeholder?: string;
+    /** 打开面板时预填的初始搜索词（如从侧边栏筛选框一键升级至全局精准搜索时透传） */
+    initialQuery?: string;
 }
 
 /**
@@ -1233,6 +1266,13 @@ export declare interface CommandTriggerButtonProps extends React_2.ButtonHTMLAtt
     mobilePlaceholder?: string;
     ariaLabel?: string;
 }
+
+/**
+ * 根据操作列当前可用像素宽度与各按钮自然宽度，计算可内联展示的按钮数量（0..N）：
+ * - 当所有按钮总宽 <= availableWidth 且未超出 maxInline 时，全量内联展示（不渲染三个点）；
+ * - 当宽度不足时，预留三个点按钮宽度（28px），随列宽逐一展示可容纳的前 K 项，极限窄宽返回 0（仅展示三个点）。
+ */
+export declare function computeAutoFitVisibleCount(availableWidth: number, widths: number[], maxInline?: number): number;
 
 /**
  * 配置变更差异审阅面板 (ConfigDiffViewer)
@@ -1440,7 +1480,7 @@ export declare const dangerButtonClass = "inline-flex items-center justify-cente
  * 轻量级通用数据表格 (DataTable)
  * 内置结构化骨架态加载、空状态表头保留开关、键盘可访问行选择以及可选双模分页条。
  */
-export declare function DataTable<T>({ columns, data, rows, keyExtractor, rowKey, emptyNode, emptyTitle, emptyDescription, emptyAction, loading, skeletonRows, loadingStatusText, keepHeaderWhenEmpty, framed, onRowClick, selectedRowKey, scrollLabel, stickyHeader, density, pagination, caption, className, }: DataTableProps<T>): default_2.JSX.Element;
+export declare function DataTable<T>({ columns, data, rows, keyExtractor, rowKey, emptyNode, emptyTitle, emptyDescription, emptyIcon, emptyAction, onEmptyReset, emptyResetText, loading, skeletonRows, loadingStatusText, keepHeaderWhenEmpty, framed, onRowClick, selectedRowKey, scrollLabel, stickyHeader, density, pagination, caption, className, }: DataTableProps<T>): default_2.JSX.Element;
 
 export declare namespace DataTable {
     var displayName: string;
@@ -1490,8 +1530,14 @@ export declare interface DataTableProps<T> {
     emptyTitle?: default_2.ReactNode;
     /** 默认空状态副标题 */
     emptyDescription?: default_2.ReactNode;
+    /** 默认空状态自定义图标 */
+    emptyIcon?: default_2.ReactNode;
     /** 默认空状态底部操作区 */
     emptyAction?: default_2.ReactNode;
+    /** 空状态快捷重置回调 */
+    onEmptyReset?: () => void;
+    /** 空状态重置按钮文案 */
+    emptyResetText?: string;
     /** 加载中状态（展示结构化骨架行并广播 aria-live 状态） */
     loading?: boolean;
     /** 骨架行数（默认 5） */
@@ -1589,6 +1635,8 @@ export declare type DateRangeTuple = [string, string];
 
 export declare const DEFAULT_ABC_LAYOUT_SETTINGS: AbcLayoutSettings;
 
+export declare const DEFAULT_JSON_TREE_LABELS: Required<JsonTreeViewerLabels>;
+
 export declare const DENSITY_CELL_PY: Record<AbcTableDensity, string>;
 
 export declare const DescriptionItem: React_2.ForwardRefExoticComponent<DescriptionItemProps & React_2.RefAttributes<HTMLDivElement>>;
@@ -1607,7 +1655,8 @@ export declare interface DescriptionItemData {
     value: React_2.ReactNode;
     mono?: boolean;
     copyValue?: string;
-    span?: 1 | 2 | 3 | 'full';
+    emptyText?: React_2.ReactNode;
+    span?: 1 | 2 | 3 | 4 | 'full';
     className?: string;
 }
 
@@ -1616,7 +1665,8 @@ export declare interface DescriptionItemProps extends Omit<React_2.HTMLAttribute
     value?: React_2.ReactNode;
     mono?: boolean;
     copyValue?: string;
-    span?: 1 | 2 | 3 | 'full';
+    emptyText?: React_2.ReactNode;
+    span?: 1 | 2 | 3 | 4 | 'full';
     variant?: 'default' | 'cards' | 'divided' | 'compact';
     valueClassName?: string;
 }
@@ -1636,6 +1686,8 @@ export declare interface DescriptionListProps extends React_2.HTMLAttributes<HTM
     variant?: 'default' | 'cards' | 'divided' | 'compact';
     density?: 'default' | 'compact';
     bordered?: boolean;
+    /** 当项值为 null / undefined / '' 时的统一占位内容（默认 '-'） */
+    emptyText?: React_2.ReactNode;
     items?: DescriptionItemData[];
 }
 
@@ -1917,7 +1969,9 @@ export declare interface DropdownMenuItem {
     /** 独立分割线菜单项 */
     divider?: boolean;
     dividerAbove?: boolean;
-    onClick?: () => void;
+    onClick?: (event: default_2.MouseEvent<HTMLButtonElement>) => void;
+    /** 可选自定义菜单项节点（如包裹路由 Link） */
+    render?: (close: () => void) => default_2.ReactNode;
 }
 
 export declare const DropdownMenuLabel: default_2.ForwardRefExoticComponent<default_2.HTMLAttributes<HTMLDivElement> & {
@@ -2065,6 +2119,8 @@ export declare const EmptyState: default_2.FC<EmptyStateProps>;
 
 export declare interface EmptyStateProps {
     title?: default_2.ReactNode;
+    /** title 语义兼容别名 */
+    message?: default_2.ReactNode;
     description?: default_2.ReactNode;
     icon?: default_2.ReactNode;
     action?: default_2.ReactNode;
@@ -2620,6 +2676,98 @@ export declare function isSchemaFieldRequired(schema: ProSchemaLike | undefined,
 
 export declare function isSvgSource(src?: string | null): boolean;
 
+/** JsonTreeViewer 复制事件回调载荷 */
+export declare interface JsonTreeCopyInfo {
+    kind: 'root' | 'value' | 'path';
+    text: string;
+    path: string;
+}
+
+/**
+ * 通用结构化 JSON 树形检视与路径/值复制组件 (JsonTreeViewer)
+ * 支持字符串自动解析与错误兜底、搜索高亮与祖先自动展开、路径/值一键复制、大列表分批展开与键盘无障碍树导航
+ */
+export declare const JsonTreeViewer: default_2.FC<JsonTreeViewerProps>;
+
+/** JsonTreeViewer 文案国际化覆盖接口 */
+export declare interface JsonTreeViewerLabels {
+    searchPlaceholder?: string;
+    clearSearchLabel?: string;
+    expandAllLabel?: string;
+    collapseAllLabel?: string;
+    copyJsonLabel?: string;
+    copyValueLabel?: string;
+    copyPathLabel?: string;
+    copiedLabel?: string;
+    parseErrorTitle?: string;
+    emptyText?: string;
+    noMatchText?: string;
+    expandTextLabel?: string;
+    collapseTextLabel?: string;
+    expandNodeLabel?: string;
+    collapseNodeLabel?: string;
+    maxDepthNotice?: string;
+    searchTruncatedLabel?: string;
+    showMoreItemsLabel?: (remaining: number) => string;
+    matchCountLabel?: (count: number) => string;
+}
+
+export declare interface JsonTreeViewerProps extends Omit<default_2.HTMLAttributes<HTMLDivElement>, 'onCopy'> {
+    /** 数据源：支持任意 JSON 值（对象/数组/原始值）或 JSON 原始字符串 */
+    data: unknown;
+    /** 当 data 为字符串时是否自动 JSON.parse（默认 true；解析失败自动渲染错误提示与原文兜底） */
+    parseString?: boolean;
+    /** 可选根节点展示键名（如 'root'），默认不显示根键名 */
+    rootLabel?: string;
+    /** 默认展开层级（默认 2；0 表示全部折叠，Infinity 表示全展开） */
+    defaultExpandDepth?: number;
+    /** 受控已展开路径集合（如 ['$', '$.items']） */
+    expandedPaths?: string[];
+    /** 非受控初始展开路径集合（传值时优先于 defaultExpandDepth） */
+    defaultExpandedPaths?: string[];
+    /** 展开路径变更回调 */
+    onExpandedPathsChange?: (paths: string[]) => void;
+    /** 是否显示顶部工具栏（默认 true） */
+    showToolbar?: boolean;
+    /** 工具栏扩展插槽 */
+    toolbarExtra?: default_2.ReactNode;
+    /** 是否开启搜索框（默认 true，受 showToolbar 控制显示） */
+    searchable?: boolean;
+    /** 受控搜索关键词 */
+    searchQuery?: string;
+    /** 非受控初始搜索关键词 */
+    defaultSearchQuery?: string;
+    /** 搜索关键词变更回调 */
+    onSearchQueryChange?: (query: string) => void;
+    /** 搜索时是否仅显示匹配节点及其祖先路径（默认 true；false 时保留整树仅高亮并展开匹配分支） */
+    filterOnSearch?: boolean;
+    /** 复制路径格式：'jsonpath'（$.a.b[0]）或 'dot'（a.b[0]），默认 'jsonpath' */
+    pathFormat?: AbcJsonPathFormat;
+    /** 是否开启复制操作（工具栏复制整段 JSON + 行内复制值与复制路径，默认 true） */
+    copyable?: boolean;
+    /** 复制成功回调 */
+    onCopy?: (info: JsonTreeCopyInfo) => void;
+    /** 单容器默认最大渲染直接子节点数（默认 100，支持点击分批追加） */
+    maxChildren?: number;
+    /** 长字符串默认折叠字符阈值（默认 240，超出显示展开/收起切换） */
+    maxStringLength?: number;
+    /** 最大递归深度保护（默认 20） */
+    maxDepth?: number;
+    /** 树内容滚动区域最大高度（数字按 px 处理，或传 CSS 长度如 '60dvh'） */
+    maxHeight?: number | string;
+    /** 是否展示容器摘要计数（如 {4 keys} / Array(12)，默认 true） */
+    showItemCount?: boolean;
+    /** 空数据提示文案（data === undefined 或空串时显示） */
+    emptyText?: default_2.ReactNode;
+    /** 国际化文案覆盖 */
+    labels?: JsonTreeViewerLabels;
+    /** 是否渲染外边框与卡片底色（默认 true） */
+    bordered?: boolean;
+    size?: AbcSize;
+    motion?: AbcMotionPreset;
+    ariaLabel?: string;
+}
+
 /** 键盘快捷键徽标 */
 export declare const Kbd: default_2.FC<KbdProps>;
 
@@ -2664,9 +2812,37 @@ export declare interface KeepAliveContainerProps {
 
 /**
  * 企业级环境变量与请求头键值对编辑器 (KeyValueInput)
- * 内置重复 Key 实时告警、单行启用开关、密文遮罩切换及 .env / Headers / JSON 双向批量编辑
+ * 内置重复 Key 实时告警、单行启用开关、密文遮罩切换、智能粘贴拆行及 .env / Headers / JSON 双向批量编辑
  */
 export declare const KeyValueInput: default_2.FC<KeyValueInputProps>;
+
+/** KeyValueInput 国际化文案配置 */
+export declare interface KeyValueInputLabels {
+    countLabel?: (count: number) => string;
+    limitedCountLabel?: (count: number, max: number) => string;
+    duplicateCountLabel?: (count: number) => string;
+    duplicateBannerLabel?: (keys: string[]) => string;
+    modeGroupAriaLabel?: string;
+    structuredModeLabel?: string;
+    bulkModeLabel?: string;
+    bulkFormatHint?: string;
+    bulkEditorAriaLabel?: string;
+    cancelLabel?: string;
+    applyLabel?: string;
+    emptyText?: string;
+    addLabel?: string;
+    enableItemLabel?: (index: number) => string;
+    keyAriaLabel?: (index: number) => string;
+    valueAriaLabel?: (index: number) => string;
+    removeItemLabel?: (index: number) => string;
+    removeItemTitle?: string;
+    showSecretLabel?: (index: number) => string;
+    hideSecretLabel?: (index: number) => string;
+    showSecretTitle?: string;
+    hideSecretTitle?: string;
+    invalidJsonObjectError?: string;
+    invalidJsonSyntaxError?: string;
+}
 
 export declare interface KeyValueInputProps {
     /** 受控键值对列表 */
@@ -2683,14 +2859,22 @@ export declare interface KeyValueInputProps {
     allowBulkEdit?: boolean;
     /** 批量文本编辑器默认格式（默认 'dotenv'） */
     defaultBulkFormat?: AbcKeyValueFormat;
+    /** 是否允许在 Key 输入框粘贴多行 .env / Headers / JSON 时自动拆行导入（默认 true） */
+    smartPaste?: boolean;
     /** Key 输入框占位符 */
     keyPlaceholder?: string;
     /** Value 输入框占位符 */
     valuePlaceholder?: string;
+    /** 空列表占位文案（优先级高于 labels.emptyText） */
+    emptyText?: default_2.ReactNode;
+    /** 国际化文案覆盖 */
+    labels?: KeyValueInputLabels;
     /** 最大允许条目数 */
     maxItems?: number;
     /** 是否禁用全部输入与操作 */
     disabled?: boolean;
+    /** 是否只读展示（保留明密文查看与批量只读浏览，禁止增删改） */
+    readOnly?: boolean;
     /** 控件尺寸规格 */
     size?: AbcSize;
     className?: string;
@@ -3145,6 +3329,17 @@ export declare interface ProActionButtonConfig<T = Record<string, any>> {
     permission?: string;
     onClick?: (record: T) => void | Promise<any>;
 }
+
+/**
+ * 自适应 JSX 操作列容器 (ProAdaptiveActionCell)
+ * 自动接管自定义 `render` 操作列返回的按钮组，当列宽不足时逐一折叠至 `...` 下拉菜单，最小仅保留 `...`。
+ */
+export declare const ProAdaptiveActionCell: default_2.FC<{
+    children: default_2.ReactNode;
+    align?: 'left' | 'right' | 'center';
+    maxInline?: number;
+    moreLabel?: string;
+}>;
 
 export declare function ProColumnSettingsPopover<T = Record<string, any>>({ columns, searchableFieldNames, settings, hasActionColumn, defaultActionWidth, motion, onToggleVisible, onSetAllVisible, onSetFixed, onSetWidth, onSetOrder, onSetSearchVisible, onReset, }: ProColumnSettingsPopoverProps<T>): JSX.Element;
 
@@ -3895,7 +4090,7 @@ export declare interface ProIconFieldControlProps {
 /**
  * ABC Design 企业级全功能自适应壳层 (ProLayout)
  * 一套统一 API 支持 5 种主流中后台布局拓扑（sidebar / top / mix / dual-column / auth）
- * 并内置移动端抽屉导航、多页签栏、KeepAlive 保活、⌘K 拼音指令面板、防篡改水印与实时定制中心。
+ * 并内置移动端抽屉导航、多页签栏、KeepAlive 保活、⌘K 拼音/组件指令面板、防篡改水印与实时定制中心。
  */
 export declare const ProLayout: default_2.FC<ProLayoutProps>;
 
@@ -3918,8 +4113,16 @@ export declare interface ProLayoutProps {
     user?: AbcUserInfo;
     /** 顶栏右侧扩展插槽（如多租户切换器、消息中心铃铛） */
     headerExtra?: default_2.ReactNode;
-    /** 注入全局指令面板的自定义快捷动作 */
+    /** 注入全局指令面板的自定义快捷动作（如全量组件直达索引） */
     commandActions?: CommandActionItem[];
+    /** 顶栏右侧 ⌘K 按钮文案（默认 '搜索菜单...'） */
+    searchPlaceholder?: string;
+    /** ⌘K 全局指令面板输入框占位文案 */
+    commandPlaceholder?: string;
+    /** 是否在展开态侧边栏顶部渲染快捷筛选输入框（默认读取 settings.sidebarSearch） */
+    sidebarSearch?: boolean;
+    /** 侧边栏快捷筛选输入框占位文案 */
+    sidebarSearchPlaceholder?: string;
     /** 受控页签列表（若不传则由 ProLayout 根据访问轨迹自动维护） */
     tabs?: AbcTabItem[];
     onTabsChange?: (tabs: AbcTabItem[]) => void;
@@ -4051,9 +4254,11 @@ export declare interface ProPageHeaderProps {
 export declare const ProRowActionsOverflow: default_2.FC<{
     actions: ResolvedRowActionItem[];
     maxInline?: number;
-    /** 在真实浏览器列宽受限时动态测量子按钮实际宽度自适应收纳（jsdom 宽度为 0 时回退至 maxInline） */
+    /** 在真实浏览器列宽受限时动态测量子按钮实际宽度自适应收纳（jsdom 宽度为 0 时回退至 jsdomFallbackMax） */
     autoFit?: boolean;
+    jsdomFallbackMax?: number;
     align?: 'left' | 'right';
+    moreLabel?: string;
 }>;
 
 export declare interface ProSchemaLike<T = any> {
@@ -4511,6 +4716,16 @@ export declare interface ProTableProps<T extends Record<string, any> = any, Q ex
     onSaveRecord?: (values: Record<string, any>, editingRecord: T | null) => void | Promise<void>;
     /** 单行或批量删除回调（无 api 时的轻量直连模式） */
     onDeleteRecords?: (keys: Array<string | number>) => void | Promise<void>;
+    /** 空状态主标题 */
+    emptyText?: default_2.ReactNode;
+    /** 空状态副标题描述 */
+    emptyDescription?: default_2.ReactNode;
+    /** 空状态底部操作区 */
+    emptyAction?: default_2.ReactNode;
+    /** 自定义空状态节点（覆盖内置 EmptyState） */
+    emptyNode?: default_2.ReactNode;
+    /** 空状态重置回调 */
+    onEmptyReset?: () => void;
 }
 
 export declare interface ProTableRequestParams {
@@ -4719,6 +4934,8 @@ export declare interface ReasonedActionDrawerProps {
 
 /** 全局注册自定义业务图标映射，供菜单路由配置按字符串名称动态解析 */
 export declare function registerAbcIcons(icons: Record<string, AbcIconComponent>): void;
+
+export { RejectedTagItem }
 
 export declare function renderBuiltInValue<T extends Record<string, any>>(rawVal: any, record: T, col: AbcColumn<T>, onRowView?: (record: T, linkTarget?: string) => void): default_2.ReactNode;
 
@@ -5052,7 +5269,7 @@ export declare interface SeparatorProps extends React_2.HTMLAttributes<HTMLDivEl
     decorative?: boolean;
 }
 
-/** 经典侧边栏树形菜单渲染器（支持深浅双色、四档尺寸与动效、折叠 Portal 悬浮子菜单与平滑网格手风琴展开） */
+/** 经典侧边栏树形菜单渲染器（支持深浅双色、内联菜单/组件检索、四档尺寸与动效、折叠 Portal 悬浮子菜单与平滑网格手风琴展开） */
 export declare const SidebarNav: default_2.FC<{
     brand?: AbcBrandInfo;
     items: AbcMenuItem[];
@@ -5062,6 +5279,13 @@ export declare const SidebarNav: default_2.FC<{
     tone?: AbcSidebarTone;
     size?: AbcSize;
     motion?: AbcMotionPreset;
+    /** 是否在展开态侧边栏顶部渲染快捷筛选框（同时检索路由名、路径与 keywords 组件词） */
+    searchable?: boolean;
+    searchPlaceholder?: string;
+    /** 可选注入全局组件/指令索引：在侧栏输入搜索词时直接展示匹配的组件直达列表，不再仅展示路由 */
+    commandActions?: CommandActionItem[];
+    /** 点击筛选区底部“全局定位 (⌘K)”时的回调（透传当前已输入的筛选词） */
+    onOpenCommandPalette?: (prefillQuery?: string) => void;
     onNavigate: (path: string, item: AbcMenuItem) => void;
     className?: string;
 }>;
@@ -5474,15 +5698,23 @@ export declare function SplitDetailTitle({ className, ...props }: React_2.HTMLAt
 
 /**
  * 主从分栏布局 (SplitInspectorLayout)
- * 广泛用于主表/右侧实时详情检视的经典工作台模式，支持自适应断点与粘性定位
+ * 广泛用于主表/右侧实时详情检视的工作台模式，默认常驻展示分隔线与拖拽胶囊手柄，支持自由拖拽宽度占比与双击复位
  */
-export declare function SplitInspectorLayout({ children, inspector, ratio, stickyInspector, className, ...props }: SplitInspectorLayoutProps): React_2.JSX.Element;
+export declare function SplitInspectorLayout({ children, inspector, ratio, stickyInspector, resizable, minInspectorWidth, maxInspectorWidth, storageKey, className, ...props }: SplitInspectorLayoutProps): React_2.JSX.Element;
 
 export declare interface SplitInspectorLayoutProps extends React_2.HTMLAttributes<HTMLDivElement> {
     children: React_2.ReactNode;
     inspector?: React_2.ReactNode;
     ratio?: 'default' | 'balanced' | 'wide-master';
     stickyInspector?: boolean;
+    /** 是否在主从面板中间展示常驻分隔线与胶囊拖拽手柄（默认 true） */
+    resizable?: boolean;
+    /** 右侧检视面板最小像素宽度（默认 320） */
+    minInspectorWidth?: number;
+    /** 右侧检视面板最大像素宽度（默认 720） */
+    maxInspectorWidth?: number;
+    /** 本地持久化记忆调节宽度的存储键 */
+    storageKey?: string;
 }
 
 /** 聚光灯跟随交互卡片（常用于登录页、仪表盘核心指标卡与亮眼特性展示） */
@@ -5786,7 +6018,14 @@ export declare interface TableCoreProps<T = Record<string, any>> {
     /** 表格滚动区域最大高度（开启后表头纵向吸顶） */
     maxHeight?: number | string;
     ariaLabel?: string;
-    emptyText?: string;
+    /** 空状态主标题 */
+    emptyText?: default_2.ReactNode;
+    /** 空状态副标题描述 */
+    emptyDescription?: default_2.ReactNode;
+    /** 空状态底部操作区 */
+    emptyAction?: default_2.ReactNode;
+    /** 自定义空状态完整节点（传入后覆盖内置 EmptyState） */
+    emptyNode?: default_2.ReactNode;
     className?: string;
 }
 
@@ -5862,27 +6101,84 @@ export declare interface TabsTriggerProps extends default_2.ButtonHTMLAttributes
 export declare const Tag: default_2.FC<TagProps>;
 
 /**
- * 多标签胶囊输入框 (TagInput)
- * 支持四档规格、动效规格、回车或英文逗号生成标签、自动去重与退格删除末尾项
+ * 企业级多标签胶囊输入框 (TagInput)
+ * 支持四档规格、动效预设、多分隔符与粘贴批量导入、IME 组合防误触、去重/归一化/校验、只读与一键清空
  */
-export declare const TagInput: default_2.FC<TagInputProps>;
+export declare const TagInput: default_2.ForwardRefExoticComponent<TagInputProps & default_2.RefAttributes<HTMLInputElement>>;
 
 export declare interface TagInputProps {
+    /** 受控标签列表 */
     value?: string[];
+    /** 非受控初始标签列表（默认 []） */
     defaultValue?: string[];
+    /** 标签列表变更回调 */
     onChange?: (tags: string[]) => void;
+    /** onChange 语义别名 */
+    onValueChange?: (tags: string[]) => void;
+    /** 字段标识与无障碍关联 */
+    id?: string;
+    name?: string;
+    label?: default_2.ReactNode;
+    error?: default_2.ReactNode;
+    helperText?: default_2.ReactNode;
+    invalid?: boolean;
+    required?: boolean;
+    /** 占位提示文案 */
     placeholder?: string;
-    maxTags?: number;
-    disabled?: boolean;
-    size?: AbcSize;
+    /** 是否使用等宽字体展示芯片与输入文本 */
+    mono?: boolean;
+    /** 控件尺寸（兼容 ControlSize，默认继承上下文或 'sm'） */
+    size?: ControlSize;
+    /** 微交互动效规格 */
     motion?: AbcMotionPreset;
+    /** 禁用与只读状态 */
+    disabled?: boolean;
+    readOnly?: boolean;
+    /** 触发分词的分隔符（默认支持逗号、中文逗号、分号、换行、回车、Tab） */
+    separators?: ReadonlyArray<string> | RegExp;
+    /** 失焦时是否自动提交当前输入草稿（默认 true） */
+    addOnBlur?: boolean;
+    /** 粘贴含分隔符文本时是否自动批量拆解为多个标签（默认 true） */
+    splitOnPaste?: boolean;
+    /** 是否允许重复标签（默认 false） */
+    allowDuplicates?: boolean;
+    /** 最大标签数量限制（默认不设硬上限） */
+    maxTags?: number;
+    /** 单个标签最大字符长度限制 */
+    maxTagLength?: number;
+    /** 是否显示底部已选计数（配合 maxTags 显示 `N/M`） */
+    showCount?: boolean;
+    /** 归一化转换函数（在去重与校验之前执行） */
+    transformTag?: (raw: string) => string;
+    /** 自定义校验函数：返回 true / undefined / null 表示通过，返回 false 或错误文案表示拒绝 */
+    validateTag?: (tag: string, currentTags: ReadonlyArray<string>) => boolean | string | null | undefined;
+    /** 标签被拒绝时的回调 */
+    onReject?: (rejected: RejectedTagItem[]) => void;
+    /** 清空控制 */
+    allowClear?: boolean;
+    clearable?: boolean;
+    onClear?: () => void;
+    removeTagLabel?: (tag: string) => string;
+    clearLabel?: string;
+    /** 焦点与 ARIA 属性 */
+    onFocus?: default_2.FocusEventHandler<HTMLInputElement>;
+    onBlur?: default_2.FocusEventHandler<HTMLInputElement>;
+    'aria-label'?: string;
+    'aria-labelledby'?: string;
+    'aria-describedby'?: string;
+    'aria-invalid'?: boolean | 'true' | 'false';
     className?: string;
+    wrapperClassName?: string;
+    chipClassName?: string;
+    inputClassName?: string;
 }
 
 export declare interface TagProps extends default_2.HTMLAttributes<HTMLSpanElement> {
     variant?: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info' | string;
     dot?: boolean;
 }
+
+export { TagRejectReason }
 
 export declare function tagVariants(_opts?: {
     variant?: string;

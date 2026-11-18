@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import {
+  Button,
   ByteQuotaInput,
   DurationQuotaInput,
   FormField,
@@ -10,6 +11,8 @@ import {
   SearchInput,
   StatusTag,
   Textarea,
+  formatQuotaBytes,
+  formatQuotaDuration,
   type AbcSize,
   type ByteUnit,
   type DurationUnit,
@@ -32,7 +35,7 @@ const BYTE_SET_OPTIONS = [{ label: 'MB/GB/TB', value: 'mgt' as const }, { label:
 const DURATION_SET_OPTIONS = [{ label: 'm/h/d', value: 'mhd' as const }, { label: 's/m/h', value: 'smh' as const }]
 
 export const TextAndNumberInputsPage: React.FC = () => {
-  // Card 1: Input + FormField + Label
+  // Card 01: Input + FormField + Label
   const [inputSize, setInputSize] = useState<AbcSize>('sm')
   const [inputType, setInputType] = useState<'text' | 'password'>('text')
   const [clearable, setClearable] = useState(true)
@@ -46,7 +49,7 @@ export const TextAndNumberInputsPage: React.FC = () => {
   const [tenantName, setTenantName] = useState('BytesFlows Enterprise')
   const [endpointVal, setEndpointVal] = useState('api.prod.abc-design.dev')
 
-  // Card 2: InputNumber & Textarea
+  // Card 02: InputNumber & Textarea
   const [numSize, setNumSize] = useState<AbcSize>('sm')
   const [step, setStep] = useState<number>(5)
   const [minVal, setMinVal] = useState<number>(0)
@@ -58,12 +61,18 @@ export const TextAndNumberInputsPage: React.FC = () => {
   const [concurrency, setConcurrency] = useState<number | null>(30)
   const [releaseNote, setReleaseNote] = useState('系统将于周日凌晨 02:00 执行无感滚动升级，请保持长连接重连机制。')
 
-  // Card 3: SearchInput + ByteQuotaInput + DurationQuotaInput
-  const [quotaSize, setQuotaSize] = useState<AbcSize>('sm')
+  // Card 03: SearchInput
+  const [searchSize, setSearchSize] = useState<AbcSize>('sm')
+  const [searchDisabled, setSearchDisabled] = useState(false)
+  const [searchKeyword, setSearchKeyword] = useState('prod-apac-sg')
+
+  // Card 04: ByteQuotaInput & DurationQuotaInput
+  const [quotaSize, setQuotaSize] = useState<'sm' | 'default'>('sm')
+  const [quotaLocale, setQuotaLocale] = useState<'zh' | 'en'>('zh')
+  const [zeroUnlimited, setZeroUnlimited] = useState(true)
   const [quotaDisabled, setQuotaDisabled] = useState(false)
   const [byteUnitPreset, setByteUnitPreset] = useState<'mgt' | 'kmg'>('mgt')
   const [durationUnitPreset, setDurationUnitPreset] = useState<'mhd' | 'smh'>('mhd')
-  const [searchKeyword, setSearchKeyword] = useState('')
   const [byteQuota, setByteQuota] = useState<number>(512 * 1024 * 1024) // 512 MB
   const [durationQuota, setDurationQuota] = useState<number>(3600 * 6) // 6 小时
 
@@ -71,17 +80,15 @@ export const TextAndNumberInputsPage: React.FC = () => {
     byteUnitPreset === 'mgt' ? ['MB', 'GB', 'TB'] : ['KB', 'MB', 'GB']
   const durationUnits: readonly DurationUnit[] =
     durationUnitPreset === 'mhd' ? ['m', 'h', 'd'] : ['s', 'm', 'h']
-  // QuotaUnitInputBaseProps.size 仅接受 'default' | 'sm'，按当前规格映射紧凑度
-  const resolvedQuotaSize: 'default' | 'sm' =
-    quotaSize === 'xs' || quotaSize === 'sm' ? 'sm' : 'default'
 
   return (
     <PageContainer
       title="文本、数值、搜索与配额输入"
-      subtitle="涵盖基础输入框 Input、表单域包装器 FormField、Label、步进数值 InputNumber、多行文本域 Textarea、搜索框 SearchInput 及存储/时长配额联动输入。"
+      subtitle="按职责拆分为 4 组独立组件画布：基础文本 Input/FormField、步进数值 InputNumber/Textarea、快捷检索 SearchInput 与字节/时长配额折算器。"
+      breadcrumbs={[{ label: '表单录入与选择器' }, { label: '文本、数值与配额输入' }]}
     >
-      <div className="space-y-5">
-        {/* 卡片 1：Input + FormField + Label */}
+      <div className="space-y-6">
+        {/* 卡片 01：Input + FormField + Label */}
         <ComponentDocPreview
           title="Input / FormField / Label 基础文本与密码输入"
           components={['Input', 'FormField', 'Label']}
@@ -113,13 +120,11 @@ export const TextAndNumberInputsPage: React.FC = () => {
             </>
           }
           code={`import { FormField, Input, Label } from '@abc-design/react'
-import { KeyRound } from 'lucide-react'
 
 <FormField
   label="租户工作空间名称"
   size="${inputSize}"
   required={${required}}${simulateError ? '\n  error="名称已被占用或不符合格式规范"' : ''}
-  helperText="支持一键清空自动回焦"
 >
   <Input
     size="${inputSize}"
@@ -131,18 +136,12 @@ import { KeyRound } from 'lucide-react'
     maxLength={${maxLength}}
     readOnly={${readOnly}}
     disabled={${inputDisabled}}
-    invalid={${simulateError}}${withPrefixIcon ? '\n    prefixIcon={<KeyRound className="h-3.5 w-3.5" />}' : ''}
   />
-</FormField>
-
-<Label htmlFor="gateway" size="${inputSize}" required={${required}}>独立语义标签</Label>
-<Input id="gateway" size="${inputSize}" value={endpoint} onChange={...} />`}
+</FormField>`}
           apiRows={[
             { prop: 'Input.size', type: "'xs' | 'sm' | 'md' | 'lg' | 'default'", defaultValue: "'sm'", description: '控件高度与字号规格，同步对齐 --abc-control-h-*' },
             { prop: 'Input.type', type: 'HTMLInputTypeAttribute', defaultValue: "'text'", description: "为 'password' 且 passwordToggle!==false 时渲染明密文切换按钮" },
             { prop: 'Input.clearable / allowClear', type: 'boolean', defaultValue: 'false', description: '非禁用非只读且有值时渲染清空按钮，清空后自动回焦' },
-            { prop: 'Input.showCount / maxLength', type: 'boolean / number', defaultValue: 'false', description: '底部显示当前字符数或 count/maxLength 计数' },
-            { prop: 'Input.prefixIcon / prefix', type: 'ReactNode', description: '左侧内嵌图标或文本插槽' },
             { prop: 'FormField.required / tooltip / error', type: 'boolean / ReactNode', description: '包装标签星号、悬浮提示 Tooltip 及错误态 alert 文案' },
             { prop: 'Label.size / required', type: "'xs' | 'sm' | 'md' | 'lg' / boolean", defaultValue: "'sm'", description: '独立语义 <label>，与 FormField 标签样式一致' },
           ]}
@@ -188,14 +187,14 @@ import { KeyRound } from 'lucide-react'
                 disabled={inputDisabled}
                 readOnly={readOnly}
                 error={simulateError ? '接入域名解析校验失败' : undefined}
-                helperText="Label 可脱离 FormField 单独通过 htmlFor 绑定原生控件"
+                helperText="Label 可脱离 FormField 单独通过 htmlFor 绑定控件"
                 prefixIcon={withPrefixIcon ? <Globe className="h-3.5 w-3.5" /> : undefined}
               />
             </div>
           </div>
         </ComponentDocPreview>
 
-        {/* 卡片 2：InputNumber & Textarea */}
+        {/* 卡片 02：InputNumber & Textarea */}
         <ComponentDocPreview
           title="InputNumber & Textarea 步进数值与多行文本域"
           components={['InputNumber', 'Textarea']}
@@ -224,36 +223,15 @@ import { KeyRound } from 'lucide-react'
           }
           code={`import { FormField, InputNumber, Textarea } from '@abc-design/react'
 
-<FormField label="最大并发实例数" size="${numSize}"${numError ? ' error="并发数超出配额上限"' : ''}>
-  <InputNumber
-    size="${numSize}"
-    value={concurrency}
-    onChange={setConcurrency}
-    min={${minVal}}
-    max={${maxVal}}
-    step={${step}}
-    disabled={${numDisabled}}
-    invalid={${numError}}
-  />
+<FormField label="最大并发实例数" size="${numSize}">
+  <InputNumber size="${numSize}" value={concurrency} onChange={setConcurrency} min={${minVal}} max={${maxVal}} step={${step}} />
 </FormField>
 
-<Textarea
-  label="灰度发布说明"
-  size="${numSize}"
-  rows={${rows}}
-  showCount={${areaShowCount}}
-  maxLength={160}
-  disabled={${numDisabled}}${numError ? '\n  error="公告内容不符合合规要求"' : ''}
-  value={note}
-  onChange={(e) => setNote(e.target.value)}
-/>`}
+<Textarea label="灰度发布说明" size="${numSize}" rows={${rows}} showCount={${areaShowCount}} maxLength={160} value={note} onChange={(e) => setNote(e.target.value)} />`}
           apiRows={[
             { prop: 'InputNumber.value / onChange', type: 'number | null / (val: number | null) => void', description: '支持清空返回 null，提交时自动按 [min, max] 边界钳制' },
             { prop: 'InputNumber.min / max / step', type: 'number', defaultValue: 'step: 1', description: '步进粒度与上下限，触达边界时自动禁用对应加减按钮' },
-            { prop: 'InputNumber.invalid', type: 'boolean', defaultValue: 'false', description: '触发危险态红框高亮（可配合 FormField 展示错误提示）' },
-            { prop: 'Textarea.rows', type: 'number', defaultValue: '3', description: '初始可见文本行数，支持垂直拖拽调整' },
-            { prop: 'Textarea.showCount / maxLength', type: 'boolean / number', defaultValue: 'false', description: '底部显示当前字符统计' },
-            { prop: 'Textarea.mono', type: 'boolean', defaultValue: 'false', description: '开启等宽字体渲染（适合 JSON / 脚本 / 表达式输入）' },
+            { prop: 'Textarea.rows / mono', type: 'number / boolean', defaultValue: '3 / false', description: '初始可见行数及等宽代码字体开关' },
           ]}
         >
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -284,88 +262,144 @@ import { KeyRound } from 'lucide-react'
               maxLength={160}
               disabled={numDisabled}
               error={numError ? '维护说明不可包含未脱敏密钥或空内容' : undefined}
-              helperText="修改 rows Knobs 可即时调节默认展示高度"
               value={releaseNote}
               onChange={(e) => setReleaseNote(e.target.value)}
             />
           </div>
         </ComponentDocPreview>
 
-        {/* 卡片 3：SearchInput + ByteQuotaInput + DurationQuotaInput */}
+        {/* 卡片 03：SearchInput（独立卡片） */}
         <ComponentDocPreview
-          title="SearchInput / ByteQuotaInput / DurationQuotaInput 搜索与配额输入"
-          components={['SearchInput', 'ByteQuotaInput', 'DurationQuotaInput']}
-          description="标准搜索输入框与企业级存储字节/时长配额联动输入器。ByteQuotaInput 与 DurationQuotaInput 的 size 签名支持 'sm' | 'default'，底层分别以字节整数和秒整数双向同步。"
+          title="SearchInput 标准快捷检索输入框"
+          components={['SearchInput']}
+          description="内置前置放大镜图标与一键清空回焦回调的紧凑检索框，常用于 FilterToolbar、侧栏目录与列表工具栏。"
           onResetKnobs={() => {
-            setQuotaSize('sm')
-            setQuotaDisabled(false)
-            setByteUnitPreset('mgt')
-            setDurationUnitPreset('mhd')
+            setSearchSize('sm')
+            setSearchDisabled(false)
+            setSearchKeyword('prod-apac-sg')
           }}
           controls={
             <>
-              <KnobSegmented label="size" value={quotaSize} options={SIZE_OPTIONS} onChange={setQuotaSize} />
-              <KnobSegmented label="Byte 单位集" value={byteUnitPreset} options={BYTE_SET_OPTIONS} onChange={setByteUnitPreset} />
-              <KnobSegmented label="Duration 单位集" value={durationUnitPreset} options={DURATION_SET_OPTIONS} onChange={setDurationUnitPreset} />
-              <KnobSwitch label="disabled" checked={quotaDisabled} onChange={setQuotaDisabled} />
+              <KnobSegmented label="size" value={searchSize} options={SIZE_OPTIONS} onChange={setSearchSize} />
+              <KnobSwitch label="disabled" checked={searchDisabled} onChange={setSearchDisabled} />
             </>
           }
-          code={`import { SearchInput, ByteQuotaInput, DurationQuotaInput } from '@abc-design/react'
+          code={`import { SearchInput } from '@abc-design/react'
 
 <SearchInput
-  size="${quotaSize}"
-  disabled={${quotaDisabled}}
+  size="${searchSize}"
+  disabled={${searchDisabled}}
   value={keyword}
   onChange={(e) => setKeyword(e.target.value)}
   onClear={() => setKeyword('')}
-  placeholder="搜索集群节点或规则..."
-/>
+  placeholder="搜索服务节点、IP 或任务标识..."
+/>`}
+          apiRows={[
+            { prop: 'value / onChange', type: 'string / ChangeEventHandler<HTMLInputElement>', description: '标准输入事件受控绑定' },
+            { prop: 'onClear', type: '() => void', description: '传入回调时自动启用右侧一键清空按钮并自动回焦输入框' },
+            { prop: 'size', type: "'xs' | 'sm' | 'md' | 'lg' | 'default'", defaultValue: "'sm'", description: '继承 Input 四档尺寸规格' },
+          ]}
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="w-full max-w-sm">
+              <SearchInput
+                size={searchSize}
+                disabled={searchDisabled}
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+                onClear={() => setSearchKeyword('')}
+                placeholder="搜索服务节点、IP 或关键字..."
+              />
+            </div>
+            <StatusTag tone="info" dot={false} className="font-mono">
+              当前关键词：{searchKeyword || '(已清空)'}
+            </StatusTag>
+          </div>
+        </ComponentDocPreview>
+
+        {/* 卡片 04：ByteQuotaInput & DurationQuotaInput（独立强化卡片） */}
+        <ComponentDocPreview
+          title="ByteQuotaInput & DurationQuotaInput 存储字节与时长配额折算器"
+          components={['ByteQuotaInput', 'DurationQuotaInput']}
+          description="右侧单位选择器底层复用设计系统 Select 定制浮层，分别以非负整数 Bytes 与 Seconds 无损双向折算，支持 zeroMeansUnlimited（0 表示无上限）与 formatQuotaBytes / formatQuotaDuration 格式化工具。"
+          onResetKnobs={() => {
+            setQuotaSize('sm')
+            setQuotaLocale('zh')
+            setZeroUnlimited(true)
+            setQuotaDisabled(false)
+            setByteUnitPreset('mgt')
+            setDurationUnitPreset('mhd')
+            setByteQuota(512 * 1024 * 1024)
+            setDurationQuota(3600 * 6)
+          }}
+          controls={
+            <>
+              <KnobSegmented
+                label="size"
+                value={quotaSize}
+                options={[
+                  { label: 'sm', value: 'sm' },
+                  { label: 'default', value: 'default' },
+                ]}
+                onChange={setQuotaSize}
+              />
+              <KnobSegmented
+                label="locale"
+                value={quotaLocale}
+                options={[
+                  { label: 'zh (中文单位)', value: 'zh' },
+                  { label: 'en (English)', value: 'en' },
+                ]}
+                onChange={setQuotaLocale}
+              />
+              <KnobSegmented label="Byte 单位集" value={byteUnitPreset} options={BYTE_SET_OPTIONS} onChange={setByteUnitPreset} />
+              <KnobSegmented label="Duration 单位集" value={durationUnitPreset} options={DURATION_SET_OPTIONS} onChange={setDurationUnitPreset} />
+              <KnobSwitch label="zeroMeansUnlimited" checked={zeroUnlimited} onChange={setZeroUnlimited} />
+              <KnobSwitch label="disabled" checked={quotaDisabled} onChange={setQuotaDisabled} />
+            </>
+          }
+          code={`import { ByteQuotaInput, DurationQuotaInput, formatQuotaBytes, formatQuotaDuration } from '@abc-design/react'
 
 <ByteQuotaInput
-  size="${resolvedQuotaSize}"
-  disabled={${quotaDisabled}}
+  size="${quotaSize}"
+  locale="${quotaLocale}"
+  zeroMeansUnlimited={${zeroUnlimited}}
   allowedUnits={${JSON.stringify(byteUnits)}}
   value={${byteQuota}}
   onChange={setByteQuota}
 />
 
 <DurationQuotaInput
-  size="${resolvedQuotaSize}"
-  disabled={${quotaDisabled}}
+  size="${quotaSize}"
+  locale="${quotaLocale}"
+  zeroMeansUnlimited={${zeroUnlimited}}
   allowedUnits={${JSON.stringify(durationUnits)}}
   value={${durationQuota}}
   onChange={setDurationQuota}
 />`}
           apiRows={[
-            { prop: 'SearchInput.onClear', type: '() => void', description: '传入回调时自动启用 allowClear 清空按钮并回焦' },
-            { prop: 'SearchInput.size', type: "'xs' | 'sm' | 'md' | 'lg' | 'default'", defaultValue: "'sm'", description: '继承 Input 四档尺寸规格' },
-            { prop: 'ByteQuotaInput.value / onChange', type: 'number / (bytes: number) => void', required: true, description: '底层始终绑定非负整数 Bytes，输入与单位切换实时无损折算' },
-            { prop: 'ByteQuotaInput.allowedUnits', type: "readonly ('B' | 'KB' | 'MB' | 'GB' | 'TB')[]", defaultValue: "['B','KB','MB','GB','TB']", description: '限定右侧可选容量单位子集' },
-            { prop: 'DurationQuotaInput.value / onChange', type: 'number / (seconds: number) => void', required: true, description: '底层始终绑定非负整数 Seconds，自动优选最佳展示单位' },
-            { prop: 'ByteQuotaInput / DurationQuotaInput.size', type: "'default' | 'sm'", defaultValue: "'default'", description: '配额控件提供标准 (h-9) 与紧凑 (h-8) 两档高度' },
+            { prop: 'ByteQuotaInput.value / onChange', type: 'number / (bytes: number) => void', required: true, description: '底层绑定非负整数 Bytes，切换单位自动按 1024 幂次无损折算' },
+            { prop: 'DurationQuotaInput.value / onChange', type: 'number / (seconds: number) => void', required: true, description: '底层绑定非负整数 Seconds，自动优选最佳时分天单位' },
+            { prop: 'zeroMeansUnlimited', type: 'boolean', defaultValue: 'true', description: '为 true 且值为 0 时底部提示显示“无上限 / Unlimited”' },
+            { prop: 'size', type: "'default' | 'sm'", defaultValue: "'default'", description: '注意配额控件仅支持标准 (default) 与紧凑 (sm) 两档高度' },
+            { prop: 'formatQuotaBytes / formatQuotaDuration', type: '(val, locale?, zeroLabel?) => string', description: '表格/详情只读回显配套智能格式化工具函数' },
           ]}
         >
           <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
-                <Label size={quotaSize}>快捷搜索 (SearchInput)</Label>
-                <SearchInput
+                <div className="flex items-center justify-between">
+                  <Label size="sm">存储容量配额 (ByteQuotaInput)</Label>
+                  <Button size="xs" variant="ghost" onClick={() => setByteQuota(0)}>
+                    设为 0 测试无上限
+                  </Button>
+                </div>
+                <ByteQuotaInput
+                  key={`${byteUnitPreset}_${quotaLocale}`}
                   size={quotaSize}
                   disabled={quotaDisabled}
-                  value={searchKeyword}
-                  onChange={(e) => setSearchKeyword(e.target.value)}
-                  onClear={() => setSearchKeyword('')}
-                  placeholder="搜索服务节点、IP 或关键字..."
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label size={quotaSize}>存储容量配额 (ByteQuotaInput)</Label>
-                <ByteQuotaInput
-                  key={byteUnitPreset}
-                  size={resolvedQuotaSize}
-                  disabled={quotaDisabled}
-                  locale="zh"
+                  locale={quotaLocale}
+                  zeroMeansUnlimited={zeroUnlimited}
                   allowedUnits={byteUnits}
                   value={byteQuota}
                   onChange={setByteQuota}
@@ -374,12 +408,18 @@ import { KeyRound } from 'lucide-react'
               </div>
 
               <div className="space-y-1.5">
-                <Label size={quotaSize}>任务超时阈值 (DurationQuotaInput)</Label>
+                <div className="flex items-center justify-between">
+                  <Label size="sm">任务超时阈值 (DurationQuotaInput)</Label>
+                  <Button size="xs" variant="ghost" onClick={() => setDurationQuota(0)}>
+                    设为 0 测试无上限
+                  </Button>
+                </div>
                 <DurationQuotaInput
-                  key={durationUnitPreset}
-                  size={resolvedQuotaSize}
+                  key={`${durationUnitPreset}_${quotaLocale}`}
+                  size={quotaSize}
                   disabled={quotaDisabled}
-                  locale="zh"
+                  locale={quotaLocale}
+                  zeroMeansUnlimited={zeroUnlimited}
                   allowedUnits={durationUnits}
                   value={durationQuota}
                   onChange={setDurationQuota}
@@ -388,15 +428,12 @@ import { KeyRound } from 'lucide-react'
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-muted)]/60 px-3.5 py-2.5 text-xs">
-              <StatusTag tone="info" dot={false}>
-                Search: {searchKeyword || '(空)'}
-              </StatusTag>
+            <div className="flex flex-wrap items-center gap-2.5 rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-muted)]/60 px-3.5 py-2.5 text-xs">
               <StatusTag tone="primary" dot={false} className="font-mono">
-                底层字节整数: {byteQuota} ({byteQuota.toLocaleString()} Bytes)
+                Bytes: {byteQuota.toLocaleString()} ({formatQuotaBytes(byteQuota, quotaLocale, zeroUnlimited ? '无上限' : undefined)})
               </StatusTag>
               <StatusTag tone="success" dot={false} className="font-mono">
-                底层秒整数: {durationQuota} ({durationQuota.toLocaleString()} s)
+                Seconds: {durationQuota.toLocaleString()} ({formatQuotaDuration(durationQuota, quotaLocale, zeroUnlimited ? '无上限' : undefined)})
               </StatusTag>
             </div>
           </div>

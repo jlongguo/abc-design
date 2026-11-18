@@ -194,3 +194,19 @@ export function AdminShell() {
 | **6. 跨步校验向导表单与变更 Diff 审阅确认** | `ProStepsForm`（含步间异步 `validate` 守卫与草稿无损保留） + `ConfigDiffViewer`（对象字段 + 代码 LCS 双视图与自动脱敏） | 手写步骤条状态同步逻辑或手写对象键值/文本差异比对算法 |
 | **7. 跨分页批量操作队列监控与失败局部重试** | `ProTable` / `TableCore` 多选 + `BatchActionTracker`（`inline` / `floating` 进度追踪、错误过滤与 `onRetryFailed`） | 为每个批量操作弹窗手写一套带重试队列的状态浮窗 |
 | **8. 多卡片大表单空间压缩、拖拽排序暂存与右侧挤压编辑** | `SortableSplitEditor` + `SortableList` + `@abc-design/core/sortable`（`arrayMove` / `isOrderDirty` / `reconcileStagedOrder`） + `SplitDetailPanel` | 平铺多张巨型全量表单卡片撑爆视口，或只做上下移按钮而缺少手柄拖拽与暂存排序 |
+
+---
+
+## 7. 新增/增强组件强制同步 Playground 红线 (Playground 100% Sync Mandate)
+
+任何在本仓库（或由下游业务仓触发下沉制造新轮子时）向 `@abc-design/react`、`@abc-design/charts`、`@abc-design/markdown` **新增公开导出组件**或**扩展重要交互属性**的 Agent，必须严格执行以下 4 步同步契约，**严禁只改 `packages/*` 而不更新 `apps/playground`**：
+
+1. **单一职责独立演练卡片与真实挂载（严禁单卡大杂烩或挂名不渲染）**：
+   - 在 `apps/playground/src/pages/` 对应页面为新组件创建独立的 `<ComponentDocPreview components={['NewComp', ...]} />` 演练卡片，配备实时 Props 调节 `controls`、动态 TSX 示例代码与 `apiRows` 表格；
+   - **严禁仅在 `components={[...]}` 数组中填字符串而不渲染真实 `<NewComp />` JSX，严禁使用 `void NewComp` 或 `className="hidden"` 伪造挂载**；单个 `.tsx` 文件严禁超过 **600 行**（超限时按领域子目录拆分子组件）。
+2. **接入 7 大分类与 `⌘K` / 侧边栏双端组件检索注册表**：
+   - 必须在 `apps/playground/src/registry/domains/*.ts` 对应领域分类的路由节点下登记该组件的 `symbol`、`zhName`、`summary`、`pkg`、`anchorSymbol`（及关联复合子组件/别名 `subSymbols`），使其立即支持顶栏 `⌘K` 全局组件精准置顶搜索、左侧边栏「匹配组件直达」列表及总览页检索跳转。
+3. **重大属性增强同步更新 Knobs**：
+   - 对存量组件新增核心 Props（如 `Drawer.navigation`、`FilterPillGroup.multiple`、`ActionCard.selected`、`CodeBlock.variant`、`TagInput` 分词校验、`KeyValueInput.smartPaste`）时，必须同步在对应 `ComponentDocPreview` 卡片补充交互式 Knobs 与 API 行。
+4. **强制通过 AST 同步与反作弊门禁校验**：
+   - 提交或构建前必须运行 `pnpm check:playground-sync`（已内置于 `pnpm build`、`pnpm test` 与 `deploy:playground`），确保全部公开 PascalCase 组件导出 100% 注册、真实可见 JSX 挂载、零 `void` 假引用且锚点零悬空。

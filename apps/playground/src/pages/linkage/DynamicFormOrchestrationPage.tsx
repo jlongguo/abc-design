@@ -363,9 +363,9 @@ export const DynamicFormOrchestrationPage: React.FC = () => {
         </ComponentDocPreview>
 
         <ComponentDocPreview
-          title="KeyValueInput 重复键检测与多格式批量导入导出"
+          title="KeyValueInput 智能粘贴、重复键检测与多格式互转"
           components={['KeyValueInput']}
-          description="内置重复 Key 实时红框/告警条提示、单行启用开关、密文遮罩查看以及 .env / HTTP Headers / JSON 双向互转批量编辑。"
+          description="内置重复 Key 实时红框告警、smartPaste（在 Key 输入框直接粘贴多行 .env / Headers / JSON 自动拆分为多行）、单行启用开关、密文遮罩以及三格式双向互转。"
           controls={
             <>
               <KnobSwitch label="allowEnableToggle" checked={allowEnableToggle} onChange={setAllowEnableToggle} />
@@ -383,12 +383,12 @@ export const DynamicFormOrchestrationPage: React.FC = () => {
             setKvSize('sm')
             setKvEntries(INITIAL_KV)
           }}
-          code={`<KeyValueInput value={entries} onChange={setEntries} allowEnableToggle={${allowEnableToggle}} allowSecretMask={${allowSecretMask}} allowBulkEdit={${allowBulkEdit}} defaultBulkFormat="${defaultBulkFormat}" size="${kvSize}" />`}
+          code={`<KeyValueInput value={entries} onChange={setEntries} smartPaste allowEnableToggle={${allowEnableToggle}} allowSecretMask={${allowSecretMask}} allowBulkEdit={${allowBulkEdit}} defaultBulkFormat="${defaultBulkFormat}" size="${kvSize}" />`}
           apiRows={[
-            { prop: 'allowEnableToggle', type: 'boolean', defaultValue: 'true', description: '是否在每行左侧展示启用/停用开关（仅已启用项进入导出）' },
-            { prop: 'allowSecretMask', type: 'boolean', defaultValue: 'false', description: '是否支持每行切换密文掩码与明文查看' },
+            { prop: 'smartPaste', type: 'boolean', defaultValue: 'true', description: '在任意 Key 输入框粘贴多行 .env / Headers / JSON 时自动解析并追加行' },
+            { prop: 'allowEnableToggle / allowSecretMask', type: 'boolean / boolean', defaultValue: 'true / false', description: '行级启用开关与敏感值掩码查看' },
             { prop: 'allowBulkEdit / defaultBulkFormat', type: 'boolean / AbcKeyValueFormat', defaultValue: "true / 'dotenv'", description: '开启批量文本编辑模式及默认序列化格式 (dotenv/headers/json)' },
-            { prop: 'size', type: "'xs' | 'sm' | 'md' | 'lg'", defaultValue: "'sm'", description: '输入框与行按钮整体高度规格' },
+            { prop: 'readOnly / size', type: "boolean / 'xs' | 'sm' | 'md' | 'lg'", defaultValue: "false / 'sm'", description: '只读锁定态与高度规格' },
           ]}
         >
           <div className="space-y-3">

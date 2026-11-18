@@ -21,6 +21,8 @@ export interface AbcMenuItem {
   path?: string
   icon?: string | React.ReactNode
   badge?: string | number
+  /** 附加检索关键词（如本路由包含的组件符号、英文别名或业务术语，供侧栏筛选与 ⌘K 搜索匹配） */
+  keywords?: string | string[]
   disabled?: boolean
   groupTitle?: string
   children?: AbcMenuItem[]
@@ -59,6 +61,8 @@ export interface AbcLayoutSettings {
   sidebarTone: AbcSidebarTone
   sidebarCollapsed: boolean
   sidebarAccordion: boolean
+  /** 是否在展开态侧边栏顶部渲染快捷菜单/组件过滤输入框 */
+  sidebarSearch?: boolean
   showTabs: boolean
   tabStyle?: AbcTabStyle
   keepAlive: boolean

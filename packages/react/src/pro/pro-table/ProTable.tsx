@@ -77,7 +77,12 @@ export function ProTable<
     resolvedExpandable,
     updateSearchInput,
     activeFilterKeys,
-    activeFilterLabels
+    activeFilterLabels,
+    emptyText,
+    emptyDescription,
+    emptyAction,
+    emptyNode,
+    onEmptyReset,
   } = ctx
 
   const hasSplitPanel = props.splitPanel !== undefined
@@ -178,7 +183,11 @@ export function ProTable<
           onRowClick={onRowClick}
           onRow={onRow}
           onRowView={(record, linkTarget) => void openViewModal(record, linkTarget)}
-          onEmptyReset={activeFilterCount > 0 ? resetAllFilters : undefined}
+          emptyText={emptyText}
+          emptyDescription={emptyDescription}
+          emptyAction={emptyAction}
+          emptyNode={emptyNode}
+          onEmptyReset={onEmptyReset ?? (activeFilterCount > 0 ? resetAllFilters : undefined)}
           maxHeight={maxHeight ?? computedScrollY}
           className="rounded-none border-0"
         />

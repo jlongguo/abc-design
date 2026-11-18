@@ -131,7 +131,8 @@ if [[ "${SKIP_BUILD}" == "false" ]]; then
   echo "==> [1/4] 构建 @abc-design 全量组件库与 Playground (commit: ${GIT_SHA})"
   pnpm run build
 else
-  echo "==> [1/4] 跳过重新构建 (--skip-build)，直接检查现有产物"
+  echo "==> [1/4] 跳过重新构建 (--skip-build)，执行 Playground 导出同步校验并检查现有产物"
+  pnpm run check:playground-sync
 fi
 
 if [[ ! -f "${DIST_DIR}/index.html" ]] || [[ ! -d "${DIST_DIR}/assets" ]]; then

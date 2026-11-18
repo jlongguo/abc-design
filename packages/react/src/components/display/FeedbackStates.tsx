@@ -17,6 +17,8 @@ export {
 
 export interface EmptyStateProps {
   title?: React.ReactNode
+  /** title 语义兼容别名 */
+  message?: React.ReactNode
   description?: React.ReactNode
   icon?: React.ReactNode
   action?: React.ReactNode
@@ -32,7 +34,8 @@ export interface EmptyStateProps {
 
 /** 空状态占位组件（支持多尺寸层级与一键重置筛选交互） */
 export const EmptyState: React.FC<EmptyStateProps> = ({
-  title = '暂无匹配数据',
+  title,
+  message,
   description = '未检索到符合条件的数据记录，建议调整筛选或搜索关键词',
   icon,
   action,
@@ -43,6 +46,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   compact = false,
   className,
 }) => {
+  const resolvedTitle = title !== undefined ? title : (message !== undefined ? message : '暂无匹配数据')
   const resolvedSize = useAbcSize(size, 'md')
   const resolvedMotion = useAbcMotion(motion)
   const effectiveSize = compact ? 'sm' : resolvedSize
@@ -105,12 +109,12 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       >
         {icon ?? <FolderSearch className={activeStyle.iconSize} />}
       </div>
-      {title && (
+      {resolvedTitle && (
         <h4
           data-testid="empty-state-title"
           className={cn('mt-3 text-[var(--abc-fg)]', activeStyle.title)}
         >
-          {title}
+          {resolvedTitle}
         </h4>
       )}
       {description && (
@@ -182,7 +186,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
       data-motion={resolvedMotion}
       style={computedStyle}
       className={cn(
-        'bg-[var(--abc-bg-subtle)] bg-slate-200 dark:bg-slate-800',
+        'bg-[var(--abc-bg-subtle)]',
         variant === 'circular' && 'rounded-full',
         variant === 'rectangular' && 'rounded-none',
         variant === 'rounded' && 'rounded-lg',

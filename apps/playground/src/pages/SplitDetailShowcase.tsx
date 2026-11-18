@@ -1,10 +1,17 @@
 import React, { useState } from 'react'
 import {
+  Button,
   Card,
   DescriptionList,
   ProTable,
+  SplitDetailBody,
+  SplitDetailFooter,
+  SplitDetailHeader,
+  SplitDetailLayout,
   SplitDetailPanel,
+  SplitDetailTitle,
   StatusTag,
+  abcToast,
   type AbcColumn,
 } from '@abc-design/react'
 
@@ -103,15 +110,18 @@ export const SplitDetailShowcase: React.FC<SplitDetailShowcaseProps> = ({
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState(false)
+  const [standaloneId, setStandaloneId] = useState<string | null>(DEMO_ROWS[0].id)
 
   const selectedIndex = DEMO_ROWS.findIndex((r) => r.id === selectedId)
   const selectedRow = selectedIndex >= 0 ? DEMO_ROWS[selectedIndex] : null
+  const standaloneRow = DEMO_ROWS.find((r) => r.id === standaloneId) ?? null
 
   return (
-    <Card
-      title="表格行联动 · 右侧内联挤压详情容器 (SplitDetailLayout + SplitDetailPanel)"
-      subtitle="点击任意客户行，在表格右侧平滑挤出非阻塞详情面板；可直接点击左侧其它行快捷切换，点击右上角 X 关闭恢复全宽表格"
-    >
+    <div className="space-y-4">
+      <Card
+        title="方式 A1：ProTable 内置右侧挤压详情容器 (SplitDetailPanel)"
+        subtitle="点击任意客户行，在表格右侧平滑挤出非阻塞详情面板；可直接点击左侧其它行快捷切换，点击右上角 X 关闭恢复全宽表格"
+      >
       <ProTable<DemoTenantRow>
         storageKey="playground-split-detail-demo"
         columns={COLUMNS}
@@ -180,6 +190,81 @@ export const SplitDetailShowcase: React.FC<SplitDetailShowcaseProps> = ({
           ) : null
         }
       />
-    </Card>
+      </Card>
+
+      <Card
+        title="方式 A2：SplitDetailLayout + 复合子组件独立拼装（面向自定义卡片墙 / 树列表）"
+        subtitle="不依赖 ProTable：直接用 SplitDetailLayout 包裹任意左侧主视图，右侧由 SplitDetailHeader / Title / Body / Footer 自由组合，同样支持左边缘拖拽调宽"
+      >
+        <SplitDetailLayout
+          open={Boolean(standaloneRow)}
+          panelWidth={panelWidth}
+          panel={
+            standaloneRow ? (
+              <div className="flex flex-col overflow-hidden rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] shadow-2xs">
+                <SplitDetailHeader>
+                  <div>
+                    <SplitDetailTitle>{standaloneRow.name}</SplitDetailTitle>
+                    <p className="mt-0.5 font-mono text-[11px] text-[var(--abc-fg-muted)]">
+                      {standaloneRow.id} · 复合槽位组装
+                    </p>
+                  </div>
+                  <Button size="xs" variant="ghost" onClick={() => setStandaloneId(null)}>
+                    收起
+                  </Button>
+                </SplitDetailHeader>
+                <SplitDetailBody className="p-4 text-xs">
+                  <DescriptionList
+                    columns={1}
+                    variant="divided"
+                    items={[
+                      { label: '联系邮箱', value: standaloneRow.email, mono: true },
+                      { label: '活跃沙箱实例', value: `${standaloneRow.sandboxes} 台` },
+                      { label: '累计执行步数', value: standaloneRow.workflowSteps.toLocaleString() },
+                    ]}
+                  />
+                </SplitDetailBody>
+                <SplitDetailFooter>
+                  <span className="text-[11px] text-[var(--abc-fg-muted)]">支持拖拽左侧分割线调整宽度</span>
+                  <Button
+                    size="xs"
+                    variant="primary"
+                    onClick={() => abcToast.success(`已同步 ${standaloneRow.name} 配额快照`)}
+                  >
+                    同步快照
+                  </Button>
+                </SplitDetailFooter>
+              </div>
+            ) : null
+          }
+        >
+          <div className="space-y-2">
+            {DEMO_ROWS.map((row) => {
+              const active = row.id === standaloneId
+              return (
+                <button
+                  key={row.id}
+                  type="button"
+                  onClick={() => setStandaloneId(active ? null : row.id)}
+                  className={`flex w-full items-center justify-between rounded-[var(--abc-radius-md)] border px-3.5 py-2.5 text-left text-xs transition-colors cursor-pointer ${
+                    active
+                      ? 'border-[var(--abc-primary)] bg-[var(--abc-primary-soft)]/50'
+                      : 'border-[var(--abc-border)] bg-[var(--abc-bg-subtle)]/40 hover:border-[var(--abc-primary)]/40'
+                  }`}
+                >
+                  <div>
+                    <div className="font-semibold text-[var(--abc-fg)]">{row.name}</div>
+                    <div className="mt-0.5 font-mono text-[11px] text-[var(--abc-fg-muted)]">{row.email}</div>
+                  </div>
+                  <StatusTag tone={row.status === 'active' ? 'success' : 'danger'} size="xs">
+                    {active ? '检视中' : row.status}
+                  </StatusTag>
+                </button>
+              )
+            })}
+          </div>
+        </SplitDetailLayout>
+      </Card>
+    </div>
   )
 }

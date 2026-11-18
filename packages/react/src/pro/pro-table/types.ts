@@ -422,6 +422,16 @@ export interface ProTableProps<
   onSaveRecord?: (values: Record<string, any>, editingRecord: T | null) => void | Promise<void>
   /** 单行或批量删除回调（无 api 时的轻量直连模式） */
   onDeleteRecords?: (keys: Array<string | number>) => void | Promise<void>
+  /** 空状态主标题 */
+  emptyText?: React.ReactNode
+  /** 空状态副标题描述 */
+  emptyDescription?: React.ReactNode
+  /** 空状态底部操作区 */
+  emptyAction?: React.ReactNode
+  /** 自定义空状态节点（覆盖内置 EmptyState） */
+  emptyNode?: React.ReactNode
+  /** 空状态重置回调 */
+  onEmptyReset?: () => void
 }
 
 export const EMPTY_SERVER_FILTERS: Record<string, any> = {}

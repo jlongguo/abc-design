@@ -215,8 +215,8 @@ export const ProConfigSuitePage: React.FC<{
 
         {/* Card 2: ProConfigForm & ProConfigPage */}
         <ComponentDocPreview
-          title="ProConfigForm & ProConfigPage 声明式配置中心"
-          components={['ProConfigForm', 'ProConfigPage']}
+          title="ProConfigForm & ProConfigPage (别名 CrudConfigPage) 声明式配置中心"
+          components={['ProConfigForm', 'ProConfigPage', 'CrudConfigPage']}
           description="同时支持紧凑分组 Schema 表单 (ProConfigForm) 与带垂直 Tab 导航、远程异步拉取及权限锁定的配置页框架 (ProConfigPage)；提交保存后将实时同步更新控制台顶部品牌 Logo 与名称。"
           onResetKnobs={() => {
             setConfigVariant('form')

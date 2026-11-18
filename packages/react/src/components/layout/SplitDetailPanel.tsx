@@ -44,6 +44,12 @@ const GAP_CLASSES: Record<NonNullable<SplitDetailLayoutProps['gap']>, string> = 
   lg: 'gap-6',
 }
 
+const RESIZER_WIDTH_CLASSES: Record<NonNullable<SplitDetailLayoutProps['gap']>, string> = {
+  sm: 'lg:w-4',
+  md: 'lg:w-5',
+  lg: 'lg:w-6',
+}
+
 function clampWidth(val: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, val))
 }
@@ -99,6 +105,15 @@ export const SplitDetailLayout = React.forwardRef<HTMLDivElement, SplitDetailLay
       [storageKey]
     )
 
+    const clearSavedWidth = React.useCallback(() => {
+      if (!storageKey || typeof window === 'undefined') return
+      try {
+        window.localStorage.removeItem(`abc_split_w_${storageKey}`)
+      } catch {
+        // 忽略存储移除异常
+      }
+    }, [storageKey])
+
     const effectiveWidthCss = React.useMemo(() => {
       if (customWidth !== null) return `${clampWidth(customWidth, minPanelWidth, maxPanelWidth)}px`
       if (typeof panelWidth === 'number') return `${clampWidth(panelWidth, minPanelWidth, maxPanelWidth)}px`
@@ -109,10 +124,22 @@ export const SplitDetailLayout = React.forwardRef<HTMLDivElement, SplitDetailLay
       customWidth ??
       (typeof panelWidth === 'number' ? clampWidth(panelWidth, minPanelWidth, maxPanelWidth) : 480)
 
+    const dragCleanupRef = React.useRef<(() => void) | null>(null)
+    React.useEffect(() => {
+      return () => {
+        dragCleanupRef.current?.()
+      }
+    }, [])
+
     const handleResizeStart = (e: React.MouseEvent) => {
       e.preventDefault()
+      dragCleanupRef.current?.()
       const startX = e.clientX
       const startWidth = currentNumericWidth
+      const prevCursor = document.body.style.cursor
+      const prevUserSelect = document.body.style.userSelect
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
       setIsDragging(true)
 
       const onMove = (ev: MouseEvent) => {
@@ -122,14 +149,18 @@ export const SplitDetailLayout = React.forwardRef<HTMLDivElement, SplitDetailLay
         persistWidth(nextWidth)
       }
 
-      const onUp = () => {
+      const cleanup = () => {
         setIsDragging(false)
+        document.body.style.cursor = prevCursor
+        document.body.style.userSelect = prevUserSelect
         window.removeEventListener('mousemove', onMove)
-        window.removeEventListener('mouseup', onUp)
+        window.removeEventListener('mouseup', cleanup)
+        dragCleanupRef.current = null
       }
 
+      dragCleanupRef.current = cleanup
       window.addEventListener('mousemove', onMove)
-      window.addEventListener('mouseup', onUp)
+      window.addEventListener('mouseup', cleanup)
     }
 
     const handleResizeKeyDown = (e: React.KeyboardEvent) => {
@@ -142,8 +173,14 @@ export const SplitDetailLayout = React.forwardRef<HTMLDivElement, SplitDetailLay
       persistWidth(nextWidth)
     }
 
+    const handleResizeDoubleClick = () => {
+      setCustomWidth(null)
+      clearSavedWidth()
+    }
+
     const showMaster = !(open && expanded)
     const showAside = open && Boolean(panel)
+    const showResizer = showMaster && showAside && resizable && !expanded
 
     return (
       <div
@@ -151,7 +188,13 @@ export const SplitDetailLayout = React.forwardRef<HTMLDivElement, SplitDetailLay
         data-slot="split-detail-layout"
         data-open={open ? 'true' : 'false'}
         data-expanded={expanded ? 'true' : 'false'}
-        className={cn('flex flex-col lg:flex-row lg:items-start', GAP_CLASSES[gap], className)}
+        data-dragging={isDragging ? 'true' : 'false'}
+        className={cn(
+          'flex flex-col lg:flex-row lg:items-start',
+          GAP_CLASSES[gap],
+          showResizer && 'lg:gap-0',
+          className
+        )}
         {...props}
       >
         {showMaster && (
@@ -164,6 +207,52 @@ export const SplitDetailLayout = React.forwardRef<HTMLDivElement, SplitDetailLay
             )}
           >
             {children}
+          </div>
+        )}
+
+        {showResizer && (
+          <div
+            role="separator"
+            tabIndex={0}
+            data-slot="split-detail-resizer"
+            aria-orientation="vertical"
+            aria-label="拖拽或使用左右方向键调节详情面板宽度"
+            aria-valuemin={minPanelWidth}
+            aria-valuemax={maxPanelWidth}
+            aria-valuenow={Math.round(currentNumericWidth)}
+            title="左右拖拽调节宽度占比（双击恢复默认宽度）"
+            onMouseDown={handleResizeStart}
+            onKeyDown={handleResizeKeyDown}
+            onDoubleClick={handleResizeDoubleClick}
+            className={cn(
+              'group relative z-20 hidden shrink-0 cursor-col-resize select-none flex-col items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)] lg:flex lg:self-stretch',
+              RESIZER_WIDTH_CLASSES[gap]
+            )}
+          >
+            {/* 常驻纵向分隔线：平时以边框色清晰提示分栏边界，悬停或拖拽时高亮为主品牌色 */}
+            <span
+              aria-hidden="true"
+              data-slot="split-resize-line"
+              className={cn(
+                'pointer-events-none absolute inset-y-1 left-1/2 -translate-x-1/2 rounded-full transition-all',
+                isDragging
+                  ? 'w-0.5 bg-[var(--abc-primary)]'
+                  : 'w-px bg-[var(--abc-border)] group-hover:w-0.5 group-hover:bg-[var(--abc-primary)] group-focus-visible:w-0.5 group-focus-visible:bg-[var(--abc-primary)]'
+              )}
+            />
+            {/* 常驻胶囊拖拽手柄按钮：随视口粘性居中，让用户一眼感知可左右拖拽调整占比 */}
+            <span
+              aria-hidden="true"
+              data-slot="split-resize-handle"
+              className={cn(
+                'pointer-events-none sticky top-28 bottom-28 z-10 my-auto inline-flex h-8 w-4 items-center justify-center rounded-full border shadow-xs transition-all',
+                isDragging
+                  ? 'scale-105 border-[var(--abc-primary)] bg-[var(--abc-primary)] text-[var(--abc-primary-contrast,#ffffff)] shadow-sm'
+                  : 'border-[var(--abc-border-strong,var(--abc-border))] bg-[var(--abc-bg-surface)] text-[var(--abc-fg-muted)] group-hover:border-[var(--abc-primary)] group-hover:text-[var(--abc-primary)] group-hover:shadow-sm group-focus-visible:border-[var(--abc-primary)] group-focus-visible:text-[var(--abc-primary)]'
+              )}
+            >
+              <GripVertical className="h-3.5 w-3.5" />
+            </span>
           </div>
         )}
 
@@ -184,26 +273,6 @@ export const SplitDetailLayout = React.forwardRef<HTMLDivElement, SplitDetailLay
               asideClassName
             )}
           >
-            {resizable && !expanded && (
-              <div
-                role="separator"
-                tabIndex={0}
-                aria-orientation="vertical"
-                aria-label="拖拽或使用左右方向键调节详情面板宽度"
-                aria-valuemin={minPanelWidth}
-                aria-valuemax={maxPanelWidth}
-                aria-valuenow={Math.round(currentNumericWidth)}
-                onMouseDown={handleResizeStart}
-                onKeyDown={handleResizeKeyDown}
-                className="group absolute inset-y-3 -left-2 z-20 hidden w-3 cursor-col-resize items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)] lg:flex select-none"
-              >
-                <span className="h-12 w-1 rounded-full bg-transparent transition-colors group-hover:bg-[var(--abc-primary)]/60 group-focus-visible:bg-[var(--abc-primary)]" />
-                <GripVertical
-                  aria-hidden="true"
-                  className="pointer-events-none absolute h-3.5 w-3.5 text-[var(--abc-fg-muted)] opacity-0 transition-opacity group-hover:opacity-100"
-                />
-              </div>
-            )}
             {panel}
           </div>
         )}

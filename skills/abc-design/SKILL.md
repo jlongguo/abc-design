@@ -52,3 +52,7 @@ description: 使用 @abc-design/*（tokens、core、react、charts、markdown）
 - **大表单必须使用抽屉（`Drawer`）**：多字段、分组卡片、配额或包含 `ConfigDiffViewer` 审阅的复杂表单采用右侧全高抽屉，坚决避免绝对居中 Modal 顶部裁切。
 - **大表单嵌套大表单必须使用二级抽屉（`cascadeMode="adjacent" | "stack"`）**：禁止 Modal 盖死或套 Modal。
 - **小表单与轻量确认使用 `Dialog`**：仅 1~3 个字段、状态修改或删除确认使用居中 `Dialog` 或 `ReasonedActionDialog`。
+
+### 第六步：组件库扩展与 Playground 100% 同步门禁
+- 凡在 `/Users/guojianlong/front/abc-design` 新增导出组件或增强核心交互属性时，**必须同步在 `apps/playground/src/pages/` 补齐独立 `<ComponentDocPreview>` 预览卡片，并在 `apps/playground/src/registry/domains/*.ts` 登记该组件（接入 7 大分类与 `⌘K` 组件直达搜索）**。
+- 构建导出前必须运行 `pnpm check:playground-sync` 确保 100% 导出覆盖与锚点零悬空。

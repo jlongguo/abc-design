@@ -8,6 +8,8 @@ import {
   ProgressBar,
   StatusTag,
   ToastCard,
+  ToastItemView,
+  TopProgressBar,
   abcProgress,
   abcToast,
   type NotificationVariant,
@@ -116,7 +118,7 @@ abcToast.${variant}({
         {/* 卡片 1: abcToast & ToastCard */}
         <ComponentDocPreview
           title="abcToast & ToastCard 结构化诊断卡片与全局浮层通知"
-          components={['abcToast', 'ToastCard']}
+          components={['ToastCard', 'ToastContainer', 'AbcToastViewport', 'ToastItemView', 'Toaster', 'abcToast']}
           description="ToastCard 支持 HTTP 状态码、错误码与 Request ID 一键复制；abcToast 提供 info / success / warning / error 全局队列推送与悬停暂停倒计时。"
           controls={
             <>
@@ -179,6 +181,27 @@ abcToast.${variant}({
                 onDismiss={() => setCardVisible(false)}
               />
             )}
+            <div className="pt-1">
+              <div className="mb-1.5 text-[11px] font-medium text-[var(--abc-fg-muted)]">
+                轻量队列消息体原语 (ToastItemView)：
+              </div>
+              <ToastItemView
+                item={{
+                  id: 'inline-toast-item-demo',
+                  tone: variant === 'error' ? 'error' : variant,
+                  title: withDescription ? resolvedTitle : undefined,
+                  message: withDescription ? resolvedDesc : resolvedTitle,
+                  duration: 0,
+                  createdAt: 0,
+                  closable: false,
+                }}
+                resolvedSize="sm"
+                resolvedMotion="smooth"
+                closable={false}
+                pauseOnHover={false}
+                onDismiss={() => {}}
+              />
+            </div>
           </div>
         </ComponentDocPreview>
 
@@ -243,8 +266,16 @@ abcToast.${variant}({
                 abcProgress.done()
               </Button>
               <StatusTag tone={progressActive ? 'primary' : 'neutral'}>
-                顶部路由进度条: {progressActive ? '加载中 (观察页面最顶端)' : '空闲'}
+                顶部路由进度条: {progressActive ? '加载中 (观察页面最顶端及下方指示条)' : '空闲'}
               </StatusTag>
+            </div>
+            <div className="relative h-1.5 overflow-hidden rounded-full bg-[var(--abc-bg-muted)]">
+              <TopProgressBar
+                loading={progressActive}
+                height={6}
+                zIndex={1}
+                className="!absolute !inset-x-0 !top-0"
+              />
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

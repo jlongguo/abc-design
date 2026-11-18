@@ -199,7 +199,9 @@ export interface DropdownMenuItem {
   /** 独立分割线菜单项 */
   divider?: boolean
   dividerAbove?: boolean
-  onClick?: () => void
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void
+  /** 可选自定义菜单项节点（如包裹路由 Link） */
+  render?: (close: () => void) => React.ReactNode
 }
 
 export interface DropdownProps {
@@ -432,26 +434,31 @@ export const Dropdown: React.FC<DropdownProps> = ({
                     {item.dividerAbove && (
                       <div role="separator" className="my-1 h-px bg-[var(--abc-border)]" />
                     )}
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={item.disabled}
-                      onClick={() => {
-                        if (item.disabled) return
-                        item.onClick?.()
-                        setOpen(false)
-                      }}
-                      className={cn(
-                        'abc-motion-control flex w-full items-center gap-2 rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer focus:outline-none focus-visible:bg-[var(--abc-bg-subtle)] focus-visible:text-[var(--abc-fg)]',
-                        item.danger
-                          ? 'text-[var(--abc-danger)] enabled:hover:bg-[var(--abc-danger-soft)]'
-                          : 'text-[var(--abc-fg-secondary)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)]',
-                        item.disabled && 'opacity-45 cursor-not-allowed'
-                      )}
-                    >
-                      {item.icon && <span className="shrink-0">{item.icon}</span>}
-                      <span className="flex-1 truncate">{item.label}</span>
-                    </button>
+                    {item.render ? (
+                      item.render(() => setOpen(false))
+                    ) : (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={item.disabled}
+                        onClick={(e) => {
+                          if (item.disabled) return
+                          e.stopPropagation()
+                          item.onClick?.(e)
+                          setOpen(false)
+                        }}
+                        className={cn(
+                          'abc-motion-control flex w-full items-center gap-2 rounded-[var(--abc-radius-sm)] px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer focus:outline-none focus-visible:bg-[var(--abc-bg-subtle)] focus-visible:text-[var(--abc-fg)]',
+                          item.danger
+                            ? 'text-[var(--abc-danger)] enabled:hover:bg-[var(--abc-danger-soft)]'
+                            : 'text-[var(--abc-fg-secondary)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)]',
+                          item.disabled && 'opacity-45 cursor-not-allowed'
+                        )}
+                      >
+                        {item.icon && <span className="shrink-0">{item.icon}</span>}
+                        <span className="flex-1 truncate">{item.label}</span>
+                      </button>
+                    )}
                   </React.Fragment>
                 )
               )

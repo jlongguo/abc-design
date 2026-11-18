@@ -11,3 +11,7 @@
 6. **自适应 ECharts (`@abc-design/charts`) 与开箱业务页模板**：[docs/agent/04-charts-and-templates.md](./docs/agent/04-charts-and-templates.md)
 7. **复杂组件联动编排与选型决策手册**：[docs/agent/05-complex-linkage-and-orchestration.md](./docs/agent/05-complex-linkage-and-orchestration.md)
 8. **可复用 Agent Skill**：[skills/abc-design/SKILL.md](./skills/abc-design/SKILL.md)
+
+## 强制研发门禁 (Mandatory Agent Gate)
+- **新增或增强任何 `@abc-design/*` 导出组件时，必须同步在 `apps/playground/src/pages/` 补齐独立 `<ComponentDocPreview>` 预览卡片，并在 `apps/playground/src/registry/domains/*.ts` 注册组件索引（接入 7 大分类与 `⌘K` 组件搜索）**。
+- 交付前必须依次通过：`pnpm check:playground-sync && pnpm typecheck && pnpm test && pnpm build`。

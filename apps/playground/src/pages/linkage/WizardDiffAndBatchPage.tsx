@@ -314,8 +314,8 @@ export const WizardDiffAndBatchPage: React.FC = () => {
         </ComponentDocPreview>
 
         <ComponentDocPreview
-          title="TableCore 多选行 × BatchActionTracker 批量滚动升级追踪"
-          components={['TableCore', 'BatchActionTracker']}
+          title="BatchActionTracker × TableCore 多选行批量滚动升级追踪"
+          components={['BatchActionTracker', 'TableCore']}
           description="勾选左侧实例行触发批量滚动升级，实时观测 queued -> running -> succeeded/failed 进度演进；点击「重试失败项」可将被阻断节点补跑成功并同步刷新左侧版本。"
           controls={
             <>

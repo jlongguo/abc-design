@@ -22,6 +22,7 @@ import {
 import { Activity, ChevronDown, Copy, Download, Globe, Hash, Layers, Settings, Terminal, Trash2, UserPlus, Zap } from 'lucide-react'
 import { ComponentDocPreview } from '../../components/ComponentDocPreview'
 import { KnobSegmented, KnobSelect, KnobSwitch, KnobText } from '../../components/PropKnobs'
+import { CommandPaletteSection } from './CommandPaletteSection'
 
 export const DropdownAndCommandPage: React.FC = () => {
   // 1. Dropdown & DropdownMenu Knobs
@@ -32,7 +33,7 @@ export const DropdownAndCommandPage: React.FC = () => {
   const [lastMenuAction, setLastMenuAction] = useState('尚未点击菜单操作')
 
   // 2. ProCommandPalette & CommandTriggerButton Knobs
-  const [enableShortcut, setEnableShortcut] = useState(true)
+  const [enableShortcut, setEnableShortcut] = useState(false)
   const [placeholder, setPlaceholder] = useState('快速搜索页面、实体 ID…')
   const [presetQuery, setPresetQuery] = useState<string>('job_01JX9A')
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -306,7 +307,10 @@ export const DropdownAndCommandPage: React.FC = () => {
           </div>
         </ComponentDocPreview>
 
-        {/* 卡片 2: ProCommandPalette & CommandTriggerButton */}
+        {/* 卡片 2: CommandPalette Spotlight 全局多分组检索 */}
+        <CommandPaletteSection />
+
+        {/* 卡片 3: ProCommandPalette & CommandTriggerButton */}
         <ComponentDocPreview
           title="ProCommandPalette & CommandTriggerButton 全局命令面板"
           components={['ProCommandPalette', 'CommandTriggerButton']}

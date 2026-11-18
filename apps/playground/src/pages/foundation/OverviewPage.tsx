@@ -6,7 +6,6 @@ import {
   ABC_RADIUS_PRESETS,
   ABC_SURFACE_PRESETS,
   Button,
-  Card,
   CopyableText,
   Input,
   PageContainer,
@@ -24,117 +23,23 @@ import {
   type AbcThemeMode,
   type AbcVisualMode,
 } from '@abc-design/react'
-import { BarChart3, Compass, Cpu, FileCode2, Layers, LayoutGrid, Palette, RotateCcw, Sparkles } from 'lucide-react'
+import { BarChart3, Cpu, FileCode2, Layers, Palette } from 'lucide-react'
+import { ComponentDocPreview } from '../../components/ComponentDocPreview'
+import { TOTAL_REGISTERED_SYMBOLS } from '../../registry'
+import { OverviewComponentExplorer } from './OverviewComponentExplorer'
 
 const PKG_CARDS = [
   { icon: Palette, pkg: '@abc-design/tokens', val: '3 层语义 Token', desc: '6 大品牌色 · 自定义 Hex · 3 档密度 · 4 档圆角与动效', target: '/overview' },
-  { icon: Cpu, pkg: '@abc-design/core', val: '纯 TS 无头内核', desc: '拼音首字母检索、树级联、规则 AST 求值、配置 Diff 与键值互转', target: '/linkage/query-builder' },
-  { icon: Layers, pkg: '@abc-design/react', val: '80+ 企业组件', desc: '基础原语、ProTable、5 套布局及 12 大复杂联动编排组件', target: '/linkage/master-detail' },
+  { icon: Cpu, pkg: '@abc-design/core', val: '纯 TS 无头内核', desc: '拼音检索、树级联、规则 AST、JSON 树搜索、标签分词与 Diff', target: '/linkage/query-builder' },
+  { icon: Layers, pkg: '@abc-design/react', val: `${TOTAL_REGISTERED_SYMBOLS} 导出组件符号`, desc: '基础原语、5 模态壳层、ProTable 与 8 大复杂联动套件', target: '/pro/table' },
   { icon: BarChart3, pkg: '@abc-design/charts', val: '自适应可视化', desc: 'ECharts Tree-shaking 容器，随主题色阶与明暗自动同步', target: '/charts/echarts' },
   { icon: FileCode2, pkg: '@abc-design/markdown', val: '双栏 Markdown', desc: '外部化编辑器依赖，支持光标插值与三态分屏预览', target: '/form/uploads-markdown' },
 ]
 
-/** 10 大领域全量文档路由索引（对应 Playground 全部 36 个路由节点） */
-const DOMAIN_INDEX_GROUPS = [
-  {
-    domain: '1. 基础原语 (Foundation)',
-    badge: '4 页',
-    routes: [
-      { path: '/overview', title: 'Design Tokens 总览', symbols: ['AbcProvider', 'useAbcConfig', 'SpotlightCard'] },
-      { path: '/foundation/typography', title: '排版代码与复制原语', symbols: ['CodeBlock', 'CopyableText', 'CopyableCode', 'CopyButton', 'Kbd', 'RichIconText'] },
-      { path: '/foundation/icons-locale', title: '图标引擎、主题与多语言', symbols: ['Icon', 'SemanticIcon', 'BrandIcon', 'ThemeSwitcher', 'LocaleSwitcher', 'useColorScheme'] },
-      { path: '/foundation/spacing-classes', title: '间距分隔与令牌样式类', symbols: ['Space', 'Divider', 'Separator', 'abcUiClasses'] },
-    ],
-  },
-  {
-    domain: '2. 通用导航 (Navigation)',
-    badge: '3 页',
-    routes: [
-      { path: '/nav/buttons', title: '按钮与分段控制器', symbols: ['Button', 'buttonVariants', 'SegmentedControl'] },
-      { path: '/nav/tabs-steps', title: '页签、步骤条与子导航', symbols: ['Tabs', 'Steps', 'Breadcrumb', 'HubNavBar'] },
-      { path: '/nav/dropdown-command', title: '下拉菜单与全局命令面板', symbols: ['Dropdown', 'DropdownMenu', 'ProCommandPalette', 'CommandTriggerButton'] },
-    ],
-  },
-  {
-    domain: '3. 表单录入 (Form Inputs)',
-    badge: '3 页',
-    routes: [
-      { path: '/form/inputs', title: '文本、数值、搜索与配额输入', symbols: ['Input', 'FormField', 'Label', 'InputNumber', 'Textarea', 'SearchInput', 'ByteQuotaInput', 'DurationQuotaInput'] },
-      { path: '/form/controls', title: '开关、单复选与可选标签', symbols: ['Switch', 'Checkbox', 'RadioGroup', 'CheckableTag', 'CheckableTagGroup'] },
-      { path: '/form/select', title: 'Select、字典与复合选择器', symbols: ['Select', 'SelectField', 'DictSelect', 'DictTag', 'RadixSelect'] },
-    ],
-  },
-  {
-    domain: '4. 树与上传 (Tree & Upload)',
-    badge: '3 页',
-    routes: [
-      { path: '/form/tree-cascader', title: '树形控件、TreeSelect 与级联', symbols: ['Tree', 'TreeSelect', 'TreeSelectField', 'Cascader'] },
-      { path: '/form/pickers-transfer', title: '日期区间、标签、图标与穿梭框', symbols: ['DatePicker', 'DateRangePicker', 'TagInput', 'IconPicker', 'Transfer'] },
-      { path: '/form/uploads-markdown', title: '文件图片上传、验证码与 Markdown', symbols: ['ImageUpload', 'ProMultiImageUpload', 'FileUpload', 'SliderVerify', 'MarkdownEditor'] },
-    ],
-  },
-  {
-    domain: '5. 数据展示 (Data Display)',
-    badge: '3 页',
-    routes: [
-      { path: '/display/badges-media', title: '状态标签、徽章、头像与灯箱', symbols: ['StatusTag', 'StatusBadge', 'Tag', 'Badge', 'IconBadge', 'Avatar', 'ImagePreview'] },
-      { path: '/display/structured', title: '描述列表、手风琴与时间轴', symbols: ['DescriptionList', 'DescriptionItem', 'CopyableCode', 'Descriptions', 'Collapse', 'Timeline'] },
-      { path: '/display/pagination-empty', title: '双模分页、空状态与骨架屏', symbols: ['Pagination', 'OffsetPagination', 'SmartPagination', 'CursorPagination', 'EmptyState', 'SkeletonTable'] },
-    ],
-  },
-  {
-    domain: '6. 卡片动效 (Surfaces & Motion)',
-    badge: '2 页',
-    routes: [
-      { path: '/surfaces/base-cards', title: '基础容器卡、聚光灯与流光极光', symbols: ['Card', 'CardHeader', 'SpotlightCard', 'BorderBeam', 'AuroraBackground'] },
-      { path: '/surfaces/pro-cards', title: '指标卡、选择卡、定价与便当网格', symbols: ['MetricCard', 'CheckCardGroup', 'ActionCard', 'CollapsibleCard', 'PricingCard', 'BentoGrid'] },
-    ],
-  },
-  {
-    domain: '7. 反馈审计 (Feedback & Audit)',
-    badge: '4 页',
-    routes: [
-      { path: '/feedback/banners-errors', title: '通知横幅、错误恢复与结果页', symbols: ['Alert', 'NotificationBanner', 'ReadErrorBanner', 'AsyncInlineError', 'AttentionList', 'Result'] },
-      { path: '/feedback/toast-progress', title: 'Toast 通知、加载态与进度条', symbols: ['abcToast', 'ToastCard', 'Loading', 'LoadingStateCard', 'abcProgress', 'Progress', 'ProgressBar'] },
-      { path: '/feedback/overlays-audit', title: '抽屉、模态框、密钥与强制审计', symbols: ['Dialog', 'Drawer', 'Tooltip', 'Popover', 'ProFormContainer', 'ConfirmDialog', 'ReasonedActionDialog', 'OneTimeSecretDialog'] },
-      { path: '/feedback/security-resilience', title: '数字水印、权限守卫与异常边界', symbols: ['Watermark', 'PermissionGuard', 'Permission', 'ErrorBoundary', 'TabErrorBoundary'] },
-    ],
-  },
-  {
-    domain: '8. 图表大盘 (Charts)',
-    badge: '1 页',
-    routes: [
-      { path: '/charts/echarts', title: '自适应图表、指标卡与色盘', symbols: ['StatCard', 'AbcChart', 'SkeletonChart', 'getAbcChartPalette', 'buildAbcBaseChartOption'] },
-    ],
-  },
-  {
-    domain: '9. 壳层套件 (Layouts & Pro)',
-    badge: '7 页',
-    routes: [
-      { path: '/layouts/shell', title: '5 模态布局、认证页与路由保活', symbols: ['ProLayout', 'AuthLayout', 'PageContainer', 'KeepAliveContainer', 'PageTransition'] },
-      { path: '/pro/page-chrome', title: '页面页头、筛选栏与工作流引导', symbols: ['PageHeader', 'ProPageHeader', 'PageSection', 'FilterToolbar', 'QuickSelectBar', 'WorkflowStepBanner', 'ContextQuickBar'] },
-      { path: '/pro/tables-split', title: '基础表格、DataTable 与主从检视', symbols: ['Table', 'TableCore', 'DataTable', 'SplitDetailPanel', 'SplitInspectorLayout', 'InspectorPanel'] },
-      { path: '/pro/table', title: 'ProTable 全生命周期 CRUD', symbols: ['ProTable', 'useProTable', 'ProCrudForm', 'ReasonedActionDrawer'] },
-      { path: '/pro/config', title: '分组表单排版与声明式配置页', symbols: ['ProFormLayout', 'ProConfigForm', 'ProConfigPage'] },
-      { path: '/pro/logs', title: 'ProLogViewer 虚拟滚动日志', symbols: ['ProLogViewer'] },
-      { path: '/templates', title: '5 套开箱企业业务页模板', symbols: ['Dashboard', 'CrudList', 'WizardForm', 'AuditDrawer', 'ExceptionResult'] },
-    ],
-  },
-  {
-    domain: '10. 复杂联动 (Complex Linkage)',
-    badge: '6 页',
-    routes: [
-      { path: '/linkage/master-detail', title: '左树右表与审计四方工作台', symbols: ['ResizableSplitPane', 'ProSplitWorkbench', 'SplitDetailPanel', 'ReasonedActionDrawer'] },
-      { path: '/linkage/dynamic-form', title: '动态表单级联、列表与键值', symbols: ['ProFormProvider', 'ProFormDependency', 'ProFormList', 'KeyValueInput'] },
-      { path: '/linkage/editable-table', title: '行内编辑矩阵与可拖拽分栏卡片', symbols: ['EditableProTable', 'SortableSplitEditor', 'SortableList'] },
-      { path: '/linkage/query-builder', title: '嵌套规则构建器与视图收藏栏', symbols: ['FilterBuilder', 'RuleBuilder', 'SavedFilterViews'] },
-      { path: '/linkage/cross-filter', title: '图表下钻与多源交叉过滤大盘', symbols: ['AbcChart', 'ActiveFilterBar', 'StatCard', 'DataTable'] },
-      { path: '/linkage/wizard-batch', title: '分步校验向导、Diff 与批处理追踪', symbols: ['ProStepsForm', 'ConfigDiffViewer', 'BatchActionTracker'] },
-    ],
-  },
-]
-
-export const OverviewPage: React.FC<{ onJump: (path: string) => void }> = ({ onJump }) => {
+export const OverviewPage: React.FC<{
+  onJump: (path: string) => void
+  onJumpToComponent: (routePath: string, anchorId: string, symbol: string) => void
+}> = ({ onJump, onJumpToComponent }) => {
   const {
     theme,
     resolvedTheme,
@@ -207,20 +112,20 @@ export const OverviewPage: React.FC<{ onJump: (path: string) => void }> = ({ onJ
 
   return (
     <PageContainer
-      title="ABC Design 企业级设计系统与官方预览站"
-      subtitle="5 包协同架构（Tokens + Headless Core + React UI/ProLayout + Charts + Markdown）· 全量交互文档矩阵"
+      title="ABC Design 企业级设计系统与官方组件预览中心"
+      subtitle="5 包协同架构 · 7 大清晰业务分类 · 页内支持「分段全览 + 大纲目录」与「单卡独立聚焦」双视图切换 · ⌘K 全组件搜索直达"
       tags={
         <StatusTag tone="primary" dot pulse>
-          v0.1.0 Public Release Ready
+          Playground 100% Sync Enforced
         </StatusTag>
       }
       extra={
         <>
-          <Button variant="secondary" onClick={() => onJump('/foundation/typography')}>
-            基础原语文档
+          <Button variant="secondary" onClick={() => onJump('/display/structured')}>
+            查看 JsonTreeViewer
           </Button>
-          <Button variant="secondary" onClick={() => onJump('/linkage/master-detail')}>
-            复杂联动矩阵
+          <Button variant="secondary" onClick={() => onJump('/linkage/editable-table')}>
+            查看拖拽分栏卡片
           </Button>
           <Button variant="primary" onClick={() => onJump('/pro/table')}>
             ProTable 全栈套件
@@ -249,16 +154,35 @@ export const OverviewPage: React.FC<{ onJump: (path: string) => void }> = ({ onJ
         </div>
       }
     >
-      <div className="space-y-5">
-        {/* Design Tokens 全维度实时控制矩阵 */}
-        <Card
-          title="Design Tokens 全维度实时控制矩阵"
-          subtitle={`当前生效明暗态: ${resolvedTheme} · 动态覆写 --abc-* CSS 变量实现零重绘全站同步`}
-          extra={
-            <Button size="xs" variant="ghost" leftIcon={<RotateCcw className="h-3 w-3" />} onClick={resetTheme}>
-              恢复默认令牌
-            </Button>
-          }
+      <div className="space-y-6">
+        {/* AbcProvider & Design Tokens 实时控制矩阵 */}
+        <ComponentDocPreview
+          title="AbcProvider 全局适配器容器 & Design Tokens 实时控制矩阵"
+          components={['AbcProvider']}
+          description={`当前生效明暗态: ${resolvedTheme} · AbcProvider 在根部一次性注入主题令牌、上传/字典/权限/验证码 Adapter 与全局水印，动态覆写 --abc-* CSS 变量实现零重绘全站联动。`}
+          onResetKnobs={resetTheme}
+          code={`import { AbcProvider } from '@abc-design/react'
+
+<AbcProvider
+  defaultTheme={{
+    mode: '${theme.mode}',
+    brand: '${theme.brand}',
+    density: '${theme.density}',
+    radius: '${theme.radius}',
+    motion: '${theme.motion ?? 'smooth'}',
+  }}
+  defaultDrawerCascadeMode="adjacent"
+  dictAdapter={fetchDictOptions}
+  permissionAdapter={hasPermission}
+  uploadAdapter={uploadFile}
+>
+  <App />
+</AbcProvider>`}
+          apiRows={[
+            { prop: 'defaultTheme', type: 'Partial<AbcThemeState>', description: '配置初始 mode / brand / customBrandColor / density / radius / motion / componentSize' },
+            { prop: 'defaultDrawerCascadeMode', type: "'adjacent' | 'stack'", defaultValue: "'adjacent'", description: '多级大表单抽屉默认展开交互策略' },
+            { prop: 'dictAdapter / permissionAdapter / uploadAdapter', type: 'Adapter Functions', description: '与宿主 HTTP/RBAC 解耦的依赖注入适配器' },
+          ]}
         >
           <div className="space-y-4">
             {/* 1. 品牌色与自定义 Hex */}
@@ -321,7 +245,7 @@ export const OverviewPage: React.FC<{ onJump: (path: string) => void }> = ({ onJ
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-6 lg:grid-cols-11">
               {Object.entries(activeScale).map(([shade, hex]) => (
                 <div key={shade} className="flex flex-col overflow-hidden rounded-[var(--abc-radius-md)] border border-[var(--abc-border)]">
-                  <div className="h-9 w-full" style={{ backgroundColor: theme.customBrandColor ? `var(--abc-brand-${shade})` : hex }} />
+                  <div className="h-8 w-full" style={{ backgroundColor: theme.customBrandColor ? `var(--abc-brand-${shade})` : hex }} />
                   <div className="bg-[var(--abc-bg-surface)] p-1.5 text-center">
                     <div className="font-mono text-[10px] font-semibold text-[var(--abc-fg)]">--abc-brand-{shade}</div>
                     <CopyableText text={theme.customBrandColor ? `var(--abc-brand-${shade})` : hex} displayText={theme.customBrandColor && shade === '600' ? theme.customBrandColor : hex} className="justify-center text-[10px]" />
@@ -340,88 +264,13 @@ export const OverviewPage: React.FC<{ onJump: (path: string) => void }> = ({ onJ
               ))}
             </div>
           </div>
-        </Card>
+        </ComponentDocPreview>
 
-        {/* 10 大领域 × 36 个文档页全景索引 */}
-        <Card
-          title="10 大领域 × 36 个文档页全景索引"
-          subtitle="点击任意模块卡片即可直达对应交互式组件文档（共覆盖 10 大业务领域、36 个路由节点与全量复杂联动场景）"
-          extra={<Compass className="h-4 w-4 text-[var(--abc-primary)]" />}
-        >
-          <div className="space-y-5">
-            {DOMAIN_INDEX_GROUPS.map((group) => (
-              <div key={group.domain} className="space-y-2.5">
-                <div className="flex items-center justify-between border-b border-[var(--abc-border)] pb-1.5">
-                  <span className="text-xs font-bold text-[var(--abc-fg)]">{group.domain}</span>
-                  <StatusTag tone="neutral" size="xs" dot={false}>
-                    {group.badge}
-                  </StatusTag>
-                </div>
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {group.routes.map((route) => (
-                    <button
-                      key={route.path}
-                      type="button"
-                      onClick={() => onJump(route.path)}
-                      className="group flex flex-col justify-between rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)]/50 p-3 text-left transition-all hover:border-[var(--abc-primary)] hover:bg-[var(--abc-primary-soft)]/30 cursor-pointer"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-semibold text-[var(--abc-fg)] group-hover:text-[var(--abc-primary)]">
-                            {route.title}
-                          </span>
-                          <span className="font-mono text-[10px] text-[var(--abc-fg-muted)]">→</span>
-                        </div>
-                        <div className="mt-0.5 font-mono text-[10px] text-[var(--abc-fg-muted)]">{route.path}</div>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {route.symbols.map((sym) => (
-                          <code
-                            key={sym}
-                            className="rounded border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-1 py-0.5 font-mono text-[10px] text-[var(--abc-fg-secondary)]"
-                          >
-                            {sym}
-                          </code>
-                        ))}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* 快速接入指南与 AI Agent 体系 */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Card title="新项目 30 秒快速接入指南" extra={<LayoutGrid className="h-4 w-4 text-[var(--abc-primary)]" />}>
-            <div className="space-y-2 text-xs text-[var(--abc-fg-secondary)]">
-              <p>
-                <strong>方式 A（标准 React 工程）</strong>：直接引入{' '}
-                <code className="rounded bg-[var(--abc-bg-muted)] px-1.5 py-0.5 font-mono">import &apos;@abc-design/react/styles.css&apos;</code>{' '}
-                并在根节点包裹 <code className="font-mono">AbcProvider</code>。
-              </p>
-              <p>
-                <strong>方式 B（Tailwind CSS v4 工程）</strong>：引入{' '}
-                <code className="rounded bg-[var(--abc-bg-muted)] px-1.5 py-0.5 font-mono">@import &quot;@abc-design/tokens/styles/index.css&quot;;</code>{' '}
-                并配置 <code className="font-mono">@source</code> 合并原子类。
-              </p>
-            </div>
-          </Card>
-
-          <Card title="AI Agent 原生友好体系 (Agent-Ready)" extra={<Sparkles className="h-4 w-4 text-[var(--abc-primary)]" />}>
-            <p className="text-xs leading-relaxed text-[var(--abc-fg-secondary)]">
-              仓库内置 <code className="font-mono font-semibold">AGENTS.md</code>、轻量索引{' '}
-              <code className="font-mono font-semibold">llms.txt</code>、全量上下文{' '}
-              <code className="font-mono font-semibold">llms-full.txt</code>、分层手册{' '}
-              <code className="font-mono font-semibold">docs/agent/01..05</code>（含{' '}
-              <code className="font-mono font-semibold">05-complex-linkage-and-orchestration.md</code> 复杂联动选型指南）与技能包{' '}
-              <code className="font-mono font-semibold">skills/abc-design/SKILL.md</code>，确保编码 Agent 零幻觉精准对接。
-            </p>
-          </Card>
-        </div>
+        {/* 全量可检索组件与分类导航矩阵 */}
+        <OverviewComponentExplorer onJump={onJump} onJumpToComponent={onJumpToComponent} />
       </div>
     </PageContainer>
   )
 }
+
 export default OverviewPage

@@ -54,6 +54,8 @@ const DEFAULT_RICH_TEXT = '🚀 启动云端沙箱 · 🔒 零信任凭据 Vault
 export const TypographyAndCodePage: React.FC = () => {
   // 1. CodeBlock Knobs
   const [lang, setLang] = useState<CodeLang>('tsx')
+  const [codeVariant, setCodeVariant] = useState<'terminal' | 'surface'>('terminal')
+  const [codeCollapsible, setCodeCollapsible] = useState(false)
   const [codeTitle, setCodeTitle] = useState(CODE_SAMPLES.tsx.defaultTitle)
   const [showLineNumbers, setShowLineNumbers] = useState(true)
   const [wrapLongLines, setWrapLongLines] = useState(false)
@@ -89,11 +91,20 @@ export const TypographyAndCodePage: React.FC = () => {
       <div className="space-y-5">
         {/* 卡片 1: CodeBlock */}
         <ComponentDocPreview
-          title="CodeBlock 终端风格代码块"
+          title="CodeBlock 终端与语义表面代码块"
           components={['CodeBlock']}
-          description="内置深色终端外观、Mac 状态点装饰、语言角标、等宽行号列、长行自适应折行与一键复制交互。"
+          description="支持深色终端 (terminal) 与随主题切换的语义表面 (surface) 双外观、可折叠限高、等宽行号列、长行折行与一键复制交互。"
           controls={
             <>
+              <KnobSegmented
+                label="variant"
+                value={codeVariant}
+                onChange={setCodeVariant}
+                options={[
+                  { label: 'terminal (深色终端)', value: 'terminal' },
+                  { label: 'surface (亮暗自适应)', value: 'surface' },
+                ]}
+              />
               <KnobSegmented
                 label="language"
                 value={lang}
@@ -105,14 +116,16 @@ export const TypographyAndCodePage: React.FC = () => {
                   { label: 'bash', value: 'bash' },
                 ]}
               />
-              <KnobText label="title" value={codeTitle} onChange={setCodeTitle} widthClass="w-48" />
-              <KnobText label="copyLabel" value={codeCopyLabel} onChange={setCodeCopyLabel} widthClass="w-28" />
+              <KnobText label="title" value={codeTitle} onChange={setCodeTitle} widthClass="w-44" />
+              <KnobSwitch label="collapsible" checked={codeCollapsible} onChange={setCodeCollapsible} />
               <KnobSwitch label="showLineNumbers" checked={showLineNumbers} onChange={setShowLineNumbers} />
               <KnobSwitch label="wrapLongLines" checked={wrapLongLines} onChange={setWrapLongLines} />
             </>
           }
           onResetKnobs={() => {
             setLang('tsx')
+            setCodeVariant('terminal')
+            setCodeCollapsible(false)
             setCodeTitle(CODE_SAMPLES.tsx.defaultTitle)
             setShowLineNumbers(true)
             setWrapLongLines(false)
@@ -121,26 +134,26 @@ export const TypographyAndCodePage: React.FC = () => {
           code={`import { CodeBlock } from '@abc-design/react'
 
 <CodeBlock
+  variant="${codeVariant}"
   title="${codeTitle}"
   language="${lang}"
-  copyLabel="${codeCopyLabel}"
-  copiedLabel="已复制"
+  collapsible={${codeCollapsible}}
   showLineNumbers={${showLineNumbers}}
   wrapLongLines={${wrapLongLines}}
   code={snippet}
 />`}
           apiRows={[
             { prop: 'code', type: 'string', required: true, description: '代码字符串内容，同时作为右上角复制数据源' },
-            { prop: 'title', type: 'ReactNode', description: '顶部文件路径、接口名称或说明标题' },
-            { prop: 'language', type: 'string', description: '语言徽章文本（如 tsx / rust / json / bash）' },
-            { prop: 'showLineNumbers', type: 'boolean', defaultValue: 'false', description: '在代码文本左侧生成等宽数字行号列' },
-            { prop: 'wrapLongLines', type: 'boolean', defaultValue: 'false', description: '是否启用长行自动折行防止水平滚动条' },
-            { prop: 'copyLabel / copiedLabel', type: 'string', defaultValue: "'Copy' / 'Copied'", description: '复制按钮常态与复制成功后的反馈文案' },
+            { prop: 'variant', type: "'terminal' | 'surface'", defaultValue: "'terminal'", description: '深色 Mac 终端外观或跟随 --abc-* 语义变量的表面外观' },
+            { prop: 'collapsible / maxHeight', type: 'boolean / number | string', defaultValue: 'false', description: '支持展开/收起切换与最大滚动高度限制' },
+            { prop: 'showLineNumbers / wrapLongLines', type: 'boolean / boolean', defaultValue: 'false / false', description: '左侧等宽行号列与长行自动折行开关' },
           ]}
         >
           <CodeBlock
+            variant={codeVariant}
             title={codeTitle || undefined}
             language={lang}
+            collapsible={codeCollapsible}
             copyLabel={codeCopyLabel || 'Copy'}
             copiedLabel="已复制"
             showLineNumbers={showLineNumbers}

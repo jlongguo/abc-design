@@ -54,6 +54,14 @@
     --abc-border: rgba(226, 232, 240, 0.92);
     --abc-border-strong: #cbd5e1;
 
+    /* JSON 语法高亮语义 Token（亮色高对比） */
+    --abc-json-key: #1e293b;
+    --abc-json-string: #047857;
+    --abc-json-number: #0369a1;
+    --abc-json-boolean: #b45309;
+    --abc-json-null: #64748b;
+    --abc-json-match-bg: #fef3c7;
+
     /* 主色动态交互角色 */
     --abc-primary: var(--abc-brand-600);
     --abc-primary-hover: var(--abc-brand-700);
@@ -143,6 +151,12 @@
       --abc-warning-soft: rgba(245, 158, 11, 0.15);
       --abc-danger-soft: rgba(244, 63, 94, 0.15);
       --abc-info-soft: rgba(14, 165, 233, 0.15);
+      --abc-json-key: #e2e8f0;
+      --abc-json-string: #34d399;
+      --abc-json-number: #38bdf8;
+      --abc-json-boolean: #fbbf24;
+      --abc-json-null: #94a3b8;
+      --abc-json-match-bg: rgba(245, 158, 11, 0.22);
       --abc-autofill-bg: #0b1324;
       --abc-autofill-ring: color-mix(in srgb, var(--abc-brand-400) 45%, transparent);
       --abc-scrollbar-thumb: rgba(100, 116, 139, 0.55);
@@ -176,6 +190,12 @@
     --abc-warning-soft: rgba(245, 158, 11, 0.15);
     --abc-danger-soft: rgba(244, 63, 94, 0.15);
     --abc-info-soft: rgba(14, 165, 233, 0.15);
+    --abc-json-key: #e2e8f0;
+    --abc-json-string: #34d399;
+    --abc-json-number: #38bdf8;
+    --abc-json-boolean: #fbbf24;
+    --abc-json-null: #94a3b8;
+    --abc-json-match-bg: rgba(245, 158, 11, 0.22);
     --abc-autofill-bg: #0b1324;
     --abc-autofill-ring: color-mix(in srgb, var(--abc-brand-400) 45%, transparent);
     --abc-scrollbar-thumb: rgba(100, 116, 139, 0.55);

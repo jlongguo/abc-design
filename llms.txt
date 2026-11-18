@@ -15,5 +15,5 @@
 - [04. 自适应图表与开箱业务页蓝图](./docs/agent/04-charts-and-templates.md): `@abc-design/charts`（`StatCard`/`AbcChart`/`getAbcChartPalette`/`buildAbcBaseChartOption`）与标准页面模板
 - [05. 复杂组件联动编排与选型决策矩阵](./docs/agent/05-complex-linkage-and-orchestration.md): 7 大跨组件复杂联动场景、12 个高阶联动组件及 `@abc-design/core` 算法内核签名
 
-## Interactive Playground (`apps/playground/src/pages/`)
-- `foundation/`, `navigation/`, `form/`, `display/`, `surfaces/`, `feedback/`, `charts/`, `pro/`, `linkage/`, `templates/` — 10 大领域共 36 个聚焦文档路由页与实时 Props 调节面板
+## Interactive Playground (`apps/playground/src/`)
+- `registry/` + `pages/` — 7 大领域分类 × 36 个聚焦文档路由 × 全量组件独立 `<ComponentDocPreview>` 演练卡（支持页内「分段全览 + 右侧 ScrollSpy 目录」与「单卡独立聚焦」切换、顶栏 `⌘K` 全组件直达搜索，并由 `pnpm check:playground-sync` 强制保障 100% 导出覆盖）

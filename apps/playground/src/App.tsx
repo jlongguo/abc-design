@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AbcProvider,
   Button,
@@ -12,9 +12,13 @@ import {
   type AbcBrandInfo,
   type AbcDictOption,
   type AbcLayoutSettings,
-  type AbcMenuItem,
 } from '@abc-design/react'
 import { Building2, LogOut, Sparkles } from 'lucide-react'
+import {
+  PlaygroundPageFrame,
+  type PendingComponentJump,
+} from './components/PlaygroundPageFrame'
+import type { ShowcaseViewMode } from './components/PlaygroundShowcaseContext'
 import { ChartsAndMetricsPage } from './pages/charts/ChartsAndMetricsPage'
 import { BadgesAvatarMediaPage } from './pages/display/BadgesAvatarMediaPage'
 import { PaginationAndEmptyPage } from './pages/display/PaginationAndEmptyPage'
@@ -51,118 +55,16 @@ import { ProTablePage } from './pages/ProTablePage'
 import { BaseAndEffectsCardsPage } from './pages/surfaces/BaseAndEffectsCardsPage'
 import { BusinessCardsAndBentoPage } from './pages/surfaces/BusinessCardsAndBentoPage'
 import { TemplatesPage } from './pages/TemplatesPage'
+import {
+  PLAYGROUND_MENU_TREE,
+  PLAYGROUND_ROUTE_MAP,
+  TOTAL_REGISTERED_SYMBOLS,
+  buildPlaygroundCommandActions,
+} from './registry'
 
 const INITIAL_BRAND_SVG = `<svg viewBox="0 0 40 40" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="40" height="40" rx="10" fill="#2563eb"/><path d="M12 28L20 11L28 28H23.8L20 19.6L16.2 28H12Z" fill="#ffffff"/></svg>`
 
-/** 10 大领域分组 × 36 个聚焦展示路由 */
-const MENU_TREE: AbcMenuItem[] = [
-  {
-    key: 'foundation',
-    label: '基础原语',
-    icon: 'palette',
-    children: [
-      { key: 'overview', label: 'Design Tokens 总览', path: '/overview', icon: 'dashboard' },
-      { key: 'typography', label: '排版代码与复制', path: '/foundation/typography', icon: 'document' },
-      { key: 'icons-locale', label: '图标主题与语言', path: '/foundation/icons-locale', icon: 'sparkles' },
-      { key: 'spacing-classes', label: '间距分隔与令牌类', path: '/foundation/spacing-classes', icon: 'layers' },
-    ],
-  },
-  {
-    key: 'navigation',
-    label: '通用导航',
-    icon: 'Compass',
-    children: [
-      { key: 'nav-buttons', label: '按钮与分段控制', path: '/nav/buttons', icon: 'task' },
-      { key: 'nav-tabs-steps', label: '页签步骤与子导航', path: '/nav/tabs-steps', icon: 'layout' },
-      { key: 'nav-dropdown-cmd', label: '下拉菜单与命令板', path: '/nav/dropdown-command', icon: 'search' },
-    ],
-  },
-  {
-    key: 'form-basic',
-    label: '表单录入',
-    icon: 'edit',
-    children: [
-      { key: 'form-inputs', label: '文本数值搜索配额', path: '/form/inputs', icon: 'edit' },
-      { key: 'form-controls', label: '开关单复选与标签', path: '/form/controls', icon: 's-operation' },
-      { key: 'form-select', label: 'Select与字典选择', path: '/form/select', icon: 'ListChecks' },
-    ],
-  },
-  {
-    key: 'form-advanced',
-    label: '树与上传',
-    icon: 'FolderTree',
-    children: [
-      { key: 'form-tree-cascader', label: '树与TreeSelect级联', path: '/form/tree-cascader', icon: 'FolderTree' },
-      { key: 'form-pickers-transfer', label: '日期图标与穿梭框', path: '/form/pickers-transfer', icon: 'Calendar' },
-      { key: 'form-uploads-md', label: '上传校验与Markdown', path: '/form/uploads-markdown', icon: 'picture' },
-    ],
-  },
-  {
-    key: 'data-display',
-    label: '数据展示',
-    icon: 'layers',
-    children: [
-      { key: 'display-badges', label: '徽标头像与灯箱', path: '/display/badges-media', icon: 'tag' },
-      { key: 'display-structured', label: '描述折叠与时间轴', path: '/display/structured', icon: 'articleList' },
-      { key: 'display-pagination', label: '双模分页空态骨架', path: '/display/pagination-empty', icon: 'data' },
-    ],
-  },
-  {
-    key: 'surfaces',
-    label: '卡片动效',
-    icon: 'sparkles',
-    children: [
-      { key: 'surfaces-base', label: '基础卡片流光极光', path: '/surfaces/base-cards', icon: 'sparkles' },
-      { key: 'surfaces-pro', label: '指标选择定价网格', path: '/surfaces/pro-cards', icon: 'components' },
-    ],
-  },
-  {
-    key: 'feedback',
-    label: '反馈审计',
-    icon: 'BellRing',
-    children: [
-      { key: 'feedback-banners', label: '横幅报错与结果页', path: '/feedback/banners-errors', icon: 'alert' },
-      { key: 'feedback-toast', label: 'Toast加载与进度条', path: '/feedback/toast-progress', icon: 'bell' },
-      { key: 'feedback-overlays', label: '弹窗抽屉与审计流', path: '/feedback/overlays-audit', icon: 'key' },
-      { key: 'feedback-security', label: '水印权限与隔离界', path: '/feedback/security-resilience', icon: 'role' },
-    ],
-  },
-  {
-    key: 'charts',
-    label: '图表大盘',
-    icon: 'chart',
-    children: [
-      { key: 'charts-echarts', label: 'ECharts自适应大盘', path: '/charts/echarts', icon: 'chart' },
-    ],
-  },
-  {
-    key: 'pro-suite',
-    label: '壳层套件',
-    icon: 'table',
-    children: [
-      { key: 'layouts-shell', label: '5模态布局与保活', path: '/layouts/shell', icon: 'sidebar' },
-      { key: 'pro-page-chrome', label: '页头筛选与工作流', path: '/pro/page-chrome', icon: 'layout' },
-      { key: 'pro-tables-split', label: 'DataTable主从检视', path: '/pro/tables-split', icon: 'table', badge: 'New' },
-      { key: 'pro-table', label: 'ProTable全量CRUD', path: '/pro/table', icon: 'table', badge: 'Updated' },
-      { key: 'pro-config', label: 'Schema配置中心', path: '/pro/config', icon: 'config' },
-      { key: 'pro-logs', label: '虚拟滚动日志查看', path: '/pro/logs', icon: 'log' },
-      { key: 'templates', label: '5套企业业务模板', path: '/templates', icon: 'sparkles', badge: '5' },
-    ],
-  },
-  {
-    key: 'linkage',
-    label: '复杂联动',
-    icon: 'Network',
-    children: [
-      { key: 'linkage-master-detail', label: '左树右表四方工作台', path: '/linkage/master-detail', icon: 'FolderTree', badge: 'New' },
-      { key: 'linkage-dynamic-form', label: '动态表单级联与列表', path: '/linkage/dynamic-form', icon: 'Sliders', badge: 'New' },
-      { key: 'linkage-editable-table', label: '行内编辑表格与汇总', path: '/linkage/editable-table', icon: 'edit', badge: 'New' },
-      { key: 'linkage-query-builder', label: '规则构建器与视图栏', path: '/linkage/query-builder', icon: 'search', badge: 'New' },
-      { key: 'linkage-cross-filter', label: '图表下钻交叉过滤板', path: '/linkage/cross-filter', icon: 'chart', badge: 'New' },
-      { key: 'linkage-wizard-batch', label: '分步向导Diff与批处理', path: '/linkage/wizard-batch', icon: 'layers', badge: 'New' },
-    ],
-  },
-]
+const VIEW_MODE_STORAGE_KEY = 'abc_pg_view_mode_v1'
 
 const MOCK_DICTS: Record<string, AbcDictOption[]> = {
   tenant_status: [
@@ -178,11 +80,47 @@ const MOCK_DICTS: Record<string, AbcDictOption[]> = {
   ],
 }
 
+function readInitialViewMode(): ShowcaseViewMode {
+  if (typeof window === 'undefined') return 'segmented'
+  try {
+    const raw = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY)
+    return raw === 'focus' ? 'focus' : 'segmented'
+  } catch {
+    return 'segmented'
+  }
+}
+
+function parseUrlRoute(): { path: string; anchorId?: string } {
+  if (typeof window === 'undefined') return { path: '/overview' }
+  const rawHash = window.location.hash.replace(/^#/, '')
+  if (!rawHash) return { path: '/overview' }
+  const [routePart, anchorPart] = rawHash.split('::')
+  if (routePart && PLAYGROUND_ROUTE_MAP.has(routePart)) {
+    return { path: routePart, anchorId: anchorPart || undefined }
+  }
+  return { path: '/overview' }
+}
+
 export const App: React.FC = () => {
-  const [pathname, setPathname] = useState('/overview')
-  const [layoutSettings, setLayoutSettings] = useState<AbcLayoutSettings>(
-    DEFAULT_ABC_LAYOUT_SETTINGS
+  const initialRoute = useMemo(() => parseUrlRoute(), [])
+  const [pathname, setPathname] = useState(initialRoute.path)
+  const [viewMode, setViewMode] = useState<ShowcaseViewMode>(() => readInitialViewMode())
+  const jumpSeqRef = useRef(1)
+  const [pendingJump, setPendingJump] = useState<PendingComponentJump | null>(() =>
+    initialRoute.anchorId
+      ? {
+          routePath: initialRoute.path,
+          anchorId: initialRoute.anchorId,
+          symbol: '',
+          nonce: 1,
+        }
+      : null
   )
+
+  const [layoutSettings, setLayoutSettings] = useState<AbcLayoutSettings>(() => ({
+    ...DEFAULT_ABC_LAYOUT_SETTINGS,
+    sidebarSearch: true,
+  }))
   const [brandModalOpen, setBrandModalOpen] = useState(false)
   const [brand, setBrand] = useState<AbcBrandInfo>({
     name: 'ABC Design',
@@ -191,9 +129,70 @@ export const App: React.FC = () => {
   })
   const [draftBrand, setDraftBrand] = useState(brand)
 
+  const handleViewModeChange = useCallback((next: ShowcaseViewMode) => {
+    setViewMode(next)
+    try {
+      window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, next)
+    } catch {
+      // 忽略无痕窗口限制
+    }
+  }, [])
+
+  const navigateRoute = useCallback((nextPath: string, anchorId?: string) => {
+    setPathname(nextPath)
+    if (typeof window !== 'undefined') {
+      const nextHash = anchorId ? `#${nextPath}::${anchorId}` : `#${nextPath}`
+      if (window.location.hash !== nextHash) {
+        window.history.replaceState(null, '', nextHash)
+      }
+    }
+  }, [])
+
+  const handleJumpToComponent = useCallback(
+    (routePath: string, anchorId: string, symbol: string) => {
+      jumpSeqRef.current += 1
+      setPendingJump({
+        routePath,
+        anchorId,
+        symbol,
+        nonce: jumpSeqRef.current,
+      })
+      navigateRoute(routePath, anchorId)
+    },
+    [navigateRoute]
+  )
+
+  const handleConsumeJump = useCallback((nonce: number) => {
+    setPendingJump((cur) => (cur && cur.nonce === nonce ? null : cur))
+  }, [])
+
+  // 支持浏览器前进后退或外部 Hash 变更联动
+  useEffect(() => {
+    const onHashChange = () => {
+      const parsed = parseUrlRoute()
+      setPathname(parsed.path)
+      if (parsed.anchorId) {
+        jumpSeqRef.current += 1
+        setPendingJump({
+          routePath: parsed.path,
+          anchorId: parsed.anchorId,
+          symbol: '',
+          nonce: jumpSeqRef.current,
+        })
+      }
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  const commandActions = useMemo(
+    () => buildPlaygroundCommandActions(handleJumpToComponent),
+    [handleJumpToComponent]
+  )
+
   const brandWithAction: AbcBrandInfo = {
     ...brand,
-    onClick: () => setPathname('/overview'),
+    onClick: () => navigateRoute('/overview'),
     onEditBrand: () => {
       setDraftBrand(brand)
       setBrandModalOpen(true)
@@ -204,10 +203,15 @@ export const App: React.FC = () => {
     setLayoutSettings((prev) => ({ ...prev, ...patch }))
   }
 
-  const renderPage = () => {
+  const renderPageContent = () => {
     switch (pathname) {
       case '/overview':
-        return <OverviewPage onJump={setPathname} />
+        return (
+          <OverviewPage
+            onJump={(p) => navigateRoute(p)}
+            onJumpToComponent={handleJumpToComponent}
+          />
+        )
       case '/foundation/typography':
         return <TypographyAndCodePage />
       case '/foundation/icons-locale':
@@ -255,7 +259,7 @@ export const App: React.FC = () => {
       case '/layouts/shell':
         return <ShellLayoutsPage layoutSettings={layoutSettings} onChangeLayout={updateLayoutPatch} />
       case '/pro/page-chrome':
-        return <PageChromeAndFilterPage onJump={setPathname} />
+        return <PageChromeAndFilterPage onJump={(p) => navigateRoute(p)} />
       case '/pro/tables-split':
         return <TablesAndSplitDetailPage />
       case '/pro/table':
@@ -279,7 +283,12 @@ export const App: React.FC = () => {
       case '/linkage/wizard-batch':
         return <WizardDiffAndBatchPage />
       default:
-        return <OverviewPage onJump={setPathname} />
+        return (
+          <OverviewPage
+            onJump={(p) => navigateRoute(p)}
+            onJumpToComponent={handleJumpToComponent}
+          />
+        )
     }
   }
 
@@ -292,15 +301,20 @@ export const App: React.FC = () => {
     >
       <ProLayout
         brand={brandWithAction}
-        menuItems={MENU_TREE}
+        menuItems={PLAYGROUND_MENU_TREE}
         pathname={pathname}
-        onNavigate={(nextPath) => setPathname(nextPath)}
+        onNavigate={(nextPath) => navigateRoute(nextPath)}
         settings={layoutSettings}
         onSettingsChange={setLayoutSettings}
+        commandActions={commandActions}
+        searchPlaceholder="搜索组件 / 菜单..."
+        commandPlaceholder={`搜索全部 ${TOTAL_REGISTERED_SYMBOLS} 个组件符号（如 JsonTreeViewer、ProRowActionsOverflow、TagInput）、中文名、拼音或路由...`}
+        sidebarSearch
+        sidebarSearchPlaceholder="筛选分类或输入组件名..."
         headerExtra={
           <StatusTag tone="neutral" className="hidden sm:inline-flex">
             <Building2 className="mr-1 inline h-3 w-3 text-[var(--abc-primary)]" />
-            旗舰演示租户
+            {TOTAL_REGISTERED_SYMBOLS} 组件已同步
           </StatusTag>
         }
         user={{
@@ -349,7 +363,16 @@ export const App: React.FC = () => {
           </div>
         }
       >
-        {renderPage()}
+        <PlaygroundPageFrame
+          key={pathname}
+          routePath={pathname}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
+          pendingJump={pendingJump}
+          onConsumeJump={handleConsumeJump}
+        >
+          {renderPageContent()}
+        </PlaygroundPageFrame>
       </ProLayout>
 
       {/* 导航栏快捷编辑租户级品牌弹窗 */}

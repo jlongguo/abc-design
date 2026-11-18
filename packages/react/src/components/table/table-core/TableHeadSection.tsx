@@ -271,6 +271,8 @@ export function TableHeadSection<T extends Record<string, any>>({ state }: { sta
                           !fx &&
                           col.key !== '__abc_actions__' &&
                           col.key !== '__actions__' &&
+                          col.key !== 'actions' &&
+                          col.key !== 'action' &&
                           col.key !== '__drag_handle__' && (
                             <GripVertical
                               className={cn(

@@ -279,7 +279,16 @@ export const TablesAndSplitDetailPage: React.FC = () => {
         {/* Card 3: SplitDetailPanel vs SplitInspectorLayout + InspectorPanel */}
         <ComponentDocPreview
           title="主从联动双范式对比：SplitDetailPanel (按需挤压) vs SplitInspectorLayout + InspectorPanel (常驻检视)"
-          components={['SplitDetailLayout', 'SplitDetailPanel', 'SplitInspectorLayout', 'InspectorPanel']}
+          components={[
+            'SplitDetailPanel',
+            'SplitDetailLayout',
+            'SplitDetailHeader',
+            'SplitDetailTitle',
+            'SplitDetailBody',
+            'SplitDetailFooter',
+            'SplitInspectorLayout',
+            'InspectorPanel',
+          ]}
           description="范式 A（上半部分）：点击表格行才在右侧滑出非阻塞详情面板，关闭即归还 100% 表格宽度；范式 B（下半部分）：右侧常驻检视面板，支持三档比例预设与加载/空态切换。"
           onResetKnobs={() => {
             setSplitWidth(420)

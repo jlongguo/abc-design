@@ -135,14 +135,14 @@ export const KeepAliveContainer: React.FC<KeepAliveContainerProps> = ({
     }
   }
 
-  // 原地复用已挂载缓存节点（仅在首次访问或手动触发刷新计数器变化时更新节点）
+  // 当前激活视图始终接收最新 children 以确保受控 Props（如深链跳转、视图模式、主题配置）实时同步，
+  // 后台非激活页签继续保留缓存中的 entry.node 实例以维持 DOM 与内部状态不丢失
   tickRef.current += 1
-  const existing = cacheRef.current.get(activeKey)
   cacheRef.current.set(activeKey, {
     key: activeKey,
     seed: currentSeed,
     lastActiveTick: tickRef.current,
-    node: existing && existing.seed === currentSeed ? existing.node : children,
+    node: children,
   })
 
   // 超出容量上限时按 LRU 淘汰最久未访问的非当前页签

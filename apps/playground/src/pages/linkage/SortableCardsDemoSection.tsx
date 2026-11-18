@@ -4,6 +4,7 @@ import {
   FormField,
   Input,
   Select,
+  SortableList,
   SortableSplitEditor,
   StatusTag,
   abcToast,
@@ -72,7 +73,12 @@ export const SortableCardsDemoSection: React.FC = () => {
   const [showMoveButtons, setShowMoveButtons] = useState(true)
   const [showIndexBadge, setShowIndexBadge] = useState(true)
   const [disabled, setDisabled] = useState(false)
-  const [panelWidth, setPanelWidth] = useState<'420' | '480' | '540'>('460' as '480')
+  const [panelWidth, setPanelWidth] = useState<'420' | '480' | '540'>('480')
+  const [quickStages, setQuickStages] = useState([
+    { id: 's1', name: 'DNS 智能就近解析' },
+    { id: 's2', name: 'WAF 规则预检拦截' },
+    { id: 's3', name: '动态代理出口分配' },
+  ])
 
   const [draftZh, setDraftZh] = useState('')
   const [draftEn, setDraftEn] = useState('')
@@ -133,7 +139,7 @@ export const SortableCardsDemoSection: React.FC = () => {
           <KnobSwitch label="disabled" checked={disabled} onChange={setDisabled} />
           <KnobSegmented
             label="panelWidth"
-            value={panelWidth === ('460' as '480') ? '480' : panelWidth}
+            value={panelWidth}
             onChange={setPanelWidth}
             options={[
               { label: '420px', value: '420' },
@@ -331,6 +337,27 @@ export const SortableCardsDemoSection: React.FC = () => {
           ) : null
         }
       />
+
+      <div className="mt-5 rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)]/35 p-3.5">
+        <div className="mb-2.5 flex items-center justify-between text-xs">
+          <span className="font-semibold text-[var(--abc-fg)]">
+            轻量底层原语：独立使用 SortableList（仅需无障碍拖拽/键盘重排、无需右侧编辑面板时）
+          </span>
+          <StatusTag tone="neutral" size="xs" dot={false}>
+            当前顺序：{quickStages.map((s) => s.id).join(' → ')}
+          </StatusTag>
+        </div>
+        <SortableList
+          items={quickStages}
+          rowKey="id"
+          showMoveButtons={showMoveButtons}
+          showIndexBadge={showIndexBadge}
+          disabled={disabled}
+          getItemLabel={(s) => s.name}
+          onReorder={(next) => setQuickStages(next)}
+          renderItem={(s) => <span className="text-xs font-medium text-[var(--abc-fg)]">{s.name}</span>}
+        />
+      </div>
     </ComponentDocPreview>
   )
 }

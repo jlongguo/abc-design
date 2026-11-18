@@ -361,14 +361,21 @@ export const Drawer: React.FC<DrawerProps> = ({
             role="separator"
             aria-orientation="vertical"
             aria-label="拖拽调节抽屉宽度"
+            title="左右拖拽调节抽屉宽度"
             onMouseDown={handleResizeStart}
             className={cn(
-              'group absolute top-0 bottom-0 z-20 flex w-2 items-center justify-center cursor-col-resize select-none',
-              placement === 'right' ? '-left-1' : '-right-1'
+              'group absolute top-0 bottom-0 z-20 flex w-3 items-center justify-center cursor-col-resize select-none',
+              placement === 'right' ? '-left-1.5' : '-right-1.5'
             )}
           >
-            <div className="h-12 w-1 rounded-full bg-transparent transition-colors group-hover:bg-[var(--abc-primary)]/60" />
-            <GripVertical className="pointer-events-none absolute h-3.5 w-3.5 text-[var(--abc-fg-muted)] opacity-0 transition-opacity group-hover:opacity-100" />
+            <div className="pointer-events-none absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-transparent transition-colors group-hover:bg-[var(--abc-primary)]" />
+            <span
+              aria-hidden="true"
+              data-slot="drawer-resize-handle"
+              className="pointer-events-none z-10 inline-flex h-7 w-3.5 items-center justify-center rounded-full border border-[var(--abc-border-strong,var(--abc-border))] bg-[var(--abc-bg-surface)] text-[var(--abc-fg-muted)] shadow-2xs transition-all group-hover:border-[var(--abc-primary)] group-hover:text-[var(--abc-primary)] group-hover:shadow-sm"
+            >
+              <GripVertical className="h-3 w-3" />
+            </span>
           </div>
         )}
 

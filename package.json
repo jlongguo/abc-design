@@ -6,10 +6,11 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @abc-design/playground dev",
-    "build": "pnpm run build:libs && pnpm --filter @abc-design/playground build",
+    "check:playground-sync": "node ./scripts/check-playground-sync.mjs",
+    "build": "pnpm run check:playground-sync && pnpm run build:libs && pnpm --filter @abc-design/playground build",
     "build:libs": "pnpm --filter @abc-design/tokens build && pnpm --filter @abc-design/core build && pnpm --filter @abc-design/react build && pnpm --filter @abc-design/charts build && pnpm --filter @abc-design/markdown build",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm --filter @abc-design/react test && pnpm --filter @abc-design/markdown test",
+    "test": "pnpm run check:playground-sync && pnpm --filter @abc-design/react test && pnpm --filter @abc-design/markdown test && pnpm --filter @abc-design/playground test",
     "deploy:playground": "bash ./scripts/deploy_playground.sh"
   },
   "devDependencies": {

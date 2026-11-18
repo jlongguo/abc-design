@@ -43,13 +43,13 @@
   - `src?: string`、`maskSrc?: string`、`maskClassName?: string`、`alt?: string`、`fallbackIcon?: ReactNode`、`className?: string`（默认 `'w-4 h-4'`）
 
 ### `CopyButton` / `CopyableText` / `CopyableCode` / `CodeBlock` / `LocaleSwitcher`
-- `CopyButton`: `value: string`（必填）、`title?: string`、`copyLabel?: string`（默认 `'复制'`）、`copiedLabel?: string`（默认 `'已复制'`）、`successDuration?: number`（默认 `1800`）、`iconOnly?: boolean`（默认 `true`）、`onCopySuccess?: (val: string) => void`、`onCopyError?: (err: unknown) => void`
+- `CopyButton`: `value: string`（必填）、`title?: string`、`copyLabel?: string`（默认 `'复制'`）、`copiedLabel?: string`（默认 `'已复制'`）、`successDuration?: number`（默认 `1800`）、`iconOnly?: boolean`（默认 `true`）、`onCopySuccess?: () => void`、`onCopyError?: () => void`
 - `CopyableText`: `text: string`、`displayText?: ReactNode`、`showIcon?: boolean`、`iconOnly?: boolean`、`mono?: boolean`、`successMessage?: string`
 - `CopyableCode`: `value: string`、`displayValue?: ReactNode`、`hideCopyButton?: boolean`、`codeClassName?: string`
-- `CodeBlock`: 深色终端/代码展示块：
-  - `code: string`（必填）、`title?: ReactNode`、`language?: string`
-  - `copyable?: boolean`（默认 `true`）、`copyLabel?: string`（`'Copy'`）、`copiedLabel?: string`（`'Copied'`）、`copyAriaLabel?: string`
-  - `headerAction?: ReactNode`、`preClassName?: string`、`maxHeightClassName?: string`、`showLineNumbers?: boolean`（默认 `false`）、`wrapLongLines?: boolean`（默认 `false`）
+- `CodeBlock`: 深色终端/语义表面代码展示块：
+  - `code: string`（必填）、`title?: ReactNode`、`language?: string`、`variant?: 'terminal' | 'surface'`（默认 `'terminal'`；`'surface'` 跟随 `--abc-*` 亮暗语义表面）
+  - `copyable?: boolean`（默认 `true`）、`copyLabel?: string`（`'Copy'`）、`copiedLabel?: string`（`'Copied'`）、`copyAriaLabel?: string`、`onCopySuccess?: () => void`、`onCopyError?: () => void`
+  - `headerAction?: ReactNode`、`preClassName?: string`、`maxHeightClassName?: string`、`maxHeight?: number | string`、`collapsible?: boolean`、`defaultCollapsed?: boolean`、`emptyText?: ReactNode`、`showLineNumbers?: boolean`（默认 `false`）、`wrapLongLines?: boolean`（默认 `false`）
 - `LocaleSwitcher`: `locale: string`、`onToggle?: () => void`、`onSelectLocale?: (next: 'en' | 'zh') => void`、`mode?: 'toggle' | 'segmented'`（默认 `'toggle'`）、`dark?: boolean`、`label?: string`
 
 ---
@@ -81,6 +81,15 @@
 >   - `RadioGroup`: `options: RadioGroupOption[]`、`variant?: 'default' | 'segmented'`
 >   - `Switch`: `checked` / `onChange(checked)` / `onCheckedChange(checked)` / `loading` / `checkedLabel` / `uncheckedLabel` / `checkedChildren` / `unCheckedChildren`
 > - 业务配额/辅助控件：`ByteQuotaInput` & `DurationQuotaInput`（配合 `formatQuotaBytes` / `formatQuotaDuration`）、`TagInput`、`IconPicker`、`SliderVerify`
+
+### `TagInput`（多标签胶囊输入框）
+- 核心 Props (`TagInputProps`):
+  - 受控/非受控：`value?: string[]`、`defaultValue?: string[]`、`onChange?: (tags: string[]) => void`、`onValueChange?: (tags: string[]) => void`
+  - 表单语义：`id?: string`、`name?: string`、`label?: ReactNode`、`error?: ReactNode`、`helperText?: ReactNode`、`invalid?: boolean`、`required?: boolean`、`placeholder?: string`、`mono?: boolean`、`size?: ControlSize`、`motion?: AbcMotionPreset`
+  - 交互与只读：`disabled?: boolean`、`readOnly?: boolean`、`separators?: ReadonlyArray<string> | RegExp`（默认 `DEFAULT_TAG_SEPARATORS` 含 `,` `，` `;` `；` `\n` `\r` `\t`）、`addOnBlur?: boolean`（默认 `true`）、`splitOnPaste?: boolean`（默认 `true`）
+  - 校验与上限：`allowDuplicates?: boolean`（默认 `false`）、`maxTags?: number`（默认不设硬上限，达上限时仍可 `Backspace` 删标签）、`maxTagLength?: number`、`showCount?: boolean`、`transformTag?: (raw: string) => string`、`validateTag?: (tag: string, currentTags: ReadonlyArray<string>) => boolean | string | null | undefined`、`onReject?: (rejected: RejectedTagItem[]) => void`
+  - 清空与无障碍：`allowClear?: boolean`、`clearable?: boolean`、`onClear?: () => void`、`removeTagLabel?: (tag: string) => string`、`clearLabel?: string`、`onFocus`、`onBlur`、`aria-label`、`aria-labelledby`、`aria-describedby`、`aria-invalid`、`className?: string`、`wrapperClassName`、`chipClassName`、`inputClassName`
+- 纯算法内核：`@abc-design/core` 导出 `DEFAULT_TAG_SEPARATORS`、`splitTagInputText`、`splitTagDraftOnInput`、`mergeTagTokens`（执行顺序：`transformTag` -> 非空 -> 去重 -> `maxTagLength` -> `validateTag` -> `maxTags`）。
 
 ### `Select` / `SelectField` / `RadixSelect`（单/多选家族）
 - `Select`: `options?: ReadonlyArray<SelectOption>`、`value`/`defaultValue`、`onChange`/`onValueChange`、`multiple?`、`searchable?`、`allowClear`/`clearable?`、`invalid?`、`size?: ControlSize | 'ghost'`、`wrapperClassName`/`containerClassName`、`dropdownClassName`/`popoverClassName`、`matchWidth?`、`hideChevron?`、`container?`
@@ -146,8 +155,8 @@ import { TreeSelect } from '@abc-design/react'
 - 核心 Props (`KeyValueInputProps`):
   - `value?: AbcKeyValueEntry[]`、`defaultValue?: AbcKeyValueEntry[]`、`onChange?: (next: AbcKeyValueEntry[]) => void`
   - `allowEnableToggle?: boolean`（默认 `true`）、`allowSecretMask?: boolean`（默认 `false`）
-  - `allowBulkEdit?: boolean`（默认 `true`）、`defaultBulkFormat?: 'dotenv' | 'headers' | 'json'`（默认 `'dotenv'`）
-  - `keyPlaceholder?: string`、`valuePlaceholder?: string`、`maxItems?: number`、`disabled?: boolean`、`size?: AbcSize`
+  - `allowBulkEdit?: boolean`（默认 `true`）、`defaultBulkFormat?: 'dotenv' | 'headers' | 'json'`（默认 `'dotenv'`）、`smartPaste?: boolean`（默认 `true`，Key 输入框支持粘贴多行 `.env`/Headers/JSON 自动拆行）
+  - `keyPlaceholder?: string`、`valuePlaceholder?: string`、`emptyText?: ReactNode`、`labels?: KeyValueInputLabels`、`maxItems?: number`、`disabled?: boolean`、`readOnly?: boolean`、`size?: AbcSize`
 - 详细与 `@abc-design/core` 解析/序列化联动的示例参见 [05-complex-linkage-and-orchestration.md](./05-complex-linkage-and-orchestration.md#35-keyvalueinput--环境变量--请求头--json-双向编辑器)。
 
 ### `FileUpload` & `ImageUpload` & `ProMultiImageUpload` & `ProFormLayout`
@@ -182,9 +191,16 @@ import { TreeSelect } from '@abc-design/react'
 ### 描述列表 (`Descriptions` vs `DescriptionList`)
 - **`Descriptions`**（紧凑网格）：`items: Array<{ key?: string; label: ReactNode; children: ReactNode; span?: number }>`、`column?: 1 | 2 | 3 | 4`、`bordered?: boolean`
 - **`DescriptionList` & `DescriptionItem` (`DescriptionListItem`)**：
-  - `items?: Array<{ key?: string; label: ReactNode; value: ReactNode; mono?: boolean; copyValue?: string; span?: 1 | 2 | 3 | 'full' }>`
-  - `columns?: 1 | 2 | 3 | 4`、`variant?: 'default' | 'cards' | 'divided' | 'compact'`、`density?: 'default' | 'compact'`、`bordered?: boolean`
+  - `items?: Array<{ key?: string; label: ReactNode; value: ReactNode; mono?: boolean; copyValue?: string; emptyText?: ReactNode; span?: 1 | 2 | 3 | 4 | 'full' }>`
+  - `columns?: 1 | 2 | 3 | 4`、`variant?: 'default' | 'cards' | 'divided' | 'compact'`、`density?: 'default' | 'compact'`、`bordered?: boolean`、`emptyText?: ReactNode`（默认 `'-'`）
   - **避坑重点**：`Descriptions` 的项用 `children` 传值；`DescriptionList` 的项用 `value` 传值！
+
+### `JsonTreeViewer`（结构化 JSON 树形检视器）
+- 核心 Props (`JsonTreeViewerProps`):
+  - 数据源与解析：`data: unknown`（任意值或 JSON 字符串）、`parseString?: boolean`（默认 `true`，解析失败自动显示告警与原文兜底）、`rootLabel?: string`、`emptyText?: ReactNode`
+  - 展开与搜索：`defaultExpandDepth?: number`（默认 `2`）、`expandedPaths?: string[]`、`defaultExpandedPaths?: string[]`、`onExpandedPathsChange?: (paths: string[]) => void`、`showToolbar?: boolean`（默认 `true`）、`toolbarExtra?: ReactNode`、`searchable?: boolean`（默认 `true`）、`searchQuery?: string`、`defaultSearchQuery?: string`、`onSearchQueryChange?: (q: string) => void`、`filterOnSearch?: boolean`（默认 `true`）
+  - 复制与防护：`pathFormat?: 'jsonpath' | 'dot'`（默认 `'jsonpath'`）、`copyable?: boolean`（默认 `true`）、`onCopy?: (info: JsonTreeCopyInfo) => void`、`maxChildren?: number`（默认 `100`，支持点击“显示更多”分批展开）、`maxStringLength?: number`（默认 `240`）、`maxDepth?: number`（默认 `20`）、`maxHeight?: number | string`、`showItemCount?: boolean`（默认 `true`）、`bordered?: boolean`（默认 `true`）、`labels?: JsonTreeViewerLabels`（含 `expandNodeLabel` / `collapseNodeLabel` / `searchTruncatedLabel` 等完整 i18n 覆盖）、`size?: AbcSize`、`motion?: AbcMotionPreset`、`ariaLabel?: string`
+- 无障碍与纯算法：`role="tree"` / `role="treeitem"` Roving Focus 键盘导航（`ArrowUp/Down/Left/Right/Home/End/Enter/Space`）；`@abc-design/core` 导出 `parseJsonTreeInput`、`getJsonValueType`、`formatJsonPath`、`formatJsonCopyValue`、`collectJsonExpandablePaths`、`searchJsonTree`（返回 `AbcJsonTreeSearchResult`，含 `truncated: boolean` 截断标记，默认 `maxVisitedNodes = 20000`）。
 
 ### 交互导航与复合菜单 (`Tabs`, `Dropdown`, `DropdownMenu`, `Pagination`)
 - `Tabs`: 支持声明式 `items?: TabItem<K>[]`（`activeKey`/`value`、`defaultActiveKey`、`variant?: 'line' | 'pills' | 'segmented'`、`extra?`）或复合写法 (`TabsList` / `TabsTrigger` / `TabsContent`)。
@@ -213,7 +229,7 @@ import { TreeSelect } from '@abc-design/react'
 - `ToastCard`: 结构化诊断 Toast 卡片：`id: string`、`variant: NotificationVariant`、`title?: ReactNode`、`message?: ReactNode`、`code?: string`、`status?: number`、`requestId?: string`、`actionHint?: ReactNode`、`durationMs: number | null`、`paused?: boolean`、`onDismiss: (id: string) => void`
 - `LoadingStateCard`: `message: ReactNode`、`paused?: boolean`、`size?: 'sm' | 'md'`
 - `ProgressBar`: 带自动阈值变色与 ARIA progressbar 语义的进度条：`value?: number | null`、`max?: number`（默认 `100`）、`size?: 'sm' | 'md' | 'lg'`、`variant?: 'default' | 'success' | 'warning' | 'danger' | 'auto'`、`dangerThreshold?: number`（默认 `90`）、`warningThreshold?: number`（默认 `100`）、`fillClassName?: string`
-- 骨架与空状态：`Skeleton`、`SkeletonTable`、`SkeletonChart`、`EmptyState`、`Result`、`ErrorBoundary`
+- 骨架与空状态：`Skeleton`、`SkeletonTable`、`SkeletonChart`、`EmptyState`（支持 `title` / `message` / `description` / `icon` / `action` / `onReset` / `resetText`）、`Result`、`ErrorBoundary`
 
 ### 确认对话框与命令式 API (`useConfirm`, `abcConfirm`, `ConfirmDialog`, `OneTimeSecretDialog`)
 - `useConfirm()` Hook：返回与 `abcConfirm` 等价的命令式 Promise 确认函数：

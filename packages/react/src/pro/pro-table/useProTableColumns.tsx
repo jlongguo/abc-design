@@ -296,7 +296,8 @@ export function useProTableColumns<
         return (
           <ProRowActionsOverflow
             actions={resolved}
-            maxInline={effectiveMaxInlineActions}
+            maxInline={maxInlineActions}
+            jsdomFallbackMax={effectiveMaxInlineActions}
             autoFit={maxInlineActions === undefined}
             align={actionColAlign}
           />

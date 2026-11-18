@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -17,6 +18,17 @@ export default defineConfig({
         '../../packages/tokens/src/styles/index.css'
       ),
       '@abc-design/tokens': resolve(__dirname, '../../packages/tokens/src/index.ts'),
+    },
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test-setup.ts'],
+    testTimeout: 20000,
+    server: {
+      deps: {
+        inline: [/@uiw/],
+      },
     },
   },
 })

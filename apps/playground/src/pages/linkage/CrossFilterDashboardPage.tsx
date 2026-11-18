@@ -203,8 +203,8 @@ ${showZoneBar ? '<AbcChart option={barOption} height={240} onEvents={{ click: (p
       breadcrumbs={[{ label: '复杂联动' }, { label: '图表交叉下钻大盘' }]}
     >
       <ComponentDocPreview
-        title="AbcChart × ActiveFilterBar × StatCard × DataTable 交叉下钻大盘"
-        components={['AbcChart', 'ActiveFilterBar', 'StatCard', 'DataTable']}
+        title="ActiveFilterBar × AbcChart × StatCard × DataTable 交叉下钻大盘"
+        components={['ActiveFilterBar', 'AbcChart', 'StatCard', 'DataTable']}
         description="直接点击柱状图（可用区）或饼图（状态占比）触发交叉过滤，上方 ActiveFilterBar 自动记录来源图标 (source='chart') 并允许单条移除或一键重置全盘。"
         controls={
           <>

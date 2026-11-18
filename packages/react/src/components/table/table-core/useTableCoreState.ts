@@ -57,7 +57,10 @@ export function useTableCoreState<T extends Record<string, any> = Record<string,
   onEmptyReset,
   maxHeight,
   ariaLabel = '数据表格',
-  emptyText = '暂无符合条件的数据',
+  emptyText,
+  emptyDescription,
+  emptyAction,
+  emptyNode,
   className,
 } = props
   const resolvedData = data ?? dataSource ?? []
@@ -119,7 +122,7 @@ export function useTableCoreState<T extends Record<string, any> = Record<string,
     syncWidth()
     if (typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver((entries) => {
-      const entryWidth = entries[0]?.contentRect?.width
+      const entryWidth = entries?.[0]?.contentRect?.width
       if (typeof entryWidth === 'number' && entryWidth > 0) {
         setWrapperWidth(Math.floor(entryWidth))
       } else {
@@ -263,7 +266,14 @@ export function useTableCoreState<T extends Record<string, any> = Record<string,
     const baseWidths: Record<string, number> = {}
     let sumBase = 0
     for (const col of orderedColumns) {
-      const titleFallback = Math.max(120, Array.from(col.title || '').length * 14 + 76)
+      const isActCol =
+        col.key === '__abc_actions__' ||
+        col.key === '__actions__' ||
+        col.key === 'actions' ||
+        col.key === 'action'
+      const titleFallback = isActCol
+        ? 168
+        : Math.max(120, Array.from(col.title || '').length * 14 + 76)
       const w = effectiveColumnWidths[col.key] ?? parseNumericWidth(col.width, titleFallback)
       baseWidths[col.key] = w
       sumBase += w
@@ -277,13 +287,20 @@ export function useTableCoreState<T extends Record<string, any> = Record<string,
       const isLocked = (col: AbcColumn<T>) =>
         col.key === '__abc_actions__' ||
         col.key === '__actions__' ||
+        col.key === 'actions' ||
+        col.key === 'action' ||
         col.key === '__drag_handle__' ||
         col.key in effectiveColumnWidths ||
         Boolean(getEffectiveFixed(col))
 
       const flexCols = orderedColumns.filter((c) => !isLocked(c))
       const fallbackTargets = orderedColumns.filter(
-        (c) => c.key !== '__abc_actions__' && c.key !== '__actions__' && c.key !== '__drag_handle__'
+        (c) =>
+          c.key !== '__abc_actions__' &&
+          c.key !== '__actions__' &&
+          c.key !== 'actions' &&
+          c.key !== 'action' &&
+          c.key !== '__drag_handle__'
       )
       const targets = flexCols.length > 0 ? flexCols : fallbackTargets
 
@@ -411,7 +428,12 @@ export function useTableCoreState<T extends Record<string, any> = Record<string,
       colWidthMeta.resolvedWidths[col.key] ??
       thEl?.offsetWidth ??
       140
-    const minW = col.key === '__abc_actions__' ? 80 : 72
+    const isActCol =
+      col.key === '__abc_actions__' ||
+      col.key === '__actions__' ||
+      col.key === 'actions' ||
+      col.key === 'action'
+    const minW = isActCol ? 52 : 72
 
     const prevCursor = typeof document !== 'undefined' ? document.body.style.cursor : ''
     const prevUserSelect = typeof document !== 'undefined' ? document.body.style.userSelect : ''
@@ -662,6 +684,9 @@ export function useTableCoreState<T extends Record<string, any> = Record<string,
     allColumns,
     loading,
     emptyText,
+    emptyDescription,
+    emptyAction,
+    emptyNode,
     onEmptyReset,
     rowKey,
     rowSelection,

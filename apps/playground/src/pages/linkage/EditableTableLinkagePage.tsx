@@ -154,7 +154,8 @@ export const EditableTableLinkagePage: React.FC = () => {
       subtitle="演示 EditableProTable 行编辑/整表实时编辑双模式、跨列数字比较校验与外侧集群配额水位联动"
       breadcrumbs={[{ label: '复杂联动' }, { label: '可编辑表格与汇总联动' }]}
     >
-      <ComponentDocPreview
+      <div className="space-y-6">
+        <ComponentDocPreview
         title="EditableProTable × 跨列校验 × 外侧配额汇总联动"
         components={['EditableProTable', 'StatCard', 'ProgressBar', 'StatusTag']}
         description="支持单行编辑保存回滚 (row) 与整表实时响应 (table)；尝试把 minQps 调至大于 maxQps 触发跨列红色校验，或启停节点开关观察外侧 StatCard 与集群水位进度条同步跃迁。"
@@ -284,8 +285,7 @@ export const EditableTableLinkagePage: React.FC = () => {
         </div>
       </ComponentDocPreview>
 
-      <div className="mt-5">
-        <SortableCardsDemoSection />
+      <SortableCardsDemoSection />
       </div>
     </PageContainer>
   )

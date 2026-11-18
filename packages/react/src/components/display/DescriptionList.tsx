@@ -27,14 +27,30 @@ export const CopyableCode = React.forwardRef<HTMLSpanElement, CopyableCodeProps>
     ref,
   ) => {
     const [copied, setCopied] = React.useState(false)
+    const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+    const mountedRef = React.useRef(true)
+
+    React.useEffect(() => {
+      mountedRef.current = true
+      return () => {
+        mountedRef.current = false
+        if (timerRef.current) clearTimeout(timerRef.current)
+      }
+    }, [])
 
     const handleCopy = async (event: React.MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation()
       if (!value) return
       const ok = await copyToClipboard(value)
+      if (!mountedRef.current) return
       if (ok) {
         setCopied(true)
-        setTimeout(() => setCopied(false), 1600)
+        if (timerRef.current) clearTimeout(timerRef.current)
+        timerRef.current = setTimeout(() => {
+          if (!mountedRef.current) return
+          setCopied(false)
+          timerRef.current = null
+        }, 1600)
       }
     }
 
@@ -64,7 +80,7 @@ export const CopyableCode = React.forwardRef<HTMLSpanElement, CopyableCodeProps>
             className={cn(
               'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border border-transparent text-[var(--abc-fg-muted,#64748b)] transition-all',
               'opacity-70 hover:border-[var(--abc-border,#e2e8f0)] hover:bg-[var(--abc-bg-muted,#f8fafc)] hover:text-[var(--abc-fg,#0f172a)] cursor-pointer',
-              copied && 'border-emerald-500/50 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 opacity-100',
+              copied && 'border-[var(--abc-success)]/50 bg-[var(--abc-success-soft)] text-[var(--abc-success)] opacity-100',
             )}
           >
             {copied ? (
@@ -86,7 +102,8 @@ export interface DescriptionItemData {
   value: React.ReactNode
   mono?: boolean
   copyValue?: string
-  span?: 1 | 2 | 3 | 'full'
+  emptyText?: React.ReactNode
+  span?: 1 | 2 | 3 | 4 | 'full'
   className?: string
 }
 
@@ -96,15 +113,20 @@ export interface DescriptionItemProps
   value?: React.ReactNode
   mono?: boolean
   copyValue?: string
-  span?: 1 | 2 | 3 | 'full'
+  emptyText?: React.ReactNode
+  span?: 1 | 2 | 3 | 4 | 'full'
   variant?: 'default' | 'cards' | 'divided' | 'compact'
   valueClassName?: string
 }
+
+const DescriptionListColumnsContext = React.createContext<1 | 2 | 3 | 4 | undefined>(undefined)
+const DescriptionListEmptyTextContext = React.createContext<React.ReactNode>('-')
 
 const spanClasses: Record<NonNullable<DescriptionItemProps['span']>, string> = {
   1: '',
   2: 'sm:col-span-2',
   3: 'sm:col-span-2 lg:col-span-3',
+  4: 'sm:col-span-2 lg:col-span-4',
   full: 'col-span-full',
 }
 
@@ -116,6 +138,7 @@ export const DescriptionItem = React.forwardRef<HTMLDivElement, DescriptionItemP
       children,
       mono = false,
       copyValue,
+      emptyText,
       span = 1,
       variant = 'default',
       className,
@@ -124,7 +147,21 @@ export const DescriptionItem = React.forwardRef<HTMLDivElement, DescriptionItemP
     },
     ref,
   ) => {
-    const content = children ?? value
+    const parentColumns = React.useContext(DescriptionListColumnsContext)
+    const contextEmptyText = React.useContext(DescriptionListEmptyTextContext)
+    const resolvedEmptyText = emptyText !== undefined ? emptyText : contextEmptyText
+    const effectiveSpan =
+      typeof span === 'number' && parentColumns !== undefined
+        ? (Math.max(1, Math.min(span, parentColumns)) as 1 | 2 | 3 | 4)
+        : span
+
+    const rawContent = children !== undefined ? children : value
+    const isEmpty = rawContent === undefined || rawContent === null || rawContent === ''
+    // React JSX 会静默忽略布尔子节点，仅在通过 value 传入布尔值时显式转为字符串展示，保留 children 条件 JSX 语义
+    const displayContent =
+      children === undefined && typeof rawContent === 'boolean' ? String(rawContent) : rawContent
+    const content = isEmpty ? resolvedEmptyText : displayContent
+
     return (
       <div
         ref={ref}
@@ -134,7 +171,7 @@ export const DescriptionItem = React.forwardRef<HTMLDivElement, DescriptionItemP
           variant === 'cards' &&
             'rounded-lg border border-[var(--abc-border,#e2e8f0)] bg-[var(--abc-bg-subtle,#f8fafc)] px-3 py-2.5 transition-colors hover:bg-[var(--abc-bg-muted,#f1f5f9)]',
           variant === 'divided' && 'border-b border-[var(--abc-border,#e2e8f0)] pb-2.5 last:border-b-0 last:pb-0',
-          spanClasses[span],
+          spanClasses[effectiveSpan],
           className,
         )}
         {...props}
@@ -181,6 +218,8 @@ export interface DescriptionListProps extends React.HTMLAttributes<HTMLDListElem
   variant?: 'default' | 'cards' | 'divided' | 'compact'
   density?: 'default' | 'compact'
   bordered?: boolean
+  /** 当项值为 null / undefined / '' 时的统一占位内容（默认 '-'） */
+  emptyText?: React.ReactNode
   items?: DescriptionItemData[]
 }
 
@@ -196,36 +235,54 @@ const columnClasses: Record<NonNullable<DescriptionListProps['columns']>, string
  * 基于语义化 dl/dt/dd 标签，支持多列网格、卡片化、分隔线与紧凑排版
  */
 export const DescriptionList = React.forwardRef<HTMLDListElement, DescriptionListProps>(
-  ({ columns = 2, variant = 'default', density, bordered = false, items, children, className, ...props }, ref) => {
+  (
+    {
+      columns = 2,
+      variant = 'default',
+      density,
+      bordered = false,
+      emptyText = '-',
+      items,
+      children,
+      className,
+      ...props
+    },
+    ref,
+  ) => {
     const resolvedVariant = density === 'compact' && variant === 'default' ? 'compact' : variant
     return (
-      <dl
-        ref={ref}
-        data-slot="description-list"
-        className={cn(
-          'grid',
-          resolvedVariant === 'compact' ? 'gap-2.5' : 'gap-3.5',
-          bordered && 'rounded-lg border border-[var(--abc-border,#e2e8f0)] bg-[var(--abc-bg-subtle,#f8fafc)] p-3',
-          columnClasses[columns],
-          className,
-        )}
-        {...props}
-      >
-        {items
-          ? items.map((item, index) => (
-              <DescriptionItem
-                key={item.key ?? (typeof item.label === 'string' ? item.label : index)}
-                label={item.label}
-                value={item.value}
-                mono={item.mono}
-                copyValue={item.copyValue}
-                span={item.span}
-                variant={resolvedVariant}
-                className={item.className}
-              />
-            ))
-          : children}
-      </dl>
+      <DescriptionListColumnsContext.Provider value={columns}>
+        <DescriptionListEmptyTextContext.Provider value={emptyText}>
+          <dl
+            ref={ref}
+            data-slot="description-list"
+            className={cn(
+              'grid',
+              resolvedVariant === 'compact' ? 'gap-2.5' : 'gap-3.5',
+              bordered && 'rounded-lg border border-[var(--abc-border,#e2e8f0)] bg-[var(--abc-bg-subtle,#f8fafc)] p-3',
+              columnClasses[columns],
+              className,
+            )}
+            {...props}
+          >
+            {items
+              ? items.map((item, index) => (
+                  <DescriptionItem
+                    key={item.key ?? (typeof item.label === 'string' ? item.label : index)}
+                    label={item.label}
+                    value={item.value}
+                    mono={item.mono}
+                    copyValue={item.copyValue}
+                    emptyText={item.emptyText}
+                    span={item.span}
+                    variant={resolvedVariant}
+                    className={item.className}
+                  />
+                ))
+              : children}
+          </dl>
+        </DescriptionListEmptyTextContext.Provider>
+      </DescriptionListColumnsContext.Provider>
     )
   },
 )

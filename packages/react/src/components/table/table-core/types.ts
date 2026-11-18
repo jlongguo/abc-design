@@ -265,7 +265,14 @@ export interface TableCoreProps<T = Record<string, any>> {
   /** 表格滚动区域最大高度（开启后表头纵向吸顶） */
   maxHeight?: number | string
   ariaLabel?: string
-  emptyText?: string
+  /** 空状态主标题 */
+  emptyText?: React.ReactNode
+  /** 空状态副标题描述 */
+  emptyDescription?: React.ReactNode
+  /** 空状态底部操作区 */
+  emptyAction?: React.ReactNode
+  /** 自定义空状态完整节点（传入后覆盖内置 EmptyState） */
+  emptyNode?: React.ReactNode
   className?: string
 }
 

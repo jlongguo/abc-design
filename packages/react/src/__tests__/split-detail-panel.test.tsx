@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { Select } from '../components/form/select/Select'
 import { TreeSelect } from '../components/form/tree-select/TreeSelect'
 import { SplitDetailLayout, SplitDetailPanel } from '../components/layout/SplitDetailPanel'
+import { InspectorPanel, SplitInspectorLayout } from '../components/layout/InspectorPanel'
 import { TableHeadSection } from '../components/table/table-core/TableHeadSection'
 import type { AbcColumn } from '../components/table/TableCore'
 import { TopHorizontalNav } from '../layout/nav-renderers/TopHorizontalNav'
@@ -233,5 +234,64 @@ describe('SplitDetailLayout / SplitDetailPanel 与视觉指示器回归测试', 
     const divider = container.querySelector('th span.inset-y-0.my-auto') as HTMLElement
     expect(divider).toBeInTheDocument()
     expect(divider.className).not.toContain('-translate-y-1/2')
+  })
+
+  it('6. SplitDetailLayout 与 SplitInspectorLayout 默认常驻展示分隔线与胶囊拖拽按钮，并支持拖拽与双击复位宽度', () => {
+    const { container } = render(
+      <div>
+        <SplitDetailLayout
+          open={true}
+          panelWidth={500}
+          minPanelWidth={360}
+          maxPanelWidth={720}
+          panel={<SplitDetailPanel title="客户详情">详情主体</SplitDetailPanel>}
+        >
+          <div>主表格</div>
+        </SplitDetailLayout>
+
+        <SplitInspectorLayout>
+          <div>左侧台账</div>
+          <InspectorPanel hasSelection title="节点详情">
+            节点检视
+          </InspectorPanel>
+        </SplitInspectorLayout>
+      </div>
+    )
+
+    // 验证两类主从分栏均渲染常驻分隔线与常驻胶囊手柄（非 opacity-0 隐藏、非 bg-transparent 透明）
+    const lines = container.querySelectorAll('[data-slot="split-resize-line"]')
+    const handles = container.querySelectorAll('[data-slot="split-resize-handle"]')
+    expect(lines.length).toBe(2)
+    expect(handles.length).toBe(2)
+
+    lines.forEach((line) => {
+      expect(line.className).not.toContain('bg-transparent')
+      expect(line.className).toContain('bg-[var(--abc-border)]')
+    })
+    handles.forEach((handle) => {
+      expect(handle.className).not.toContain('opacity-0')
+    })
+
+    // 验证 SplitDetailLayout 鼠标向左拖拽拓宽右侧面板，双击恢复默认 500px
+    const separators = screen.getAllByRole('separator')
+    expect(separators.length).toBe(2)
+    const detailSep = separators[0]
+    expect(detailSep).toHaveAttribute('aria-valuenow', '500')
+
+    fireEvent.mouseDown(detailSep, { clientX: 600 })
+    fireEvent.mouseMove(window, { clientX: 520 })
+    fireEvent.mouseUp(window)
+    expect(detailSep).toHaveAttribute('aria-valuenow', '580')
+
+    fireEvent.doubleClick(detailSep)
+    expect(detailSep).toHaveAttribute('aria-valuenow', '500')
+
+    // 验证 SplitInspectorLayout 方向键调节与双击恢复默认宽度
+    const inspectorSep = separators[1]
+    const defaultInspectorVal = Number(inspectorSep.getAttribute('aria-valuenow'))
+    fireEvent.keyDown(inspectorSep, { key: 'ArrowLeft' })
+    expect(Number(inspectorSep.getAttribute('aria-valuenow'))).toBe(defaultInspectorVal + 16)
+    fireEvent.doubleClick(inspectorSep)
+    expect(Number(inspectorSep.getAttribute('aria-valuenow'))).toBe(defaultInspectorVal)
   })
 })

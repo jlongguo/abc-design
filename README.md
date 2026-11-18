@@ -15,7 +15,10 @@ abc-design/
 │   ├── charts/        # @abc-design/charts   — 按需 Tree-shaking ECharts 自适应容器 AbcChart、StatCard 与品牌调色板引擎
 │   └── markdown/      # @abc-design/markdown — 独立双栏 Markdown 编辑器（自动联动明暗主题 + insertText 光标插值）
 ├── apps/
-│   └── playground/    # @abc-design/playground — 10 大领域 36 个聚焦演示路由页（全量 Knobs 参数调节 + 动态代码 + API 文档 + 复杂联动演练场）
+│   └── playground/    # @abc-design/playground — 7 大清晰分类 × 36 个路由 × 单卡聚焦/分段目录双视图 + ⌘K 全组件搜索直达
+├── scripts/
+│   ├── check-playground-sync.mjs # AST 强制门禁：确保 100% 导出组件同步挂载 Playground 演练卡与检索注册表
+│   └── deploy_playground.sh      # 零停机发布与秒级回滚脚本
 ├── docs/
 │   └── agent/         # AI Agent 专题规范（01 快速接入 / 02 组件字典 / 03 布局与 Pro / 04 图表模板 / 05 复杂联动编排）
 ├── skills/
@@ -63,8 +66,11 @@ abc-design/
 # 安装工作区依赖
 pnpm install
 
-# 启动 10 大领域 36 个路由页的交互式 Playground 预览站
+# 启动 7 大领域 36 个路由页的交互式 Playground 预览站（支持 ⌘K 组件直达搜索与单卡聚焦模式）
 pnpm dev
+
+# 校验全部公开导出组件是否 100% 同步至 Playground 预览卡片与搜索注册表
+pnpm check:playground-sync
 
 # 构建全部 5 个组件库产物（tokens / core / react / charts / markdown）
 pnpm run build:libs

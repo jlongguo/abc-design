@@ -6,6 +6,7 @@ import { cn } from '../../../utils/cn'
 import { EmptyState,Skeleton } from '../../display/FeedbackStates'
 import { Checkbox } from '../../form/Controls'
 
+import { ProAdaptiveActionCell } from '../../../pro/pro-table-extras/ProRowActionsOverflow'
 import { DENSITY_CELL_PY,getNestedValue } from './types'
 import type { TableCoreState } from './useTableCoreState'
 import { renderBuiltInValue } from './valueRenderer'
@@ -20,6 +21,9 @@ export function TableBodySection<T extends Record<string, any>>({ state }: { sta
     density,
     totalColSpan,
     emptyText,
+    emptyDescription,
+    emptyAction,
+    emptyNode,
     onEmptyReset,
     effectiveSelectedKeys,
     rowSelection,
@@ -67,7 +71,20 @@ export function TableBodySection<T extends Record<string, any>>({ state }: { sta
             ) : flattenedRows.length === 0 ? (
               <tr>
                 <td colSpan={totalColSpan}>
-                  <EmptyState title={emptyText} onReset={onEmptyReset} />
+                  {emptyNode ?? (
+                    <EmptyState
+                      title={emptyText ?? '暂无符合条件的数据'}
+                      description={
+                        emptyDescription !== undefined
+                          ? emptyDescription
+                          : emptyText !== undefined
+                            ? null
+                            : undefined
+                      }
+                      action={emptyAction}
+                      onReset={onEmptyReset}
+                    />
+                  )}
                 </td>
               </tr>
             ) : (
@@ -219,14 +236,25 @@ export function TableBodySection<T extends Record<string, any>>({ state }: { sta
                         const rawVal = getNestedValue(record, fieldPath)
                         const fx = getEffectiveFixed(col)
                         const isActionCol =
-                          col.key === '__abc_actions__' || col.key === '__actions__'
-                        const cellContent = col.render
+                          col.key === '__abc_actions__' ||
+                          col.key === '__actions__' ||
+                          col.key === 'actions' ||
+                          col.key === 'action'
+                        const rawCellContent = col.render
                           ? col.render(rawVal, record, treeData ? depth : rowIdx, {
                               depth,
                               rowIndex: rowIdx,
                               isExpanded,
                             })
                           : renderBuiltInValue(rawVal, record, col, onRowView)
+                        const cellContent =
+                          isActionCol && col.key !== '__abc_actions__' && col.ellipsis !== false ? (
+                            <ProAdaptiveActionCell align={col.align ?? 'right'}>
+                              {rawCellContent}
+                            </ProAdaptiveActionCell>
+                          ) : (
+                            rawCellContent
+                          )
 
                         const showInlineTreeChevron =
                           !hasExpandColumn && colIdx === 0 && (depth > 0 || hasTreeChildren)

@@ -1,21 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
-import {
-  ChevronRight,
-  Menu,
-  Moon,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Search,
-  SlidersHorizontal,
-  Sun,
-} from 'lucide-react'
-import { Dropdown, Tooltip } from '../components/display/Overlays'
-import { Avatar } from '../components/display/StatusTag'
+import { Moon, SlidersHorizontal, Sun } from 'lucide-react'
 import Drawer from '../components/feedback/Drawer'
 import TopProgressBar from '../components/feedback/TopProgressBar'
 import Watermark from '../components/feedback/Watermark'
-import { Kbd } from '../components/typography/CopyableText'
 import { useAbcMotion, useAbcSize } from '../hooks/useAbcDefaults'
 import { useControllableState } from '../hooks/useControllableState'
 import { useAbcConfig } from '../provider/AbcProvider'
@@ -24,14 +12,8 @@ import AuthLayout, { type AuthLayoutProps } from './AuthLayout'
 import CommandPalette, { type CommandActionItem } from './CommandPalette'
 import KeepAliveContainer from './KeepAliveContainer'
 import MultiTabBar from './MultiTabBar'
-import {
-  BrandLogoBlock,
-  DualColumnNav,
-  SidebarNav,
-  TopHorizontalNav,
-  findBreadcrumbChain,
-  menuContainsPath,
-} from './NavRenderers'
+import { DualColumnNav, SidebarNav, findBreadcrumbChain, menuContainsPath } from './NavRenderers'
+import { HEADER_SIZE_METRICS, ProLayoutHeader } from './ProLayoutHeader'
 import ThemeCustomizer from './ThemeCustomizer'
 import {
   DEFAULT_ABC_LAYOUT_SETTINGS,
@@ -61,8 +43,16 @@ export interface ProLayoutProps {
   user?: AbcUserInfo
   /** 顶栏右侧扩展插槽（如多租户切换器、消息中心铃铛） */
   headerExtra?: React.ReactNode
-  /** 注入全局指令面板的自定义快捷动作 */
+  /** 注入全局指令面板的自定义快捷动作（如全量组件直达索引） */
   commandActions?: CommandActionItem[]
+  /** 顶栏右侧 ⌘K 按钮文案（默认 '搜索菜单...'） */
+  searchPlaceholder?: string
+  /** ⌘K 全局指令面板输入框占位文案 */
+  commandPlaceholder?: string
+  /** 是否在展开态侧边栏顶部渲染快捷筛选输入框（默认读取 settings.sidebarSearch） */
+  sidebarSearch?: boolean
+  /** 侧边栏快捷筛选输入框占位文案 */
+  sidebarSearchPlaceholder?: string
   /** 受控页签列表（若不传则由 ProLayout 根据访问轨迹自动维护） */
   tabs?: AbcTabItem[]
   onTabsChange?: (tabs: AbcTabItem[]) => void
@@ -90,65 +80,10 @@ const TRANSITION_CLASS_MAP: Record<string, string> = {
   none: '',
 }
 
-const HEADER_SIZE_METRICS: Record<
-  AbcSize,
-  {
-    headerPad: string
-    iconBtn: string
-    iconCls: string
-    searchBtn: string
-    searchIcon: string
-    breadcrumb: string
-    mobileDrawerWidth: number
-    avatarSize: 'xs' | 'sm' | 'md'
-  }
-> = {
-  xs: {
-    headerPad: 'px-3',
-    iconBtn: 'h-7 w-7',
-    iconCls: 'h-3.5 w-3.5',
-    searchBtn: 'h-7 gap-1.5 px-2 text-[11px]',
-    searchIcon: 'h-3 w-3',
-    breadcrumb: 'text-[11px]',
-    mobileDrawerWidth: 236,
-    avatarSize: 'xs',
-  },
-  sm: {
-    headerPad: 'px-4',
-    iconBtn: 'h-8 w-8',
-    iconCls: 'h-4 w-4',
-    searchBtn: 'h-8 gap-2 px-2.5 text-xs',
-    searchIcon: 'h-3.5 w-3.5',
-    breadcrumb: 'text-xs',
-    mobileDrawerWidth: 260,
-    avatarSize: 'sm',
-  },
-  md: {
-    headerPad: 'px-4',
-    iconBtn: 'h-9 w-9',
-    iconCls: 'h-4 w-4',
-    searchBtn: 'h-9 gap-2 px-3 text-xs',
-    searchIcon: 'h-3.5 w-3.5',
-    breadcrumb: 'text-[13px]',
-    mobileDrawerWidth: 276,
-    avatarSize: 'sm',
-  },
-  lg: {
-    headerPad: 'px-5',
-    iconBtn: 'h-10 w-10',
-    iconCls: 'h-[18px] w-[18px]',
-    searchBtn: 'h-10 gap-2.5 px-3.5 text-sm',
-    searchIcon: 'h-4 w-4',
-    breadcrumb: 'text-sm',
-    mobileDrawerWidth: 296,
-    avatarSize: 'md',
-  },
-}
-
 /**
  * ABC Design 企业级全功能自适应壳层 (ProLayout)
  * 一套统一 API 支持 5 种主流中后台布局拓扑（sidebar / top / mix / dual-column / auth）
- * 并内置移动端抽屉导航、多页签栏、KeepAlive 保活、⌘K 拼音指令面板、防篡改水印与实时定制中心。
+ * 并内置移动端抽屉导航、多页签栏、KeepAlive 保活、⌘K 拼音/组件指令面板、防篡改水印与实时定制中心。
  */
 export const ProLayout: React.FC<ProLayoutProps> = ({
   brand = { name: 'ABC Console', subtitle: 'Enterprise UI' },
@@ -161,6 +96,10 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
   user,
   headerExtra,
   commandActions = [],
+  searchPlaceholder = '搜索菜单...',
+  commandPlaceholder,
+  sidebarSearch,
+  sidebarSearchPlaceholder,
   tabs: controlledTabs,
   onTabsChange,
   authRender,
@@ -205,9 +144,17 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [commandOpen, setCommandOpen] = useState(false)
+  const [commandInitialQuery, setCommandInitialQuery] = useState('')
   const [customizerOpen, setCustomizerOpen] = useState(false)
   const [refreshSeeds, setRefreshSeeds] = useState<Record<string, number>>({})
   const mainScrollRef = useRef<HTMLElement>(null)
+
+  const openCommandPalette = useCallback((prefill = '') => {
+    setCommandInitialQuery(prefill)
+    setCommandOpen(true)
+  }, [])
+
+  const enableSidebarSearch = sidebarSearch ?? layoutSettings.sidebarSearch ?? false
 
   // 自动收集并维护多页签状态（支持外部受控接管）
   const [autoTabs, setAutoTabs] = useControllableState<AbcTabItem[]>({
@@ -243,6 +190,7 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
+        setCommandInitialQuery('')
         setCommandOpen((v) => !v)
       }
     }
@@ -327,194 +275,42 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
   }
 
   const isSidebarMode = layoutSettings.mode === 'sidebar'
-  const isTopMode = layoutSettings.mode === 'top'
   const isMixMode = layoutSettings.mode === 'mix'
   const isDualMode = layoutSettings.mode === 'dual-column'
 
   const headerNode = (
-    <header
-      className={cn(
-        'flex h-[var(--abc-header-h)] z-10 shrink-0 items-center justify-between gap-3 border-b border-[var(--abc-border)] select-none transition-colors',
-        hm.headerPad,
-        layoutSettings.headerBlur !== false
-          ? 'bg-[var(--abc-bg-surface)]/85 backdrop-blur-md'
-          : 'bg-[var(--abc-bg-surface)]'
-      )}
-    >
-      {/* 左侧：移动端汉堡菜单 / 品牌（顶栏与混合模式） / 侧栏折叠开关 / 面包屑或水平导航 */}
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <button
-          type="button"
-          aria-label="展开移动端菜单"
-          onClick={() => setMobileMenuOpen(true)}
-          className={cn(
-            'inline-flex shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] md:hidden cursor-pointer',
-            hm.iconBtn
-          )}
-        >
-          <Menu className={hm.iconCls} />
-        </button>
-
-        {(isTopMode || isMixMode) && (
-          <div className="hidden shrink-0 md:block">
-            <BrandLogoBlock brand={brand} size={resolvedSize} className="px-0 pr-3" />
-          </div>
-        )}
-
-        {(isSidebarMode || (isMixMode && mixSideItems.length > 0)) && (
-          <button
-            type="button"
-            aria-label={layoutSettings.sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}
-            onClick={() =>
-              patchSettings({ sidebarCollapsed: !layoutSettings.sidebarCollapsed })
-            }
-            className={cn(
-              'hidden shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] md:inline-flex cursor-pointer',
-              hm.iconBtn
-            )}
-          >
-            {layoutSettings.sidebarCollapsed ? (
-              <PanelLeftOpen className={hm.iconCls} />
-            ) : (
-              <PanelLeftClose className={hm.iconCls} />
-            )}
-          </button>
-        )}
-
-        {isTopMode && (
-          <div className="hidden min-w-0 flex-1 md:block">
-            <TopHorizontalNav
-              items={menuItems}
-              pathname={pathname}
-              size={resolvedSize}
-              motion={resolvedMotion}
-              onNavigate={(p, it) => onNavigate(p, it)}
-            />
-          </div>
-        )}
-
-        {isMixMode && (
-          <div className="hidden min-w-0 flex-1 md:block">
-            <TopHorizontalNav
-              items={menuItems}
-              pathname={pathname}
-              topLevelOnly
-              activeRootKey={mixRootKey}
-              size={resolvedSize}
-              motion={resolvedMotion}
-              onSelectRoot={(root) => {
-                setMixRootKey(root.key)
-                if (root.path && (!root.children || root.children.length === 0)) {
-                  onNavigate(root.path, root)
-                } else if (root.children?.[0]?.path) {
-                  onNavigate(root.children[0].path, root.children[0])
-                }
-              }}
-              onNavigate={(p, it) => onNavigate(p, it)}
-            />
-          </div>
-        )}
-
-        {(isSidebarMode || isDualMode) && layoutSettings.showBreadcrumb !== false && trail.length > 0 && (
-          <nav
-            aria-label="当前位置"
-            className={cn(
-              'hidden min-w-0 items-center gap-1.5 text-[var(--abc-fg-muted)] sm:flex',
-              hm.breadcrumb
-            )}
-          >
-            {trail.map((node, idx) => {
-              const last = idx === trail.length - 1
-              return (
-                <React.Fragment key={node.key}>
-                  {idx > 0 && <ChevronRight className="h-3 w-3 shrink-0 opacity-50" />}
-                  <span
-                    className={cn(
-                      'truncate',
-                      last && 'font-semibold text-[var(--abc-fg)]'
-                    )}
-                  >
-                    {node.label}
-                  </span>
-                </React.Fragment>
-              )
-            })}
-          </nav>
-        )}
-      </div>
-
-      {/* 右侧：⌘K 搜索唤醒器 + 宿主扩展槽 + 主题切换 + 定制抽屉 + 用户信息 */}
-      <div className="flex shrink-0 items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setCommandOpen(true)}
-          className={cn(
-            'inline-flex items-center rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-muted)] text-[var(--abc-fg-muted)] transition-colors hover:border-[var(--abc-border-strong)] hover:text-[var(--abc-fg)] cursor-pointer',
-            hm.searchBtn
-          )}
-        >
-          <Search className={hm.searchIcon} />
-          <span className="hidden lg:inline">搜索菜单...</span>
-          <Kbd className="hidden sm:inline-flex">⌘K</Kbd>
-        </button>
-
-        {headerExtra}
-
-        <Tooltip content="切换亮色 / 暗黑模式">
-          <button
-            type="button"
-            aria-label="切换亮暗模式"
-            onClick={(e) => toggleTheme({ clientX: e.clientX, clientY: e.clientY })}
-            className={cn(
-              'inline-flex items-center justify-center rounded-[var(--abc-radius-md)] text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer',
-              hm.iconBtn
-            )}
-          >
-            {resolvedTheme === 'dark' ? <Sun className={hm.iconCls} /> : <Moon className={hm.iconCls} />}
-          </button>
-        </Tooltip>
-
-        {showCustomizerTrigger && (
-          <Tooltip content="设计系统与布局实时定制">
-            <button
-              type="button"
-              aria-label="打开主题与布局配置抽屉"
-              onClick={() => setCustomizerOpen(true)}
-              className={cn(
-                'inline-flex items-center justify-center rounded-[var(--abc-radius-md)] text-[var(--abc-primary)] bg-[var(--abc-primary-soft)] hover:brightness-95 cursor-pointer',
-                hm.iconBtn
-              )}
-            >
-              <SlidersHorizontal className={hm.iconCls} />
-            </button>
-          </Tooltip>
-        )}
-
-        {user && (
-          <Dropdown
-            items={
-              user.menuItems ?? [
-                { key: 'profile', label: `当前账号：${user.name}`, disabled: true },
-              ]
-            }
-          >
-            <div className="flex items-center gap-2 rounded-[var(--abc-radius-md)] px-2 py-1 hover:bg-[var(--abc-bg-subtle)]">
-              <Avatar src={user.avatar} name={user.name} size={hm.avatarSize} />
-              <div className="hidden text-left md:block">
-                <div className="max-w-24 truncate text-xs font-semibold text-[var(--abc-fg)] leading-tight">
-                  {user.name}
-                </div>
-                {user.role && (
-                  <div className="max-w-24 truncate text-[10px] text-[var(--abc-fg-muted)] leading-tight">
-                    {user.role}
-                  </div>
-                )}
-              </div>
-            </div>
-          </Dropdown>
-        )}
-      </div>
-    </header>
+    <ProLayoutHeader
+      brand={brand}
+      menuItems={menuItems}
+      mixSideItems={mixSideItems}
+      mixRootKey={mixRootKey}
+      trail={trail}
+      pathname={pathname}
+      layoutSettings={layoutSettings}
+      resolvedSize={resolvedSize}
+      resolvedMotion={resolvedMotion}
+      resolvedTheme={resolvedTheme}
+      user={user}
+      headerExtra={headerExtra}
+      showCustomizerTrigger={showCustomizerTrigger}
+      searchPlaceholder={searchPlaceholder}
+      onOpenMobileMenu={() => setMobileMenuOpen(true)}
+      onToggleSidebarCollapsed={() =>
+        patchSettings({ sidebarCollapsed: !layoutSettings.sidebarCollapsed })
+      }
+      onSelectMixRoot={(root) => {
+        setMixRootKey(root.key)
+        if (root.path && (!root.children || root.children.length === 0)) {
+          onNavigate(root.path, root)
+        } else if (root.children?.[0]?.path) {
+          onNavigate(root.children[0].path, root.children[0])
+        }
+      }}
+      onNavigate={onNavigate}
+      onOpenCommand={() => openCommandPalette('')}
+      onToggleTheme={(e) => toggleTheme({ clientX: e.clientX, clientY: e.clientY })}
+      onOpenCustomizer={() => setCustomizerOpen(true)}
+    />
   )
 
   const mainViewport = (
@@ -621,6 +417,10 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
               tone={layoutSettings.sidebarTone}
               size={resolvedSize}
               motion={resolvedMotion}
+              searchable={enableSidebarSearch}
+              searchPlaceholder={sidebarSearchPlaceholder}
+              commandActions={commandActions}
+              onOpenCommandPalette={(q) => openCommandPalette(q ?? '')}
               onNavigate={(p, it) => onNavigate(p, it)}
             />
           </div>
@@ -637,6 +437,10 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
               tone={layoutSettings.sidebarTone}
               size={resolvedSize}
               motion={resolvedMotion}
+              searchable={enableSidebarSearch}
+              searchPlaceholder={sidebarSearchPlaceholder}
+              commandActions={commandActions}
+              onOpenCommandPalette={(q) => openCommandPalette(q ?? '')}
               onNavigate={(p, it) => onNavigate(p, it)}
             />
           </div>
@@ -675,6 +479,13 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
           tone="light"
           size={resolvedSize}
           motion={resolvedMotion}
+          searchable={enableSidebarSearch}
+          searchPlaceholder={sidebarSearchPlaceholder}
+          commandActions={commandActions}
+          onOpenCommandPalette={(q) => {
+            setMobileMenuOpen(false)
+            openCommandPalette(q ?? '')
+          }}
           onNavigate={(p, it) => {
             onNavigate(p, it)
             setMobileMenuOpen(false)
@@ -683,13 +494,19 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
         />
       </Drawer>
 
-      {/* ⌘K 全局指令与拼音导航搜索面板 */}
+      {/* ⌘K 全局指令与拼音/组件导航搜索面板 */}
       <CommandPalette
         open={commandOpen}
-        onClose={() => setCommandOpen(false)}
+        onClose={() => {
+          setCommandOpen(false)
+          setCommandInitialQuery('')
+        }}
         menuItems={menuItems}
+        placeholder={commandPlaceholder}
+        initialQuery={commandInitialQuery}
         onNavigate={(p, it) => onNavigate(p, it)}
         extraActions={[
+          ...commandActions,
           {
             id: 'cmd_toggle_theme',
             title: resolvedTheme === 'dark' ? '切换为亮色模式' : '切换为暗黑模式',
@@ -704,7 +521,6 @@ export const ProLayout: React.FC<ProLayoutProps> = ({
             icon: 'config',
             onTrigger: () => setCustomizerOpen(true),
           },
-          ...commandActions,
         ]}
       />
 

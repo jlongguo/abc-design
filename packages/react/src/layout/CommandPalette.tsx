@@ -5,16 +5,29 @@ import Icon from '../components/icon/Icon'
 import { Kbd } from '../components/typography/CopyableText'
 import { useAbcConfig } from '../provider/AbcProvider'
 import { cn } from '../utils/cn'
-import { matchKeywordWithPinyin } from '../utils/pinyin'
+import {
+  MAX_RECENT_COUNT,
+  flattenMenus,
+  highlightSubstring,
+  readRecentIds,
+  saveRecentIds,
+  scoreCommandEntry,
+} from './commandPaletteUtils'
 import type { AbcMenuItem } from './types'
 
 export interface CommandActionItem {
   id: string
   title: string
+  /** 可选精确组件或 API 符号名（如 'Select'、'JsonTreeViewer'），用于精确符号搜索置顶提权与侧栏直达展示 */
+  symbol?: string
   group?: string
   subtitle?: string
+  /** 右侧附加胶囊角标（如所属 npm 包名或 New 标记） */
+  badge?: string
   icon?: string | React.ReactNode
   keywords?: string
+  /** 基础排序权重微调（数值越大越靠前） */
+  priority?: number
   onTrigger: () => void
 }
 
@@ -24,72 +37,15 @@ export interface CommandPaletteProps {
   menuItems?: AbcMenuItem[]
   onNavigate?: (path: string, item: AbcMenuItem) => void
   extraActions?: CommandActionItem[]
-}
-
-const RECENT_STORAGE_KEY = 'abc_cmd_recent_v1'
-const MAX_RECENT_COUNT = 5
-
-function readRecentIds(): string[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const raw = window.localStorage.getItem(RECENT_STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : []
-  } catch {
-    return []
-  }
-}
-
-function saveRecentIds(ids: string[]) {
-  if (typeof window === 'undefined') return
-  try {
-    window.localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(ids.slice(0, MAX_RECENT_COUNT)))
-  } catch {
-    // 忽略隐私存储限制
-  }
-}
-
-function flattenMenus(
-  items: AbcMenuItem[],
-  parents: string[] = []
-): Array<{ item: AbcMenuItem; trail: string }> {
-  const result: Array<{ item: AbcMenuItem; trail: string }> = []
-  for (const item of items) {
-    const currentTrail = [...parents, item.label]
-    if (item.path && (!item.children || item.children.length === 0)) {
-      result.push({ item, trail: currentTrail.join(' / ') })
-    }
-    if (item.children?.length) {
-      result.push(...flattenMenus(item.children, currentTrail))
-    }
-  }
-  return result
-}
-
-function highlightSubstring(text: string, query: string): React.ReactNode {
-  const q = query.trim()
-  if (!q) return text
-  const lowerText = text.toLowerCase()
-  const lowerQ = q.toLowerCase()
-  const hitIdx = lowerText.indexOf(lowerQ)
-  if (hitIdx < 0) return text
-  const before = text.slice(0, hitIdx)
-  const mid = text.slice(hitIdx, hitIdx + q.length)
-  const after = text.slice(hitIdx + q.length)
-  return (
-    <>
-      {before}
-      <mark className="rounded-[2px] bg-[var(--abc-primary)]/18 px-0.5 text-[var(--abc-primary)] font-semibold">
-        {mid}
-      </mark>
-      {after}
-    </>
-  )
+  /** 搜索输入框占位提示文案 */
+  placeholder?: string
+  /** 打开面板时预填的初始搜索词（如从侧边栏筛选框一键升级至全局精准搜索时透传） */
+  initialQuery?: string
 }
 
 /**
- * 企业级 Spotlight 全局指令与菜单快速跳转中心（支持 ⌘K / Ctrl+K 唤醒、中文拼音首字母检索、分组筛选与最近访问记忆）
+ * 企业级 Spotlight 全局指令、组件与菜单快速跳转中心
+ * 支持 ⌘K / Ctrl+K 唤醒、多分词中文拼音首字母检索、精确前缀相关度排序、分组筛选与最近访问记忆
  */
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
   open,
@@ -97,9 +53,11 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   menuItems = [],
   onNavigate,
   extraActions = [],
+  placeholder = '搜索菜单名称、组件符号、路由路径、快捷指令或拼音首字母（如 yhgl）...',
+  initialQuery,
 }) => {
   const { iconRegistry } = useAbcConfig()
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initialQuery ?? '')
   const [activeGroup, setActiveGroup] = useState<string>('all')
   const [activeIndex, setActiveIndex] = useState(0)
   const [recentIds, setRecentIds] = useState<string[]>(() => readRecentIds())
@@ -112,22 +70,25 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       setActiveGroup('all')
       setActiveIndex(0)
     } else {
+      setQuery(initialQuery ?? '')
       setRecentIds(readRecentIds())
     }
-  }, [open])
+  }, [open, initialQuery])
 
   const allEntries = useMemo<CommandActionItem[]>(() => {
-    const navEntries: CommandActionItem[] = flattenMenus(menuItems).map(({ item, trail }) => ({
-      id: `nav_${item.key}`,
-      title: item.label,
-      subtitle: `${trail}${item.path ? ` · ${item.path}` : ''}`,
-      group: '页面导航',
-      icon: item.icon ?? 'file',
-      keywords: item.path,
-      onTrigger: () => {
-        if (item.path) onNavigate?.(item.path, item)
-      },
-    }))
+    const navEntries: CommandActionItem[] = flattenMenus(menuItems).map(
+      ({ item, trail, inheritedKeywords }) => ({
+        id: `nav_${item.key}`,
+        title: item.label,
+        subtitle: `${trail}${item.path ? ` · ${item.path}` : ''}`,
+        group: '页面导航',
+        icon: item.icon ?? 'file',
+        keywords: inheritedKeywords,
+        onTrigger: () => {
+          if (item.path) onNavigate?.(item.path, item)
+        },
+      })
+    )
     return [
       ...navEntries,
       ...extraActions.map((act) => ({
@@ -145,62 +106,100 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     return Array.from(set)
   }, [allEntries])
 
-  // 组装展示列表：无关键字且处于“全部”分类时，将最近访问置顶为独立分组
+  // 单趟计算全部候选项匹配得分，供分组计数与分组排序列表共享复用
+  const scoredEntries = useMemo(() => {
+    const trimmed = query.trim()
+    return allEntries.map((entry) => ({
+      entry,
+      score: scoreCommandEntry(entry, trimmed),
+    }))
+  }, [allEntries, query])
+
+  const groupHitCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    let total = 0
+    for (const { entry, score } of scoredEntries) {
+      if (score < 0) continue
+      total += 1
+      const g = entry.group || '其他'
+      counts.set(g, (counts.get(g) ?? 0) + 1)
+    }
+    counts.set('__all__', total)
+    return counts
+  }, [scoredEntries])
+
+  // 组装展示列表：无关键字且处于“全部”分类时置顶最近访问；有关键字时按匹配得分降序排列分组与条目
   const displaySections = useMemo(() => {
     const trimmed = query.trim()
-    const filterFn = (entry: CommandActionItem) => {
-      if (activeGroup !== 'all' && activeGroup !== '__recent__' && entry.group !== activeGroup) {
-        return false
-      }
-      if (!trimmed) return true
-      return (
-        matchKeywordWithPinyin(entry.title, trimmed) ||
-        Boolean(entry.subtitle && matchKeywordWithPinyin(entry.subtitle, trimmed)) ||
-        Boolean(entry.keywords && matchKeywordWithPinyin(entry.keywords, trimmed))
-      )
-    }
-
-    const sections: Array<{ groupName: string; isRecent?: boolean; items: CommandActionItem[] }> = []
+    const scoredById = new Map(scoredEntries.map((item) => [item.entry.id, item]))
 
     if (activeGroup === '__recent__') {
       const recents = recentIds
-        .map((id) => allEntries.find((e) => e.id === id))
-        .filter((e): e is CommandActionItem => e !== undefined && filterFn(e))
-      if (recents.length > 0) {
-        sections.push({ groupName: '最近访问', isRecent: true, items: recents })
-      }
-      return sections
+        .map((id) => scoredById.get(id))
+        .filter((x): x is { entry: CommandActionItem; score: number } => x !== undefined && x.score >= 0)
+        .map((x) => x.entry)
+      return recents.length > 0
+        ? [{ groupName: '最近访问', isRecent: true, totalCount: recents.length, items: recents }]
+        : []
     }
+
+    const sections: Array<{
+      groupName: string
+      isRecent?: boolean
+      topScore: number
+      totalCount: number
+      items: CommandActionItem[]
+    }> = []
 
     const recentSet = new Set<string>()
     if (!trimmed && activeGroup === 'all' && recentIds.length > 0) {
       const recents = recentIds
-        .map((id) => allEntries.find((e) => e.id === id))
+        .map((id) => scoredById.get(id)?.entry)
         .filter((e): e is CommandActionItem => e !== undefined)
       if (recents.length > 0) {
         recents.forEach((r) => recentSet.add(r.id))
-        sections.push({ groupName: '最近访问', isRecent: true, items: recents })
+        sections.push({
+          groupName: '最近访问',
+          isRecent: true,
+          topScore: 9999,
+          totalCount: recents.length,
+          items: recents,
+        })
       }
     }
 
-    const groupedMap = new Map<string, CommandActionItem[]>()
-    for (const entry of allEntries) {
-      if (recentSet.has(entry.id)) continue
-      if (!filterFn(entry)) continue
+    const groupedMap = new Map<string, Array<{ entry: CommandActionItem; score: number }>>()
+    for (const { entry, score } of scoredEntries) {
+      if (score < 0 || recentSet.has(entry.id)) continue
+      if (activeGroup !== 'all' && entry.group !== activeGroup) continue
       const g = entry.group || '其他'
       const arr = groupedMap.get(g) ?? []
-      arr.push(entry)
+      arr.push({ entry, score })
       groupedMap.set(g, arr)
     }
 
-    for (const [groupName, items] of groupedMap.entries()) {
-      if (items.length > 0) {
-        sections.push({ groupName, items })
+    const maxPerGroup = trimmed ? 60 : 30
+    const dynamicSections: typeof sections = []
+    for (const [groupName, scored] of groupedMap.entries()) {
+      if (scored.length === 0) continue
+      if (trimmed) {
+        scored.sort((a, b) => b.score - a.score)
       }
+      const topScore = scored.reduce((max, s) => Math.max(max, s.score), 0)
+      dynamicSections.push({
+        groupName,
+        topScore,
+        totalCount: scored.length,
+        items: scored.slice(0, maxPerGroup).map((s) => s.entry),
+      })
     }
 
-    return sections
-  }, [allEntries, query, activeGroup, recentIds])
+    if (trimmed) {
+      dynamicSections.sort((a, b) => b.topScore - a.topScore)
+    }
+
+    return [...sections, ...dynamicSections]
+  }, [scoredEntries, query, activeGroup, recentIds])
 
   const flatMatched = useMemo(
     () => displaySections.flatMap((sec) => sec.items),
@@ -289,7 +288,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜索菜单名称、路由路径、快捷指令或输入拼音首字母（如 yhgl）..."
+            placeholder={placeholder}
             className="w-full bg-transparent text-[15px] font-medium text-[var(--abc-fg)] placeholder:font-normal placeholder:text-[var(--abc-fg-placeholder)] focus:outline-none"
           />
           {query && (
@@ -322,7 +321,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                     : 'text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
                 )}
               >
-                全部 ({allEntries.length})
+                全部 ({query.trim() ? (groupHitCounts.get('__all__') ?? 0) : allEntries.length})
               </button>
 
               {recentIds.length > 0 && (
@@ -341,21 +340,27 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                 </button>
               )}
 
-              {availableGroups.map((group) => (
-                <button
-                  key={group}
-                  type="button"
-                  onClick={() => setActiveGroup(group)}
-                  className={cn(
-                    'rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors cursor-pointer',
-                    activeGroup === group
-                      ? 'bg-[var(--abc-primary)] text-[var(--abc-primary-fg)] shadow-2xs'
-                      : 'text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
-                  )}
-                >
-                  {group}
-                </button>
-              ))}
+              {availableGroups.map((group) => {
+                const count = groupHitCounts.get(group) ?? 0
+                return (
+                  <button
+                    key={group}
+                    type="button"
+                    onClick={() => setActiveGroup(group)}
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors cursor-pointer',
+                      activeGroup === group
+                        ? 'bg-[var(--abc-primary)] text-[var(--abc-primary-fg)] shadow-2xs'
+                        : 'text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
+                    )}
+                  >
+                    <span>{group}</span>
+                    <span aria-hidden="true" className="font-mono text-[10px] opacity-75">
+                      {count}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
 
             {recentIds.length > 0 && (
@@ -379,10 +384,10 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                 <Sparkles className="h-5 w-5" />
               </div>
               <p className="text-sm font-medium text-[var(--abc-fg)]">
-                未找到与 “{query}” 匹配的菜单或快捷指令
+                未找到与 “{query}” 匹配的组件、菜单或快捷指令
               </p>
               <p className="mt-1 text-xs text-[var(--abc-fg-muted)]">
-                支持直接输入中文名称、URL 路径片段或拼音首字母（例如：yhgl、ddgl）
+                支持输入组件名（如 JsonTreeViewer、Drawer）、中文描述、URL 路径或拼音首字母
               </p>
             </div>
           ) : (
@@ -394,7 +399,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                       {section.isRecent && <Clock className="h-3 w-3 text-[var(--abc-primary)]" />}
                       <span>{section.groupName}</span>
                     </span>
-                    <span className="font-mono text-[10px] opacity-75">{section.items.length}</span>
+                    <span className="font-mono text-[10px] opacity-75">{section.totalCount}</span>
                   </div>
 
                   {section.items.map((entry) => {
@@ -454,6 +459,18 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                         </div>
 
                         <div className="flex shrink-0 items-center gap-2">
+                          {entry.badge && (
+                            <span
+                              className={cn(
+                                'hidden rounded border px-1.5 py-0.5 font-mono text-[10px] sm:inline-block',
+                                isFocused
+                                  ? 'border-[var(--abc-primary)]/25 bg-[var(--abc-bg-surface)] text-[var(--abc-primary)]'
+                                  : 'border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg-muted)]'
+                              )}
+                            >
+                              {entry.badge}
+                            </span>
+                          )}
                           {entry.group && (
                             <span
                               className={cn(
@@ -502,9 +519,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               <span>切换分类</span>
             </span>
           </div>
-          <span className="font-mono">
-            共 {flatMatched.length} 项结果
-          </span>
+          <span className="font-mono">共 {flatMatched.length} 项结果</span>
         </div>
       </div>
     </Dialog>

@@ -18,6 +18,7 @@ import {
 import { AlertTriangle, Check, Lock, Play, RefreshCw, ScrollText, User } from 'lucide-react'
 import { ComponentDocPreview } from '../../components/ComponentDocPreview'
 import { KnobNumber, KnobSegmented, KnobSelect, KnobSwitch, KnobText } from '../../components/PropKnobs'
+import { ShellSubcomponentsSection } from './ShellSubcomponentsSection'
 
 const MODES: Array<{ mode: AbcLayoutMode; name: string; scene: string }> = [
   { mode: 'sidebar', name: '1. 经典侧边栏 (Sidebar)', scene: '适合 2~3 级菜单较多的综合管理后台，支持深浅侧栏与折叠悬浮菜单。' },
@@ -396,6 +397,9 @@ export const ShellLayoutsPage: React.FC<{
             </div>
           </div>
         </ComponentDocPreview>
+
+        {/* Card 4: MultiTabBar / SidebarNav / TopHorizontalNav / DualColumnNav / BrandLogoBlock / ThemeCustomizer */}
+        <ShellSubcomponentsSection layoutSettings={layoutSettings} onChangeLayout={onChangeLayout} />
       </div>
     </PageContainer>
   )

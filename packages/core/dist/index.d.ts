@@ -6,4 +6,6 @@ export * from './queryBuilder.js';
 export * from './diff.js';
 export * from './keyValue.js';
 export * from './sortable.js';
+export * from './tagInput.js';
+export * from './jsonTree.js';
 //# sourceMappingURL=index.d.ts.map

@@ -143,17 +143,18 @@ describe('ABC Design 通用高阶交互组件集 (ErrorBoundary / BrandIcon / Ke
     expect(screen.getByText('当前页面渲染发生异常')).toBeInTheDocument()
     expect(screen.getByText('页签A正常内容')).toBeInTheDocument()
 
-    // 切回 /tab-a 时，scrollTop 精准复原为 240
+    // 切回 /tab-a 时，scrollTop 精准复原为 240，且同一 activeKey 的最新受控 props 实时同步不冻结
     rerender(
       <KeepAliveContainer
         activeKey="/tab-a"
         scrollContainerRef={scrollRef}
         isolateError
       >
-        <CrashChild shouldThrow={false} label="页签A正常内容" />
+        <CrashChild shouldThrow={false} label="页签A受控属性已实时刷新" />
       </KeepAliveContainer>
     )
     expect(scroller.scrollTop).toBe(240)
+    expect(screen.getByText('页签A受控属性已实时刷新')).toBeInTheDocument()
 
     spy.mockRestore()
   })

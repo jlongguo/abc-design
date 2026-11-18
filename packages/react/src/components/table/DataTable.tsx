@@ -2,6 +2,7 @@ import React from 'react'
 import type { AbcSize } from '@abc-design/tokens'
 import { EmptyState, Skeleton, SmartPagination, type PaginationProps } from '../display/FeedbackStates'
 import { cn } from '../../utils/cn'
+import { ProAdaptiveActionCell } from '../../pro/pro-table-extras/ProRowActionsOverflow'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './TablePrimitives'
 
 export interface DataTableColumn<T> {
@@ -48,8 +49,14 @@ export interface DataTableProps<T> {
   emptyTitle?: React.ReactNode
   /** 默认空状态副标题 */
   emptyDescription?: React.ReactNode
+  /** 默认空状态自定义图标 */
+  emptyIcon?: React.ReactNode
   /** 默认空状态底部操作区 */
   emptyAction?: React.ReactNode
+  /** 空状态快捷重置回调 */
+  onEmptyReset?: () => void
+  /** 空状态重置按钮文案 */
+  emptyResetText?: string
   /** 加载中状态（展示结构化骨架行并广播 aria-live 状态） */
   loading?: boolean
   /** 骨架行数（默认 5） */
@@ -115,9 +122,12 @@ export function DataTable<T>({
   keyExtractor,
   rowKey,
   emptyNode,
-  emptyTitle = '暂无数据',
+  emptyTitle,
   emptyDescription,
+  emptyIcon,
   emptyAction,
+  onEmptyReset,
+  emptyResetText,
   loading = false,
   skeletonRows = 5,
   loadingStatusText = '正在加载表格数据...',
@@ -139,12 +149,20 @@ export function DataTable<T>({
     ? 'overflow-hidden rounded-[var(--abc-radius-lg,12px)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] shadow-2xs'
     : 'overflow-hidden'
 
+  const resolvedEmptyTitle = emptyTitle !== undefined ? emptyTitle : '暂无数据'
+  // 显式传入自定义 emptyTitle 且未传 emptyDescription 时，抑制 EmptyState 默认中文副标题泄漏
+  const resolvedEmptyDescription =
+    emptyDescription !== undefined ? emptyDescription : emptyTitle !== undefined ? null : undefined
+
   const renderEmptyContent = () =>
     emptyNode ?? (
       <EmptyState
-        title={typeof emptyTitle === 'string' ? emptyTitle : '暂无数据'}
-        description={typeof emptyDescription === 'string' ? emptyDescription : undefined}
+        title={resolvedEmptyTitle}
+        description={resolvedEmptyDescription}
+        icon={emptyIcon}
         action={emptyAction}
+        onReset={onEmptyReset}
+        resetText={emptyResetText}
         compact
       />
     )
@@ -264,11 +282,22 @@ export function DataTable<T>({
                     )}
                   >
                     {columns.map((column) => {
-                      const content = column.render
+                      const rawContent = column.render
                         ? column.render(item, rowIndex)
                         : column.cell
                           ? column.cell(item, rowIndex)
                           : (item as Record<string, unknown>)[column.key]
+                      const isActionCol =
+                        column.key === 'actions' ||
+                        column.key === 'action' ||
+                        column.key === '__actions__'
+                      const content = isActionCol ? (
+                        <ProAdaptiveActionCell align={column.align ?? 'right'}>
+                          {rawContent as React.ReactNode}
+                        </ProAdaptiveActionCell>
+                      ) : (
+                        (rawContent as React.ReactNode)
+                      )
 
                       return (
                         <TableCell

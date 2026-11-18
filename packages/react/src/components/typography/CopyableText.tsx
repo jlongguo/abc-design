@@ -106,10 +106,13 @@ export const CopyableText: React.FC<CopyableTextProps> = ({
   const { toast } = useAbcConfig()
   const [copied, setCopied] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const mountedRef = useRef(true)
   const resolvedSuccessMsg = successText ?? successMessage ?? '已复制到剪贴板'
 
   useEffect(() => {
+    mountedRef.current = true
     return () => {
+      mountedRef.current = false
       if (timerRef.current) clearTimeout(timerRef.current)
     }
   }, [])
@@ -119,12 +122,14 @@ export const CopyableText: React.FC<CopyableTextProps> = ({
       e.stopPropagation()
       e.preventDefault()
       const ok = await copyToClipboard(text)
+      if (!mountedRef.current) return
       if (ok) {
         setCopied(true)
         toast.success(resolvedSuccessMsg)
         onCopy?.(text)
         if (timerRef.current) clearTimeout(timerRef.current)
         timerRef.current = setTimeout(() => {
+          if (!mountedRef.current) return
           setCopied(false)
           timerRef.current = null
         }, 1500)
@@ -244,15 +249,31 @@ export const CopyButton: React.FC<CopyButtonProps> = ({
   ...props
 }) => {
   const [copied, setCopied] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const mountedRef = useRef(true)
   const defaultLabel = title || copyLabel
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [])
 
   const handleCopy = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     const success = await copyToClipboard(value)
+    if (!mountedRef.current) return
     if (success) {
       setCopied(true)
       onCopySuccess?.()
-      setTimeout(() => setCopied(false), successDuration)
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => {
+        if (!mountedRef.current) return
+        setCopied(false)
+        timerRef.current = null
+      }, successDuration)
     } else {
       onCopyError?.()
     }
@@ -268,7 +289,7 @@ export const CopyButton: React.FC<CopyButtonProps> = ({
       className={cn(
         'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--abc-radius-sm,6px)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg-muted)] transition-all hover:border-[var(--abc-primary)] hover:text-[var(--abc-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--abc-primary)] cursor-pointer',
         iconOnly ? 'h-6 w-6' : 'h-7 px-2.5 text-xs font-medium',
-        copied && 'border-emerald-500/50 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400',
+        copied && 'border-[var(--abc-success)]/50 bg-[var(--abc-success-soft)] text-[var(--abc-success)]',
         className
       )}
       {...props}

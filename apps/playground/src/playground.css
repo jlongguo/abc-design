@@ -1,0 +1,22 @@
+/* 原生 CSS ScrollSpy 与 IntersectionObserver 降级统一高亮规则 */
+.abc-pg-scrollspy-nav {
+  scroll-target-group: auto;
+}
+
+.abc-pg-scrollspy-nav a:is(:target-current, .target-current) {
+  color: var(--abc-primary) !important;
+  background-color: var(--abc-primary-soft) !important;
+  border-left-color: var(--abc-primary) !important;
+  font-weight: 600;
+}
+
+/* 针对 Chrome/Firefox hidden="until-found" 隐藏块的零边距消除（含消除 space-y-* 末尾隐藏兄弟造成的冗余底距） */
+section[hidden="until-found"] {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+:is(.space-y-4, .space-y-5, .space-y-6) > :not(:has(~ :not([hidden="until-found"]))) {
+  margin-block-end: 0 !important;
+}
