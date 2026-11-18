@@ -77,4 +77,10 @@ pnpm test
 
 # 构建全部包与 Playground 静态预览站
 pnpm build
+
+# 一键构建并零停机发布 Playground 至线上预览站 (https://abc.bytesflows.com)
+pnpm run deploy:playground
+# 支持巡检与秒级回滚：
+# pnpm run deploy:playground -- --status
+# pnpm run deploy:playground -- --rollback
 ```
