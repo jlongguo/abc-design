@@ -105,6 +105,8 @@ export interface SelectProps
   popoverClassName?: string
   /** 是否同步触发器宽度至下拉菜单最小宽度（默认 true） */
   matchWidth?: boolean
+  /** 下拉面板相对触发器的默认对齐方位（默认 bottomLeft，窄后缀选择器可设为 bottomRight 防止向右溢出父容器） */
+  placement?: 'bottomLeft' | 'bottomRight' | 'topLeft' | 'topRight'
   /** 是否隐藏右侧下拉箭头 */
   hideChevron?: boolean
   /** 自定义 Portal 挂载容器（未传时自动探测祖先 dialog[open] 或 document.body） */

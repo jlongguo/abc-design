@@ -24,6 +24,7 @@ const PACKAGE_ENTRIES = [
   { pkg: '@abc-design/react', entry: path.join(repoRoot, 'packages/react/src/index.ts') },
   { pkg: '@abc-design/charts', entry: path.join(repoRoot, 'packages/charts/src/index.ts') },
   { pkg: '@abc-design/markdown', entry: path.join(repoRoot, 'packages/markdown/src/index.ts') },
+  { pkg: '@abc-design/flow', entry: path.join(repoRoot, 'packages/flow/src/index.ts') },
 ]
 
 function collectFiles(dir, exts) {
@@ -53,6 +54,8 @@ const program = ts.createProgram(
     paths: {
       '@abc-design/tokens': ['packages/tokens/src/index.ts'],
       '@abc-design/core': ['packages/core/src/index.ts'],
+      '@abc-design/react': ['packages/react/src/index.ts'],
+      '@abc-design/flow': ['packages/flow/src/index.ts'],
     },
   }
 )

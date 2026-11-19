@@ -2,11 +2,11 @@ import React, { useState } from 'react'
 import {
   FlowNodeCard,
   FlowSectionFrame,
-  StatusTag,
   TemplateVariableInput,
   type FlowTone,
   type TemplateVariableOption,
-} from '@abc-design/react'
+} from '@abc-design/flow'
+import { StatusTag } from '@abc-design/react'
 import { Layers } from 'lucide-react'
 import { ComponentDocPreview } from '../../../components/ComponentDocPreview'
 import { KnobSegmented, KnobSwitch } from '../../../components/PropKnobs'
@@ -122,7 +122,7 @@ export const TemplateVariableAndSectionDemoSection: React.FC = () => {
             <KnobSwitch label="mono" checked={mono} onChange={setMono} />
           </>
         }
-        code={`import { TemplateVariableInput } from '@abc-design/react'
+        code={`import { TemplateVariableInput } from '@abc-design/flow'
 
 <TemplateVariableInput
   label="User question"
@@ -209,7 +209,7 @@ export const TemplateVariableAndSectionDemoSection: React.FC = () => {
             <KnobSwitch label="selected" checked={frameSelected} onChange={setFrameSelected} />
           </>
         }
-        code={`import { FlowSectionFrame } from '@abc-design/react'
+        code={`import { FlowSectionFrame } from '@abc-design/flow'
 
 <FlowSectionFrame
   tone="${frameTone}"

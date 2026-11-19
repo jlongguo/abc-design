@@ -86,7 +86,6 @@ export * from './components/layout/PageChrome'
 export * from './components/table/TableCore'
 export * from './components/table/TablePrimitives'
 export * from './components/table/DataTable'
-export * from './components/flow'
 
 // Layer 3: 5 模态企业级完整布局框架
 export * from './layout/types'

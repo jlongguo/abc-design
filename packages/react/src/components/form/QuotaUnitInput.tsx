@@ -277,10 +277,10 @@ function QuotaUnitControl<U extends string>({
           }}
           className="min-w-0 flex-1 border-0 bg-transparent px-3 text-xs text-[var(--abc-fg,#0f172a)] font-mono tabular-nums outline-none focus:outline-none focus:ring-0 placeholder:text-[var(--abc-fg-muted,#94a3b8)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
-        {/* 分割线：高度贴合 */}
-        <div className="w-[1px] bg-[var(--abc-border,#e2e8f0)] shrink-0 self-stretch my-1.5" />
-        {/* 单位选择器：由 ABC Design Select (ghost 模式 + Portal 浮层) 驱动，杜绝操作系统原生 <select> 下拉菜单 */}
-        <div className="flex items-center shrink-0">
+        {/* 分割线：全高贴合容器，使右侧单位按钮 hover 背景完整覆盖右半区 */}
+        <div className="w-[1px] bg-[var(--abc-border,#e2e8f0)] shrink-0 self-stretch" />
+        {/* 单位选择器：由 ABC Design Select (ghost 模式 + 右对齐 Portal 浮层) 驱动，杜绝原生 <select> 与右侧溢出 */}
+        <div className="flex items-stretch self-stretch shrink-0">
           <Select
             size="ghost"
             aria-label={resolvedUnitLabel}
@@ -289,9 +289,10 @@ function QuotaUnitControl<U extends string>({
             onValueChange={(nextVal) => applyNextUnit(nextVal as U)}
             onChange={handleUnitChange}
             matchWidth={false}
+            placement="bottomRight"
             dropdownClassName="min-w-[104px]"
-            wrapperClassName="h-full shrink-0 flex items-center"
-            className="h-full min-w-[74px] px-2.5 font-mono font-semibold text-xs text-[var(--abc-fg-secondary,#334155)] hover:bg-[var(--abc-bg-subtle,#f8fafc)] hover:text-[var(--abc-fg,#0f172a)]"
+            wrapperClassName="h-full shrink-0 flex items-stretch"
+            className="h-full min-w-[74px] rounded-none px-2.5 font-mono font-semibold text-xs text-[var(--abc-fg-secondary,#334155)] hover:bg-[var(--abc-bg-subtle,#f8fafc)] hover:text-[var(--abc-fg,#0f172a)] data-[state=open]:bg-[var(--abc-bg-subtle,#f8fafc)] data-[state=open]:text-[var(--abc-fg,#0f172a)]"
           >
             {allowedUnits.map((item) => (
               <option key={item} value={item}>

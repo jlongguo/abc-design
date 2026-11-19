@@ -1,0 +1,345 @@
+@import "@xyflow/react/dist/style.css";
+
+/* 注意：@abc-design/flow 不单独二次生成 @layer utilities，避免在 @abc-design/react/styles.css 之后引入时
+ * 产生后置的 .hidden / .inline-flex 覆盖 @abc-design/react 的 md:block / md:flex / md:hidden 响应式规则；
+ * 全部原子类统一由 @abc-design/react/src/styles.css 或宿主 Tailwind 单次编译生成。 */
+
+/* ============================================================================
+ * ABC Design Flow 亮暗双主题语义令牌（根级 + 局部子树独立覆盖双向匹配）
+ * 使用 CSS 自定义属性驱动全部画布节点、分组框、连线与控制胶囊颜色，
+ * 彻底隔离宿主 Tailwind v3 未分层工具类与组件库 @layer utilities 的层叠冲突。
+ * ============================================================================ */
+@layer theme {
+  :root,
+  :is([data-abc-theme="light"], .light, [data-playground-theme="light"]) {
+    /* 5 套节点 / 分组框柔和浅色语义色板（Light） */
+    --abc-flow-blue-shell-bg: rgba(219, 234, 254, 0.88);
+    --abc-flow-blue-shell-border: rgba(147, 197, 253, 0.92);
+    --abc-flow-blue-header-fg: #1e3a8a;
+    --abc-flow-blue-badge-bg: rgba(255, 255, 255, 0.72);
+    --abc-flow-blue-badge-fg: #1d4ed8;
+    --abc-flow-blue-ring: rgba(59, 130, 246, 0.85);
+    --abc-flow-blue-section-bg: rgba(239, 246, 255, 0.52);
+    --abc-flow-blue-section-border: rgba(147, 197, 253, 0.88);
+    --abc-flow-blue-section-title: rgba(30, 58, 138, 0.88);
+
+    --abc-flow-green-shell-bg: rgba(209, 250, 229, 0.84);
+    --abc-flow-green-shell-border: rgba(110, 231, 183, 0.92);
+    --abc-flow-green-header-fg: #064e3b;
+    --abc-flow-green-badge-bg: rgba(255, 255, 255, 0.72);
+    --abc-flow-green-badge-fg: #047857;
+    --abc-flow-green-ring: rgba(16, 185, 129, 0.85);
+    --abc-flow-green-section-bg: rgba(236, 253, 245, 0.52);
+    --abc-flow-green-section-border: rgba(110, 231, 183, 0.88);
+    --abc-flow-green-section-title: rgba(6, 78, 59, 0.88);
+
+    --abc-flow-amber-shell-bg: rgba(254, 243, 199, 0.9);
+    --abc-flow-amber-shell-border: rgba(252, 211, 77, 0.94);
+    --abc-flow-amber-header-fg: #78350f;
+    --abc-flow-amber-badge-bg: rgba(255, 255, 255, 0.74);
+    --abc-flow-amber-badge-fg: #b45309;
+    --abc-flow-amber-ring: rgba(245, 158, 11, 0.85);
+    --abc-flow-amber-section-bg: rgba(255, 251, 235, 0.58);
+    --abc-flow-amber-section-border: rgba(252, 211, 77, 0.88);
+    --abc-flow-amber-section-title: rgba(120, 53, 15, 0.88);
+
+    --abc-flow-rose-shell-bg: rgba(255, 228, 230, 0.88);
+    --abc-flow-rose-shell-border: rgba(253, 164, 175, 0.92);
+    --abc-flow-rose-header-fg: #881337;
+    --abc-flow-rose-badge-bg: rgba(255, 255, 255, 0.72);
+    --abc-flow-rose-badge-fg: #be123c;
+    --abc-flow-rose-ring: rgba(244, 63, 94, 0.85);
+    --abc-flow-rose-section-bg: rgba(255, 241, 242, 0.52);
+    --abc-flow-rose-section-border: rgba(253, 164, 175, 0.88);
+    --abc-flow-rose-section-title: rgba(136, 19, 55, 0.88);
+
+    --abc-flow-slate-shell-bg: rgba(226, 232, 240, 0.82);
+    --abc-flow-slate-shell-border: rgba(203, 213, 225, 0.95);
+    --abc-flow-slate-header-fg: #1e293b;
+    --abc-flow-slate-badge-bg: rgba(255, 255, 255, 0.76);
+    --abc-flow-slate-badge-fg: #334155;
+    --abc-flow-slate-ring: var(--abc-primary, #4f46e5);
+    --abc-flow-slate-section-bg: rgba(241, 245, 249, 0.52);
+    --abc-flow-slate-section-border: rgba(148, 163, 184, 0.78);
+    --abc-flow-slate-section-title: #334155;
+
+    /* 出口状态圆点与文字（Light） */
+    --abc-flow-port-success-dot: #10b981;
+    --abc-flow-port-success-fg: #047857;
+    --abc-flow-port-danger-dot: #f43f5e;
+    --abc-flow-port-danger-fg: #be123c;
+    --abc-flow-port-warning-dot: #f59e0b;
+    --abc-flow-port-warning-fg: #b45309;
+    --abc-flow-port-info-dot: #3b82f6;
+    --abc-flow-port-info-fg: #1d4ed8;
+    --abc-flow-port-neutral-dot: #94a3b8;
+
+    /* 6 套连线与中点语义徽章（Light） */
+    --abc-flow-edge-default-stroke: #94a3b8;
+    --abc-flow-edge-default-pill-bg: rgba(255, 255, 255, 0.95);
+    --abc-flow-edge-default-pill-border: rgba(226, 232, 240, 0.95);
+    --abc-flow-edge-default-pill-fg: #475569;
+
+    --abc-flow-edge-primary-stroke: #6366f1;
+    --abc-flow-edge-primary-pill-bg: rgba(238, 242, 255, 0.96);
+    --abc-flow-edge-primary-pill-border: #c7d2fe;
+    --abc-flow-edge-primary-pill-fg: #4338ca;
+
+    --abc-flow-edge-success-stroke: #22c55e;
+    --abc-flow-edge-success-pill-bg: rgba(236, 253, 245, 0.96);
+    --abc-flow-edge-success-pill-border: #a7f3d0;
+    --abc-flow-edge-success-pill-fg: #047857;
+
+    --abc-flow-edge-warning-stroke: #f59e0b;
+    --abc-flow-edge-warning-pill-bg: rgba(255, 251, 235, 0.96);
+    --abc-flow-edge-warning-pill-border: #fde68a;
+    --abc-flow-edge-warning-pill-fg: #b45309;
+
+    --abc-flow-edge-danger-stroke: #e11d48;
+    --abc-flow-edge-danger-pill-bg: rgba(255, 241, 242, 0.96);
+    --abc-flow-edge-danger-pill-border: #fecdd3;
+    --abc-flow-edge-danger-pill-fg: #be123c;
+
+    --abc-flow-edge-muted-stroke: #cbd5e1;
+    --abc-flow-edge-muted-pill-bg: rgba(255, 255, 255, 0.92);
+    --abc-flow-edge-muted-pill-border: rgba(226, 232, 240, 0.85);
+    --abc-flow-edge-muted-pill-fg: #64748b;
+
+    /* 模板变量芯片（Light：深石板高对比芯片） */
+    --abc-flow-chip-bg: #334155;
+    --abc-flow-chip-fg: #ffffff;
+    --abc-flow-chip-sub-bg: rgba(255, 255, 255, 0.16);
+    --abc-flow-chip-sub-fg: #f1f5f9;
+    --abc-flow-chip-close-hover: rgba(255, 255, 255, 0.3);
+
+    /* ReactFlow 画布内置主题变量桥接 */
+    --xy-background-color: transparent;
+    --xy-minimap-background-color: var(--abc-bg-surface, #ffffff);
+    --xy-minimap-mask-background-color: rgba(241, 245, 249, 0.65);
+    --xy-minimap-node-background-color: #cbd5e1;
+  }
+
+  /* 系统偏好暗黑回退（未显式锁定 light 时） */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-abc-theme="light"]):not(.light):not([data-playground-theme="light"]) {
+      --abc-flow-blue-shell-bg: rgba(30, 58, 138, 0.44);
+      --abc-flow-blue-shell-border: rgba(96, 165, 250, 0.42);
+      --abc-flow-blue-header-fg: #dbeafe;
+      --abc-flow-blue-badge-bg: rgba(30, 64, 175, 0.55);
+      --abc-flow-blue-badge-fg: #bfdbfe;
+      --abc-flow-blue-ring: rgba(96, 165, 250, 0.82);
+      --abc-flow-blue-section-bg: rgba(23, 37, 84, 0.36);
+      --abc-flow-blue-section-border: rgba(96, 165, 250, 0.45);
+      --abc-flow-blue-section-title: #bfdbfe;
+
+      --abc-flow-green-shell-bg: rgba(6, 78, 59, 0.44);
+      --abc-flow-green-shell-border: rgba(52, 211, 153, 0.42);
+      --abc-flow-green-header-fg: #d1fae5;
+      --abc-flow-green-badge-bg: rgba(6, 95, 70, 0.55);
+      --abc-flow-green-badge-fg: #a7f3d0;
+      --abc-flow-green-ring: rgba(52, 211, 153, 0.82);
+      --abc-flow-green-section-bg: rgba(6, 78, 59, 0.3);
+      --abc-flow-green-section-border: rgba(52, 211, 153, 0.45);
+      --abc-flow-green-section-title: #a7f3d0;
+
+      --abc-flow-amber-shell-bg: rgba(120, 53, 15, 0.44);
+      --abc-flow-amber-shell-border: rgba(251, 191, 36, 0.42);
+      --abc-flow-amber-header-fg: #fef3c7;
+      --abc-flow-amber-badge-bg: rgba(146, 64, 14, 0.55);
+      --abc-flow-amber-badge-fg: #fde68a;
+      --abc-flow-amber-ring: rgba(251, 191, 36, 0.82);
+      --abc-flow-amber-section-bg: rgba(120, 53, 15, 0.28);
+      --abc-flow-amber-section-border: rgba(251, 191, 36, 0.45);
+      --abc-flow-amber-section-title: #fde68a;
+
+      --abc-flow-rose-shell-bg: rgba(136, 19, 55, 0.44);
+      --abc-flow-rose-shell-border: rgba(251, 113, 133, 0.42);
+      --abc-flow-rose-header-fg: #ffe4e6;
+      --abc-flow-rose-badge-bg: rgba(159, 18, 57, 0.55);
+      --abc-flow-rose-badge-fg: #fecdd3;
+      --abc-flow-rose-ring: rgba(251, 113, 133, 0.82);
+      --abc-flow-rose-section-bg: rgba(136, 19, 55, 0.28);
+      --abc-flow-rose-section-border: rgba(251, 113, 133, 0.45);
+      --abc-flow-rose-section-title: #fecdd3;
+
+      --abc-flow-slate-shell-bg: rgba(30, 41, 59, 0.86);
+      --abc-flow-slate-shell-border: rgba(100, 116, 139, 0.55);
+      --abc-flow-slate-header-fg: #f1f5f9;
+      --abc-flow-slate-badge-bg: rgba(51, 65, 85, 0.78);
+      --abc-flow-slate-badge-fg: #e2e8f0;
+      --abc-flow-slate-ring: var(--abc-primary, #818cf8);
+      --abc-flow-slate-section-bg: rgba(30, 41, 59, 0.52);
+      --abc-flow-slate-section-border: rgba(100, 116, 139, 0.55);
+      --abc-flow-slate-section-title: #e2e8f0;
+
+      --abc-flow-port-success-dot: #34d399;
+      --abc-flow-port-success-fg: #6ee7b7;
+      --abc-flow-port-danger-dot: #fb7185;
+      --abc-flow-port-danger-fg: #fda4af;
+      --abc-flow-port-warning-dot: #fbbf24;
+      --abc-flow-port-warning-fg: #fcd34d;
+      --abc-flow-port-info-dot: #60a5fa;
+      --abc-flow-port-info-fg: #93c5fd;
+      --abc-flow-port-neutral-dot: #64748b;
+
+      --abc-flow-edge-default-stroke: #64748b;
+      --abc-flow-edge-default-pill-bg: rgba(15, 23, 42, 0.94);
+      --abc-flow-edge-default-pill-border: rgba(71, 85, 105, 0.85);
+      --abc-flow-edge-default-pill-fg: #cbd5e1;
+
+      --abc-flow-edge-primary-stroke: #818cf8;
+      --abc-flow-edge-primary-pill-bg: rgba(30, 27, 75, 0.92);
+      --abc-flow-edge-primary-pill-border: rgba(99, 102, 241, 0.55);
+      --abc-flow-edge-primary-pill-fg: #c7d2fe;
+
+      --abc-flow-edge-success-stroke: #34d399;
+      --abc-flow-edge-success-pill-bg: rgba(6, 78, 59, 0.92);
+      --abc-flow-edge-success-pill-border: rgba(16, 185, 129, 0.55);
+      --abc-flow-edge-success-pill-fg: #a7f3d0;
+
+      --abc-flow-edge-warning-stroke: #fbbf24;
+      --abc-flow-edge-warning-pill-bg: rgba(69, 26, 3, 0.92);
+      --abc-flow-edge-warning-pill-border: rgba(245, 158, 11, 0.55);
+      --abc-flow-edge-warning-pill-fg: #fde68a;
+
+      --abc-flow-edge-danger-stroke: #fb7185;
+      --abc-flow-edge-danger-pill-bg: rgba(76, 5, 25, 0.92);
+      --abc-flow-edge-danger-pill-border: rgba(244, 63, 94, 0.55);
+      --abc-flow-edge-danger-pill-fg: #fecdd3;
+
+      --abc-flow-edge-muted-stroke: #475569;
+      --abc-flow-edge-muted-pill-bg: rgba(15, 23, 42, 0.9);
+      --abc-flow-edge-muted-pill-border: rgba(51, 65, 85, 0.85);
+      --abc-flow-edge-muted-pill-fg: #94a3b8;
+
+      --abc-flow-chip-bg: #e2e8f0;
+      --abc-flow-chip-fg: #0f172a;
+      --abc-flow-chip-sub-bg: rgba(15, 23, 42, 0.12);
+      --abc-flow-chip-sub-fg: #334155;
+      --abc-flow-chip-close-hover: rgba(15, 23, 42, 0.24);
+
+      --xy-minimap-background-color: var(--abc-bg-surface, #0f172a);
+      --xy-minimap-mask-background-color: rgba(2, 6, 23, 0.65);
+      --xy-minimap-node-background-color: #475569;
+    }
+  }
+
+  /* 显式暗色根节点与局部暗色子树（Dark） */
+  :is([data-abc-theme="dark"], .dark, [data-playground-theme="dark"]) {
+    --abc-flow-blue-shell-bg: rgba(30, 58, 138, 0.44);
+    --abc-flow-blue-shell-border: rgba(96, 165, 250, 0.42);
+    --abc-flow-blue-header-fg: #dbeafe;
+    --abc-flow-blue-badge-bg: rgba(30, 64, 175, 0.55);
+    --abc-flow-blue-badge-fg: #bfdbfe;
+    --abc-flow-blue-ring: rgba(96, 165, 250, 0.82);
+    --abc-flow-blue-section-bg: rgba(23, 37, 84, 0.36);
+    --abc-flow-blue-section-border: rgba(96, 165, 250, 0.45);
+    --abc-flow-blue-section-title: #bfdbfe;
+
+    --abc-flow-green-shell-bg: rgba(6, 78, 59, 0.44);
+    --abc-flow-green-shell-border: rgba(52, 211, 153, 0.42);
+    --abc-flow-green-header-fg: #d1fae5;
+    --abc-flow-green-badge-bg: rgba(6, 95, 70, 0.55);
+    --abc-flow-green-badge-fg: #a7f3d0;
+    --abc-flow-green-ring: rgba(52, 211, 153, 0.82);
+    --abc-flow-green-section-bg: rgba(6, 78, 59, 0.3);
+    --abc-flow-green-section-border: rgba(52, 211, 153, 0.45);
+    --abc-flow-green-section-title: #a7f3d0;
+
+    --abc-flow-amber-shell-bg: rgba(120, 53, 15, 0.44);
+    --abc-flow-amber-shell-border: rgba(251, 191, 36, 0.42);
+    --abc-flow-amber-header-fg: #fef3c7;
+    --abc-flow-amber-badge-bg: rgba(146, 64, 14, 0.55);
+    --abc-flow-amber-badge-fg: #fde68a;
+    --abc-flow-amber-ring: rgba(251, 191, 36, 0.82);
+    --abc-flow-amber-section-bg: rgba(120, 53, 15, 0.28);
+    --abc-flow-amber-section-border: rgba(251, 191, 36, 0.45);
+    --abc-flow-amber-section-title: #fde68a;
+
+    --abc-flow-rose-shell-bg: rgba(136, 19, 55, 0.44);
+    --abc-flow-rose-shell-border: rgba(251, 113, 133, 0.42);
+    --abc-flow-rose-header-fg: #ffe4e6;
+    --abc-flow-rose-badge-bg: rgba(159, 18, 57, 0.55);
+    --abc-flow-rose-badge-fg: #fecdd3;
+    --abc-flow-rose-ring: rgba(251, 113, 133, 0.82);
+    --abc-flow-rose-section-bg: rgba(136, 19, 55, 0.28);
+    --abc-flow-rose-section-border: rgba(251, 113, 133, 0.45);
+    --abc-flow-rose-section-title: #fecdd3;
+
+    --abc-flow-slate-shell-bg: rgba(30, 41, 59, 0.86);
+    --abc-flow-slate-shell-border: rgba(100, 116, 139, 0.55);
+    --abc-flow-slate-header-fg: #f1f5f9;
+    --abc-flow-slate-badge-bg: rgba(51, 65, 85, 0.78);
+    --abc-flow-slate-badge-fg: #e2e8f0;
+    --abc-flow-slate-ring: var(--abc-primary, #818cf8);
+    --abc-flow-slate-section-bg: rgba(30, 41, 59, 0.52);
+    --abc-flow-slate-section-border: rgba(100, 116, 139, 0.55);
+    --abc-flow-slate-section-title: #e2e8f0;
+
+    --abc-flow-port-success-dot: #34d399;
+    --abc-flow-port-success-fg: #6ee7b7;
+    --abc-flow-port-danger-dot: #fb7185;
+    --abc-flow-port-danger-fg: #fda4af;
+    --abc-flow-port-warning-dot: #fbbf24;
+    --abc-flow-port-warning-fg: #fcd34d;
+    --abc-flow-port-info-dot: #60a5fa;
+    --abc-flow-port-info-fg: #93c5fd;
+    --abc-flow-port-neutral-dot: #64748b;
+
+    --abc-flow-edge-default-stroke: #64748b;
+    --abc-flow-edge-default-pill-bg: rgba(15, 23, 42, 0.94);
+    --abc-flow-edge-default-pill-border: rgba(71, 85, 105, 0.85);
+    --abc-flow-edge-default-pill-fg: #cbd5e1;
+
+    --abc-flow-edge-primary-stroke: #818cf8;
+    --abc-flow-edge-primary-pill-bg: rgba(30, 27, 75, 0.92);
+    --abc-flow-edge-primary-pill-border: rgba(99, 102, 241, 0.55);
+    --abc-flow-edge-primary-pill-fg: #c7d2fe;
+
+    --abc-flow-edge-success-stroke: #34d399;
+    --abc-flow-edge-success-pill-bg: rgba(6, 78, 59, 0.92);
+    --abc-flow-edge-success-pill-border: rgba(16, 185, 129, 0.55);
+    --abc-flow-edge-success-pill-fg: #a7f3d0;
+
+    --abc-flow-edge-warning-stroke: #fbbf24;
+    --abc-flow-edge-warning-pill-bg: rgba(69, 26, 3, 0.92);
+    --abc-flow-edge-warning-pill-border: rgba(245, 158, 11, 0.55);
+    --abc-flow-edge-warning-pill-fg: #fde68a;
+
+    --abc-flow-edge-danger-stroke: #fb7185;
+    --abc-flow-edge-danger-pill-bg: rgba(76, 5, 25, 0.92);
+    --abc-flow-edge-danger-pill-border: rgba(244, 63, 94, 0.55);
+    --abc-flow-edge-danger-pill-fg: #fecdd3;
+
+    --abc-flow-edge-muted-stroke: #475569;
+    --abc-flow-edge-muted-pill-bg: rgba(15, 23, 42, 0.9);
+    --abc-flow-edge-muted-pill-border: rgba(51, 65, 85, 0.85);
+    --abc-flow-edge-muted-pill-fg: #94a3b8;
+
+    --abc-flow-chip-bg: #e2e8f0;
+    --abc-flow-chip-fg: #0f172a;
+    --abc-flow-chip-sub-bg: rgba(15, 23, 42, 0.12);
+    --abc-flow-chip-sub-fg: #334155;
+    --abc-flow-chip-close-hover: rgba(15, 23, 42, 0.24);
+
+    --xy-minimap-background-color: var(--abc-bg-surface, #0f172a);
+    --xy-minimap-mask-background-color: rgba(2, 6, 23, 0.65);
+    --xy-minimap-node-background-color: #475569;
+  }
+}
+
+/* ABC Design Flow 动态流光连线动画 */
+@keyframes abc-flow-edge-dash {
+  from {
+    stroke-dashoffset: 18;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.abc-flow-edge-animated .react-flow__edge-path,
+.react-flow__edge-path.abc-flow-edge-animated {
+  stroke-dasharray: 6 4;
+  animation: abc-flow-edge-dash 0.9s linear infinite;
+}

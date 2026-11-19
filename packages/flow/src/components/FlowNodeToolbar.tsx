@@ -1,8 +1,6 @@
 import React from 'react'
 import type { AbcMotionPreset } from '@abc-design/tokens'
-import { useAbcMotion } from '../../hooks/useAbcDefaults'
-import { Tooltip } from '../display/Overlays'
-import { cn } from '../../utils/cn'
+import { Tooltip, cn, useAbcMotion } from '@abc-design/react'
 
 export type FlowNodeToolbarSize = 'xs' | 'sm'
 

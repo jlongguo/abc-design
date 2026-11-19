@@ -33,11 +33,16 @@ describe('Playground 7 大分类重构、页内单卡聚焦/分段展示与组�
       'TagInput',
       'ByteQuotaInput',
       'DurationQuotaInput',
+      'TimePicker',
+      'TimeRangePicker',
       'SortableSplitEditor',
       'SortableList',
       'CommandPalette',
       'MultiTabBar',
       'ThemeCustomizer',
+      'FlowCanvasSurface',
+      'FlowLabeledEdge',
+      'FlowViewportControls',
       'FloatingIconRail',
       'FlowNodeCard',
       'FlowNodeToolbar',
@@ -145,5 +150,75 @@ describe('Playground 7 大分类重构、页内单卡聚焦/分段展示与组�
     expect(
       screen.getByText('ProRowActionsOverflow & ProAdaptiveActionCell 操作列宽度自适应折叠')
     ).toBeInTheDocument()
+  })
+
+  it('6. 宽屏右侧面板动态展示视口首个组件说明与全部 Props 操作项，并随滚动切换实时联动', () => {
+    const origMatchMedia = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes('1280px'),
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    })) as typeof window.matchMedia
+
+    const origRaf = window.requestAnimationFrame
+    window.requestAnimationFrame = ((cb: FrameRequestCallback) => {
+      cb(0)
+      return 1
+    }) as typeof window.requestAnimationFrame
+
+    try {
+      window.location.hash = '#/form/inputs'
+      render(<App />)
+
+      const inspector = screen.getByRole('region', { name: '当前组件说明与属性面板' })
+      expect(inspector).toHaveAttribute('data-active-section', 'comp-Input')
+      expect(inspector).toHaveTextContent('Input / FormField / Label 基础文本与密码输入')
+      // 第一张卡的属性操作项已挂载到右侧面板
+      expect(within(inspector).getByRole('switch', { name: 'clearable' })).toBeInTheDocument()
+
+      // 模拟向下滚动：第一张卡滚出视口上沿，第二张卡 InputNumber 滑动到视口第一个位置
+      const card1 = document.getElementById('comp-Input') as HTMLElement
+      const card2 = document.getElementById('comp-InputNumber') as HTMLElement
+      expect(card1).not.toBeNull()
+      expect(card2).not.toBeNull()
+
+      card1.getBoundingClientRect = () => ({
+        x: 0,
+        y: -520,
+        top: -520,
+        left: 0,
+        right: 900,
+        bottom: 20,
+        width: 900,
+        height: 540,
+        toJSON: () => ({}),
+      })
+      card2.getBoundingClientRect = () => ({
+        x: 0,
+        y: 80,
+        top: 80,
+        left: 0,
+        right: 900,
+        bottom: 620,
+        width: 900,
+        height: 540,
+        toJSON: () => ({}),
+      })
+
+      fireEvent.scroll(window)
+
+      expect(inspector).toHaveAttribute('data-active-section', 'comp-InputNumber')
+      expect(inspector).toHaveTextContent('InputNumber & Textarea 步进数值与多行文本域')
+      // 右侧面板已自动切换为 InputNumber 的全部 Props 操作项（含 autoWidth）
+      expect(within(inspector).getByRole('switch', { name: 'autoWidth' })).toBeInTheDocument()
+    } finally {
+      window.matchMedia = origMatchMedia
+      window.requestAnimationFrame = origRaf
+    }
   })
 })

@@ -53,7 +53,8 @@ export const TextAndNumberInputsPage: React.FC = () => {
   const [numSize, setNumSize] = useState<AbcSize>('sm')
   const [step, setStep] = useState<number>(5)
   const [minVal, setMinVal] = useState<number>(0)
-  const [maxVal, setMaxVal] = useState<number>(120)
+  const [maxVal, setMaxVal] = useState<number>(999999)
+  const [autoWidth, setAutoWidth] = useState<boolean>(false)
   const [rows, setRows] = useState<number>(4)
   const [areaShowCount, setAreaShowCount] = useState(true)
   const [numDisabled, setNumDisabled] = useState(false)
@@ -203,7 +204,8 @@ export const TextAndNumberInputsPage: React.FC = () => {
             setNumSize('sm')
             setStep(5)
             setMinVal(0)
-            setMaxVal(120)
+            setMaxVal(999999)
+            setAutoWidth(false)
             setRows(4)
             setAreaShowCount(true)
             setNumDisabled(false)
@@ -213,8 +215,9 @@ export const TextAndNumberInputsPage: React.FC = () => {
             <>
               <KnobSegmented label="size" value={numSize} options={SIZE_OPTIONS} onChange={setNumSize} />
               <KnobSegmented label="step" value={step} options={STEP_OPTIONS} onChange={setStep} />
-              <KnobNumber label="min" value={minVal} min={-100} max={50} step={5} onChange={setMinVal} />
-              <KnobNumber label="max" value={maxVal} min={10} max={1000} step={10} onChange={setMaxVal} />
+              <KnobNumber label="min" value={minVal} min={-10000} max={500} step={5} onChange={setMinVal} />
+              <KnobNumber label="max" value={maxVal} min={10} max={99999999} step={100} onChange={setMaxVal} />
+              <KnobSwitch label="autoWidth" checked={autoWidth} onChange={setAutoWidth} />
               <KnobSegmented label="Textarea.rows" value={rows} options={ROWS_OPTIONS} onChange={setRows} />
               <KnobSwitch label="showCount" checked={areaShowCount} onChange={setAreaShowCount} />
               <KnobSwitch label="disabled" checked={numDisabled} onChange={setNumDisabled} />
@@ -224,13 +227,21 @@ export const TextAndNumberInputsPage: React.FC = () => {
           code={`import { FormField, InputNumber, Textarea } from '@abc-design/react'
 
 <FormField label="最大并发实例数" size="${numSize}">
-  <InputNumber size="${numSize}" value={concurrency} onChange={setConcurrency} min={${minVal}} max={${maxVal}} step={${step}} />
+  <InputNumber
+    size="${numSize}"
+    value={concurrency}
+    onChange={setConcurrency}
+    min={${minVal}}
+    max={${maxVal}}
+    step={${step}}${autoWidth ? '\n    autoWidth\n    minWidth={96}\n    maxWidth={220}' : ''}
+  />
 </FormField>
 
 <Textarea label="灰度发布说明" size="${numSize}" rows={${rows}} showCount={${areaShowCount}} maxLength={160} value={note} onChange={(e) => setNote(e.target.value)} />`}
           apiRows={[
-            { prop: 'InputNumber.value / onChange', type: 'number | null / (val: number | null) => void', description: '支持清空返回 null，提交时自动按 [min, max] 边界钳制' },
+            { prop: 'InputNumber.value / onChange', type: 'number | null / (val: number | null) => void', description: '支持清空返回 null，提交时自动按 [min, max] 边界钳制；隐藏浏览器原生微调按钮' },
             { prop: 'InputNumber.min / max / step', type: 'number', defaultValue: 'step: 1', description: '步进粒度与上下限，触达边界时自动禁用对应加减按钮' },
+            { prop: 'InputNumber.autoWidth / minWidth / maxWidth', type: 'boolean / number | string', defaultValue: 'false / 按 size / 220px', description: '开启后按数字位数在 [minWidth, maxWidth] 区间动态自适应宽度，避免窄框截断' },
             { prop: 'Textarea.rows / mono', type: 'number / boolean', defaultValue: '3 / false', description: '初始可见行数及等宽代码字体开关' },
           ]}
         >
@@ -239,7 +250,7 @@ export const TextAndNumberInputsPage: React.FC = () => {
               label="节点最大并发数 (InputNumber)"
               size={numSize}
               error={numError ? `并发配额需控制在 ${minVal} ~ ${maxVal} 之间` : undefined}
-              helperText={`当前受控值：${concurrency === null ? 'null (空)' : concurrency} · 步长 ${step}`}
+              helperText={`当前受控值：${concurrency === null ? 'null (空)' : concurrency} · 步长 ${step}${autoWidth ? ' · 已开启内容自适应宽度 (96px~220px)' : ''}`}
             >
               <InputNumber
                 size={numSize}
@@ -248,6 +259,9 @@ export const TextAndNumberInputsPage: React.FC = () => {
                 min={minVal}
                 max={maxVal}
                 step={step}
+                autoWidth={autoWidth}
+                minWidth={autoWidth ? 96 : undefined}
+                maxWidth={autoWidth ? 220 : undefined}
                 disabled={numDisabled}
                 invalid={numError}
                 placeholder="输入整数"

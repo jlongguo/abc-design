@@ -10,6 +10,8 @@ export default defineConfig({
     alias: {
       '@abc-design/charts': resolve(__dirname, '../../packages/charts/src/index.ts'),
       '@abc-design/core': resolve(__dirname, '../../packages/core/src/index.ts'),
+      '@abc-design/flow/styles.css': resolve(__dirname, '../../packages/flow/src/styles.css'),
+      '@abc-design/flow': resolve(__dirname, '../../packages/flow/src/index.ts'),
       '@abc-design/markdown': resolve(__dirname, '../../packages/markdown/src/index.ts'),
       '@abc-design/react/styles.css': resolve(__dirname, '../../packages/react/src/styles.css'),
       '@abc-design/react': resolve(__dirname, '../../packages/react/src/index.ts'),

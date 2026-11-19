@@ -95,7 +95,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
     resolvedMotion === 'none' || instantHide ? 0 : 100
   )
 
-  const { style, actualSide, arrowOffset, portalContainer } = useFloatingPosition({
+  const { style, actualSide, arrowOffset, portalContainer, portalTheme } = useFloatingPosition({
     open: isMounted,
     triggerRef,
     floatingRef,
@@ -146,6 +146,8 @@ export const Tooltip: React.FC<TooltipProps> = ({
             id={tooltipId}
             role="tooltip"
             data-abc-floating=""
+            data-abc-theme={portalTheme}
+            data-playground-theme={portalTheme}
             data-motion={resolvedMotion}
             data-placement={actualSide}
             style={style}
@@ -257,7 +259,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const resolvedPlacement: FloatingPlacement =
     placement ?? (align === 'left' ? 'bottomLeft' : 'bottomRight')
 
-  const { style, actualSide, portalContainer } = useFloatingPosition({
+  const { style, actualSide, portalContainer, portalTheme } = useFloatingPosition({
     open: isMounted,
     triggerRef: rootRef,
     floatingRef: panelRef,
@@ -390,6 +392,9 @@ export const Dropdown: React.FC<DropdownProps> = ({
         className={cn('inline-flex', className)}
       >
         <div
+          data-slot="dropdown-trigger"
+          data-state={open ? 'open' : 'closed'}
+          data-open={open ? 'true' : 'false'}
           aria-expanded={open}
           aria-controls={open ? menuId : undefined}
           aria-haspopup={isMenuMode ? 'menu' : undefined}
@@ -409,6 +414,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
             id={menuId}
             role={isMenuMode ? 'menu' : 'dialog'}
             data-abc-floating=""
+            data-abc-theme={portalTheme}
+            data-playground-theme={portalTheme}
             data-motion={resolvedMotion}
             data-placement={actualSide}
             style={style}
@@ -416,6 +423,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
             onMouseLeave={scheduleHoverClose}
             onKeyDown={handleMenuKeyDown}
             className={cn(
+              portalTheme === 'dark' && 'dark',
+              portalTheme === 'light' && 'light',
               'z-[1300] min-w-[168px] rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] p-1 shadow-[var(--abc-shadow-popover)]',
               hoverBridgeClass,
               resolvedMotion !== 'none' &&

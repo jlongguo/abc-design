@@ -204,8 +204,42 @@
     --abc-shadow-dialog: 0 28px 64px -12px rgba(0, 0, 0, 0.65);
   }
 
-  :root[data-abc-theme="light"] {
+  /* 显式亮色主题与局部亮色表面子树覆盖（确保嵌套于暗色根节点内时完整重置所有语义 Token） */
+  :is([data-abc-theme="light"], .light) {
     color-scheme: light;
+    color: var(--abc-fg);
+    accent-color: var(--abc-primary);
+    --abc-bg-canvas: #f4f6f9;
+    --abc-bg-surface: #ffffff;
+    --abc-bg-elevated: #ffffff;
+    --abc-bg-muted: #f8fafc;
+    --abc-bg-subtle: #f1f5f9;
+    --abc-fg: #0f172a;
+    --abc-fg-secondary: #334155;
+    --abc-fg-muted: #64748b;
+    --abc-fg-placeholder: #94a3b8;
+    --abc-border: rgba(226, 232, 240, 0.92);
+    --abc-border-strong: #cbd5e1;
+    --abc-primary: var(--abc-brand-600);
+    --abc-primary-hover: var(--abc-brand-700);
+    --abc-primary-active: var(--abc-brand-800);
+    --abc-primary-soft: var(--abc-brand-50);
+    --abc-success-soft: #ecfdf5;
+    --abc-warning-soft: #fffbeb;
+    --abc-danger-soft: #fff1f2;
+    --abc-info-soft: #f0f9ff;
+    --abc-json-key: #1e293b;
+    --abc-json-string: #047857;
+    --abc-json-number: #0369a1;
+    --abc-json-boolean: #b45309;
+    --abc-json-null: #64748b;
+    --abc-json-match-bg: #fef3c7;
+    --abc-autofill-bg: #f0f7ff;
+    --abc-autofill-ring: color-mix(in srgb, var(--abc-brand-500) 42%, transparent);
+    --abc-scrollbar-thumb: rgba(148, 163, 184, 0.48);
+    --abc-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04);
+    --abc-shadow-popover: 0 12px 32px -6px rgba(15, 23, 42, 0.14), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+    --abc-shadow-dialog: 0 24px 56px -12px rgba(15, 23, 42, 0.28);
   }
 
   /* ==================== 6 套内置企业品牌色预设 ==================== */
@@ -423,7 +457,8 @@
   }
 
   /* ==================== 2 档表面质感人格（enterprise 内部运营态 vs spotlight 外部消费/开发者云产品态） ==================== */
-  :root[data-abc-surface="spotlight"] {
+  :root[data-abc-surface="spotlight"],
+  :root[data-abc-surface="spotlight"] :is([data-abc-theme="light"], .light) {
     --abc-bg-canvas: #f5f7fc;
     --abc-bg-surface: #ffffff;
     --abc-bg-elevated: #ffffff;
@@ -457,7 +492,8 @@
     }
   }
 
-  :root[data-abc-surface="spotlight"]:is([data-abc-theme="dark"], .dark) {
+  :root[data-abc-surface="spotlight"]:is([data-abc-theme="dark"], .dark),
+  :root[data-abc-surface="spotlight"] :is([data-abc-theme="dark"], .dark) {
     --abc-bg-canvas: #090c13;
     --abc-bg-surface: #111622;
     --abc-bg-elevated: #171e2e;

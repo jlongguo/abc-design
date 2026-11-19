@@ -322,10 +322,30 @@ export interface InputNumberProps {
   disabled?: boolean
   placeholder?: string
   invalid?: boolean
+  /** 开启内容驱动动态宽度：在 minWidth 与 maxWidth 区间内随数字位数自动伸缩，避免窄框遮挡 */
+  autoWidth?: boolean
+  /** 最小宽度（支持像素数字或 CSS 长度值，autoWidth 开启时默认按尺寸档位提供安全下限） */
+  minWidth?: number | string
+  /** 最大宽度（支持像素数字或 CSS 长度值，autoWidth 开启时默认 220px 防止无限撑爆布局） */
+  maxWidth?: number | string
+  style?: React.CSSProperties
   className?: string
 }
 
-/** 步进数值输入框（等宽数字对齐） */
+const INPUT_NUMBER_DEFAULT_MIN_WIDTH: Record<ControlSize, number> = {
+  xs: 88,
+  sm: 96,
+  default: 96,
+  md: 112,
+  lg: 120,
+}
+
+function toCssLength(val?: number | string): string | undefined {
+  if (val === undefined) return undefined
+  return typeof val === 'number' ? `${val}px` : val
+}
+
+/** 步进数值输入框（等宽数字对齐，内置隐藏浏览器原生微调按钮与可选内容自适应宽度） */
 export const InputNumber: React.FC<InputNumberProps> = ({
   value,
   defaultValue,
@@ -338,6 +358,10 @@ export const InputNumber: React.FC<InputNumberProps> = ({
   disabled = false,
   placeholder,
   invalid = false,
+  autoWidth = false,
+  minWidth,
+  maxWidth,
+  style,
   className,
 }) => {
   const resolvedSize = useAbcSize(size, 'sm')
@@ -358,13 +382,41 @@ export const InputNumber: React.FC<InputNumberProps> = ({
     onChange?.(resolved)
   }
 
+  const isCompact = resolvedSize === 'xs'
+  const stepperBtnWidth = isCompact ? 'w-6' : 'w-7'
+  const displayCharLength = Math.max(
+    2,
+    String(current !== null && current !== undefined ? current : (placeholder ?? '')).length
+  )
+
+  const resolvedMinInlineSize = toCssLength(
+    minWidth ?? (autoWidth ? INPUT_NUMBER_DEFAULT_MIN_WIDTH[resolvedSize] : undefined)
+  )
+  const resolvedMaxInlineSize = toCssLength(maxWidth ?? (autoWidth ? 220 : undefined))
+
+  const containerStyle: React.CSSProperties = {
+    ...(resolvedMinInlineSize ? { minInlineSize: resolvedMinInlineSize } : {}),
+    ...(resolvedMaxInlineSize ? { maxInlineSize: resolvedMaxInlineSize } : {}),
+    ...style,
+  }
+
+  const inputStyle = {
+    appearance: 'textfield',
+    MozAppearance: 'textfield',
+    WebkitAppearance: 'none',
+    ...(autoWidth ? { '--abc-input-ch': String(displayCharLength) } : {}),
+  } as React.CSSProperties
+
   return (
     <div
       data-slot="input-number"
       data-motion={resolvedMotion}
+      data-auto-width={autoWidth ? 'true' : undefined}
+      style={Object.keys(containerStyle).length > 0 ? containerStyle : undefined}
       className={cn(
-        'inline-flex w-full items-center overflow-hidden',
+        'inline-flex items-center overflow-hidden',
         baseFieldControlClass,
+        autoWidth ? 'w-auto max-w-full' : 'w-full',
         HEIGHT_BY_SIZE[resolvedSize],
         invalid && 'border-[var(--abc-danger)]',
         disabled && 'opacity-65 cursor-not-allowed bg-[var(--abc-bg-muted)]',
@@ -376,7 +428,10 @@ export const InputNumber: React.FC<InputNumberProps> = ({
         aria-label="减少数值"
         disabled={disabled || (min !== undefined && (current ?? 0) <= min)}
         onClick={() => commit((current ?? 0) - step)}
-        className="flex h-full w-7 shrink-0 items-center justify-center border-r border-[var(--abc-border)] text-[var(--abc-fg-muted)] transition-colors duration-[var(--abc-motion-fast,140ms)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)] disabled:opacity-40 cursor-pointer"
+        className={cn(
+          'flex h-full shrink-0 items-center justify-center border-r border-[var(--abc-border)] text-[var(--abc-fg-muted)] transition-colors duration-[var(--abc-motion-fast,140ms)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)] disabled:opacity-40 cursor-pointer',
+          stepperBtnWidth
+        )}
       >
         <Minus className="h-3 w-3" />
       </button>
@@ -389,18 +444,26 @@ export const InputNumber: React.FC<InputNumberProps> = ({
         step={step}
         disabled={disabled}
         placeholder={placeholder}
+        style={inputStyle}
         onChange={(e) => {
           const raw = e.target.value
           commit(raw === '' ? null : Number(raw))
         }}
-        className="h-full w-full min-w-0 flex-1 bg-transparent px-2.5 text-center font-mono tabular-nums focus:outline-none"
+        className={cn(
+          'h-full min-w-0 flex-1 bg-transparent text-center font-mono tabular-nums focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
+          autoWidth ? 'w-auto' : 'w-full',
+          isCompact ? 'px-1.5' : 'px-2.5'
+        )}
       />
       <button
         type="button"
         aria-label="增加数值"
         disabled={disabled || (max !== undefined && (current ?? 0) >= max)}
         onClick={() => commit((current ?? 0) + step)}
-        className="flex h-full w-7 shrink-0 items-center justify-center border-l border-[var(--abc-border)] text-[var(--abc-fg-muted)] transition-colors duration-[var(--abc-motion-fast,140ms)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)] disabled:opacity-40 cursor-pointer"
+        className={cn(
+          'flex h-full shrink-0 items-center justify-center border-l border-[var(--abc-border)] text-[var(--abc-fg-muted)] transition-colors duration-[var(--abc-motion-fast,140ms)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)] disabled:opacity-40 cursor-pointer',
+          stepperBtnWidth
+        )}
       >
         <Plus className="h-3 w-3" />
       </button>

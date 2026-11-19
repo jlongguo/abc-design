@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef } from 'react'
 import type { AbcMotionPreset } from '@abc-design/tokens'
 import { X } from 'lucide-react'
-import { useAbcMotion } from '../../hooks/useAbcDefaults'
-import { useControllableState } from '../../hooks/useControllableState'
-import { cn } from '../../utils/cn'
+import { cn, useAbcMotion, useControllableState } from '@abc-design/react'
 
 export type FloatingIconRailSide = 'left' | 'right'
 export type FloatingIconRailSize = 'sm' | 'md'

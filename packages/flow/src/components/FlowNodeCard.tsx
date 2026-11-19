@@ -1,7 +1,6 @@
 import React from 'react'
 import type { AbcMotionPreset } from '@abc-design/tokens'
-import { useAbcMotion } from '../../hooks/useAbcDefaults'
-import { cn } from '../../utils/cn'
+import { cn, useAbcMotion } from '@abc-design/react'
 import {
   FLOW_PORT_TONE_STYLES,
   FLOW_TONE_STYLES,
@@ -282,11 +281,11 @@ export const FlowNodeCard = React.forwardRef<HTMLDivElement, FlowNodeCardProps>(
           </div>
         </div>
 
-        {/* 内嵌纯白正文面：副图标栏 + ≤3 行元数据/自定义正文 + 行内状态出口行 */}
+        {/* 内嵌语义正文面：随 --abc-bg-surface / --abc-fg 自动适配亮暗双主题 */}
         {hasBodyContent && (
           <div
             className={cn(
-              'overflow-visible rounded-[10px] border border-black/[0.04] bg-[var(--abc-bg-surface)] px-2.5 py-2 text-[var(--abc-fg)] dark:border-white/[0.06]',
+              'overflow-visible rounded-[10px] border border-[var(--abc-border)]/70 bg-[var(--abc-bg-surface)] px-2.5 py-2 text-[var(--abc-fg)]',
               bodyClassName
             )}
           >

@@ -1,12 +1,11 @@
 import React, { useMemo, useState } from 'react'
 import {
   FloatingIconRail,
-  StatusTag,
-  abcToast,
   type FloatingIconRailItem,
   type FloatingIconRailSide,
   type FloatingIconRailSize,
-} from '@abc-design/react'
+} from '@abc-design/flow'
+import { StatusTag, abcToast } from '@abc-design/react'
 import { Boxes, Cpu, GitBranch, Plug, Sparkles, Star } from 'lucide-react'
 import { ComponentDocPreview } from '../../../components/ComponentDocPreview'
 import { KnobSegmented, KnobSwitch } from '../../../components/PropKnobs'
@@ -97,7 +96,7 @@ export const FloatingIconRailDemoSection: React.FC = () => {
           />
         </>
       }
-      code={`import { FloatingIconRail } from '@abc-design/react'
+      code={`import { FloatingIconRail } from '@abc-design/flow'
 
 <FloatingIconRail
   items={railItems}

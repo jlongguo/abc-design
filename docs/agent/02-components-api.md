@@ -75,7 +75,7 @@
 > - `Input` / `SearchInput` / `Textarea` / `InputNumber`:
 >   - `Input`: 支持 `prefix`/`prefixIcon`、`suffix`/`suffixIcon`、`allowClear`/`clearable`、`type="password"` 时默认开启 `passwordToggle` 明密文切换、`maxLength`/`showCount`
 >   - `SearchInput`: 固定搜索图标与一键清空，支持 `onClear?: () => void`、`containerClassName?`、`wrapperClassName?`、`onKeyDown` 回车检索
->   - `InputNumber`: `value?: number | null`、`defaultValue?: number`、`onChange?: (val: number | null) => void`、`min`/`max`/`step`、`invalid?`
+>   - `InputNumber`: `value?: number | null`、`defaultValue?: number`、`onChange?: (val: number | null) => void`、`min`/`max`/`step`、`invalid?`、`autoWidth?: boolean`、`minWidth?: number | string`、`maxWidth?: number | string`（内置隐藏浏览器原生微调按钮；`autoWidth` 开启后在 `[minWidth, maxWidth]` 区间内按数字位数动态伸缩）
 > - `Checkbox` / `RadioGroup` / `Switch`:
 >   - `Checkbox`: `checked` / `defaultChecked` / `indeterminate` / `onChange(checked, e)` / `onCheckedChange(checked)` / `label` / `description`
 >   - `RadioGroup`: `options: RadioGroupOption[]`、`variant?: 'default' | 'segmented'`
@@ -92,7 +92,7 @@
 - 纯算法内核：`@abc-design/core` 导出 `DEFAULT_TAG_SEPARATORS`、`splitTagInputText`、`splitTagDraftOnInput`、`mergeTagTokens`（执行顺序：`transformTag` -> 非空 -> 去重 -> `maxTagLength` -> `validateTag` -> `maxTags`）。
 
 ### `Select` / `SelectField` / `RadixSelect`（单/多选家族）
-- `Select`: `options?: ReadonlyArray<SelectOption>`、`value`/`defaultValue`、`onChange`/`onValueChange`、`multiple?`、`searchable?`、`allowClear`/`clearable?`、`invalid?`、`size?: ControlSize | 'ghost'`、`wrapperClassName`/`containerClassName`、`dropdownClassName`/`popoverClassName`、`matchWidth?`、`hideChevron?`、`container?`
+- `Select`: `options?: ReadonlyArray<SelectOption>`、`value`/`defaultValue`、`onChange`/`onValueChange`、`multiple?`、`searchable?`、`allowClear`/`clearable?`、`invalid?`、`size?: ControlSize | 'ghost'`、`wrapperClassName`/`containerClassName`、`dropdownClassName`/`popoverClassName`、`matchWidth?`、`placement?: 'bottomLeft' | 'bottomRight' | 'topLeft' | 'topRight'`、`hideChevron?`、`container?`
 - `SelectField`: 面向纯字符串单选的场景快捷封装：
   - `value?: string`、`defaultValue?: string`、`onValueChange?: (val: string) => void`、`onChange?: (val: any) => void`
   - `options: ReadonlyArray<{ value: string | number; label: ReactNode; disabled?: boolean; description?: string }>`
@@ -169,9 +169,11 @@ import { TreeSelect } from '@abc-design/react'
   - `value: string | string[]`（兼容数组或逗号分隔字符串）、`onChange: (val: string) => void`（输出逗号分隔 URL 字符串）、`maxCount?: number`（默认 `9`）、`disabled?: boolean`、`customUpload?: (file: File) => Promise<{ url: string } | string | undefined>`
 - `ProFormLayout`: 分组表单排版容器：`mode?: 'split' | 'grid'`（`split` 为左侧标题导览 + 右侧卡片，`grid` 为多列卡片堆叠）、`sections: ProFormSection[]`（`{ key, title, description?, columns?: 1 | 2 | 3, children }`）
 
-### 日期选择器
-- `DatePicker`：`value?: string`、`defaultValue?: string`、`onChange?: (dateStr: string) => void`、`format?`、`shortcuts?: boolean | DatePickerShortcut[]`、`minDate?`、`maxDate?`、`allowClear`/`clearable?`
-- `DateRangePicker`：`value?: DateRangeInput`（`[string, string]` 或 `{ start?, end? }`）、`defaultValue?`、`onChange?: (range: any) => void`（按输入格式自动回传对象或元组）、`shortcuts?: boolean | DateRangeShortcut[]`、`minDate?`、`maxDate?`、`allowClear`/`clearable?`
+### 日期与时间选择器
+- `DatePicker`：`picker?: 'date' | 'week' | 'month' | 'quarter' | 'year'`（默认 `'date'`）、`showTime?: boolean | DatePickerShowTimeConfig`（`picker='date'` 生效，支持 `format`/`showSecond`/`hourStep`/`minuteStep`/`secondStep`）、`value?: string`、`defaultValue?: string`、`onChange?: (dateStr: string) => void`、`format?`、`shortcuts?: boolean | DatePickerShortcut[]`、`minDate?`、`maxDate?`、`allowClear`/`clearable?`
+- `DateRangePicker`：`picker?: 'date' | 'week' | 'month' | 'quarter' | 'year'`、`showTime?: boolean | DatePickerShowTimeConfig`、`value?: DateRangeInput`（`[string, string]` 或 `{ start?, end? }`）、`defaultValue?`、`onChange?: (range: any) => void`（按输入格式自动回传对象或元组）、`shortcuts?: boolean | DateRangeShortcut[]`、`minDate?`、`maxDate?`、`allowClear`/`clearable?`
+- `TimePicker`：`value?: string`、`defaultValue?: string`、`onChange?: (timeStr: string) => void`、`format?: string`（默认 `'HH:mm:ss'`，支持 `'HH:mm'`）、`hourStep`/`minuteStep`/`secondStep`、`shortcuts?: boolean | TimePickerShortcut[]`、`allowClear`/`clearable?`
+- `TimeRangePicker`：`value?: TimeRangeInput`（`[string, string]` 或 `{ start?, end? }`）、`defaultValue?`、`onChange?: (range: any) => void`（确认时自动排序起止时刻）、`format?`、`hourStep`/`minuteStep`/`secondStep`、`shortcuts?: boolean | TimeRangeShortcut[]`、`allowClear`/`clearable?`
 
 ---
 

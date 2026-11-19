@@ -1,0 +1,39 @@
+{
+  "name": "@abc-design/flow",
+  "version": "0.1.0",
+  "description": "ABC Design Flow — 基于 ReactFlow 的零业务耦合可视化工作流画布、柔和语义节点卡片、悬浮工具条与模板变量输入器子包",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./styles.css": "./dist/abc-flow.css",
+    "./source.css": "./src/styles.css"
+  },
+  "files": [
+    "dist",
+    "src/styles.css"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@xyflow/react": "^12.0.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "dependencies": {
+    "@abc-design/react": "workspace:*",
+    "@abc-design/tokens": "workspace:*",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.59.0",
+    "tailwind-merge": "^2.6.0"
+  }
+}

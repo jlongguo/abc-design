@@ -1,3 +1,5 @@
+import './styles.css'
+
 export {
   FLOW_PORT_TONE_STYLES,
   FLOW_TONE_STYLES,
@@ -8,7 +10,7 @@ export {
   type FlowTone,
   type FlowToneStyleTokens,
   type TemplateVariableToken,
-} from './flowTokens'
+} from './components/flowTokens'
 
 export {
   FloatingIconRail,
@@ -16,7 +18,7 @@ export {
   type FloatingIconRailProps,
   type FloatingIconRailSide,
   type FloatingIconRailSize,
-} from './FloatingIconRail'
+} from './components/FloatingIconRail'
 
 export {
   FlowNodeCard,
@@ -25,23 +27,45 @@ export {
   type FlowNodeOutputPort,
   type FlowNodeStatus,
   type FlowNodeTone,
-} from './FlowNodeCard'
+} from './components/FlowNodeCard'
 
 export {
   FlowNodeToolbar,
   type FlowNodeToolbarItem,
   type FlowNodeToolbarProps,
   type FlowNodeToolbarSize,
-} from './FlowNodeToolbar'
+} from './components/FlowNodeToolbar'
 
 export {
   TemplateVariableInput,
   type TemplateVariableInputProps,
   type TemplateVariableOption,
-} from './TemplateVariableInput'
+} from './components/TemplateVariableInput'
 
 export {
   FlowSectionFrame,
   type FlowSectionFrameAlign,
   type FlowSectionFrameProps,
-} from './FlowSectionFrame'
+} from './components/FlowSectionFrame'
+
+export {
+  FlowViewportControls,
+  type FlowViewportControlAction,
+  type FlowViewportControlsLabels,
+  type FlowViewportControlsPrimaryAction,
+  type FlowViewportControlsProps,
+} from './components/FlowViewportControls'
+
+export {
+  FlowLabeledEdge,
+  type FlowEdgeRouteStyle,
+  type FlowEdgeTone,
+  type FlowLabeledEdgeData,
+  type FlowLabeledEdgeProps,
+  type FlowLabeledEdgeType,
+} from './components/FlowLabeledEdge'
+
+export {
+  FlowCanvasSurface,
+  type FlowCanvasSurfaceProps,
+} from './components/FlowCanvasSurface'

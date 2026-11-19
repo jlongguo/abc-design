@@ -1,18 +1,14 @@
 import React, { useMemo, useState } from 'react'
 import {
   Button,
-  DatePicker,
-  DateRangePicker,
   Icon,
   IconPicker,
-  Label,
   PageContainer,
   StatusTag,
   TagInput,
   Transfer,
   abcToast,
   mergeTagTokens,
-  type AbcMotionPreset,
   type AbcSize,
   type RejectedTagItem,
   type TransferItem,
@@ -20,19 +16,13 @@ import {
 import { ClipboardPaste, Sparkles } from 'lucide-react'
 import { ComponentDocPreview } from '../../components/ComponentDocPreview'
 import { KnobSegmented, KnobSelect, KnobSwitch } from '../../components/PropKnobs'
+import { DateTimeShowcaseSection } from './DateTimeShowcaseSection'
 
 const SIZE_OPTIONS = [
   { label: 'xs', value: 'xs' as const },
   { label: 'sm', value: 'sm' as const },
   { label: 'md', value: 'md' as const },
   { label: 'lg', value: 'lg' as const },
-]
-
-const MOTION_OPTIONS = [
-  { label: 'none', value: 'none' as const },
-  { label: 'subtle', value: 'subtle' as const },
-  { label: 'smooth', value: 'smooth' as const },
-  { label: 'spring', value: 'spring' as const },
 ]
 
 const ICON_PRESET_OPTIONS = [
@@ -59,15 +49,7 @@ function buildTransferPool(count: number): TransferItem[] {
 }
 
 export const PickersAndTransferPage: React.FC = () => {
-  // Card 01: DatePicker & DateRangePicker
-  const [dateSize, setDateSize] = useState<AbcSize>('sm')
-  const [dateMotion, setDateMotion] = useState<AbcMotionPreset>('smooth')
-  const [dateClearable, setDateClearable] = useState(true)
-  const [dateDisabled, setDateDisabled] = useState(false)
-  const [singleDate, setSingleDate] = useState('2026-11-18')
-  const [rangeDate, setRangeDate] = useState<[string, string]>(['2026-11-01', '2026-11-18'])
-
-  // Card 02: TagInput (Enterprise enhanced)
+  // Card 03: TagInput (Enterprise enhanced)
   const [tagSize, setTagSize] = useState<AbcSize>('sm')
   const [maxTags, setMaxTags] = useState<number>(6)
   const [tagShowCount, setTagShowCount] = useState(true)
@@ -124,69 +106,14 @@ export const PickersAndTransferPage: React.FC = () => {
 
   return (
     <PageContainer
-      title="日期区间、多标签分词、图标选择与穿梭框"
-      subtitle="按职责拆分为 4 组独立组件画布：双月日历 DatePicker、批量分词校验 TagInput、图标检索 IconPicker 与虚拟滚动 Transfer。"
-      breadcrumbs={[{ label: '表单录入与选择器' }, { label: '日期、多标签、图标与穿梭框' }]}
+      title="日期时间、多标签分词、图标选择与穿梭框"
+      subtitle="按职责拆分为 5 组独立组件画布：多维度日历 DatePicker/DateRangePicker、时刻时段 TimePicker/TimeRangePicker、批量分词校验 TagInput、图标检索 IconPicker 与虚拟滚动 Transfer。"
+      breadcrumbs={[{ label: '表单录入与选择器' }, { label: '日期、时间、多标签、图标与穿梭框' }]}
     >
       <div className="space-y-6">
-        {/* 卡片 01：DatePicker & DateRangePicker */}
-        <ComponentDocPreview
-          title="DatePicker & DateRangePicker 单日与双月区间选择器"
-          components={['DatePicker', 'DateRangePicker']}
-          description="基于 @abc-design/core 42 格月历算法与 Portal 定位，支持快捷预设胶囊、双面板悬停预览与反向点击自动排序。"
-          onResetKnobs={() => {
-            setDateSize('sm')
-            setDateMotion('smooth')
-            setDateClearable(true)
-            setDateDisabled(false)
-          }}
-          controls={
-            <>
-              <KnobSegmented label="size" value={dateSize} options={SIZE_OPTIONS} onChange={setDateSize} />
-              <KnobSegmented label="motion" value={dateMotion} options={MOTION_OPTIONS} onChange={setDateMotion} />
-              <KnobSwitch label="clearable" checked={dateClearable} onChange={setDateClearable} />
-              <KnobSwitch label="disabled" checked={dateDisabled} onChange={setDateDisabled} />
-            </>
-          }
-          code={`import { DatePicker, DateRangePicker } from '@abc-design/react'
+        <DateTimeShowcaseSection />
 
-<DatePicker size="${dateSize}" motion="${dateMotion}" clearable={${dateClearable}} disabled={${dateDisabled}} value={date} onChange={setDate} />
-<DateRangePicker size="${dateSize}" motion="${dateMotion}" clearable={${dateClearable}} disabled={${dateDisabled}} value={range} onChange={setRange} />`}
-          apiRows={[
-            { prop: 'DatePicker.value / onChange', type: 'string / (dateStr: string) => void', description: '默认 YYYY-MM-DD 格式字符串受控值与变更回调' },
-            { prop: 'DateRangePicker.value / onChange', type: '[string, string] | { start?, end? }', description: '自动按传入形态回传元组或对象' },
-            { prop: 'shortcuts', type: 'boolean | Shortcut[]', defaultValue: 'true', description: '内置今天/近7天/近30天/本月等快捷预设，传入 false 隐藏' },
-          ]}
-        >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label size={dateSize}>单日选择 (DatePicker)</Label>
-              <DatePicker
-                size={dateSize}
-                motion={dateMotion}
-                clearable={dateClearable}
-                disabled={dateDisabled}
-                value={singleDate}
-                onChange={setSingleDate}
-              />
-              <p className="font-mono text-[11px] text-[var(--abc-fg-muted)]">当前值：{singleDate || '(未选)'}</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label size={dateSize}>双月日期区间 (DateRangePicker)</Label>
-              <DateRangePicker
-                size={dateSize}
-                motion={dateMotion}
-                clearable={dateClearable}
-                disabled={dateDisabled}
-                value={rangeDate}
-                onChange={setRangeDate}
-              />
-              <p className="font-mono text-[11px] text-[var(--abc-fg-muted)]">当前区间：{JSON.stringify(rangeDate)}</p>
-            </div>
-          </div>
-        </ComponentDocPreview>
-
-        {/* 卡片 02：TagInput（独立增强卡片） */}
+        {/* 卡片 03：TagInput（独立增强卡片） */}
         <ComponentDocPreview
           title="TagInput 多分隔符粘贴分词与校验胶囊输入框"
           components={['TagInput']}

@@ -2,8 +2,7 @@ import React from 'react'
 import { createPortal } from 'react-dom'
 import type { AbcMotionPreset } from '@abc-design/tokens'
 import { Search } from 'lucide-react'
-import type { FloatingSide } from '../../hooks/useFloatingPosition'
-import { cn } from '../../utils/cn'
+import { cn, type FloatingSide } from '@abc-design/react'
 import type { TemplateVariableOption } from './TemplateVariableInput'
 
 export interface TemplateVariablePickerPopoverProps {
@@ -11,6 +10,8 @@ export interface TemplateVariablePickerPopoverProps {
   floatingRef: React.RefObject<HTMLDivElement | null>
   /** Portal 挂载宿主容器 */
   portalContainer: HTMLElement | null
+  /** 继承自触发器所在局部主题子树的明暗值 */
+  portalTheme?: 'light' | 'dark'
   /** 是否处于挂载渲染周期 */
   isMounted: boolean
   /** 进出场动画可见态 */
@@ -54,6 +55,7 @@ export interface TemplateVariablePickerPopoverProps {
 export const TemplateVariablePickerPopover: React.FC<TemplateVariablePickerPopoverProps> = ({
   floatingRef,
   portalContainer,
+  portalTheme,
   isMounted,
   isVisible,
   popoverId,
@@ -81,11 +83,15 @@ export const TemplateVariablePickerPopover: React.FC<TemplateVariablePickerPopov
       role="dialog"
       aria-label={typeof pickerTitle === 'string' ? pickerTitle : pickerTriggerLabel}
       data-abc-floating=""
+      data-abc-theme={portalTheme}
+      data-playground-theme={portalTheme}
       data-template-picker-popover="open"
       data-placement={actualSide}
       data-motion={resolvedMotion}
       style={floatingStyle}
       className={cn(
+        portalTheme === 'dark' && 'dark',
+        portalTheme === 'light' && 'light',
         'nodrag nopan z-[1350] w-[280px] max-w-[calc(100vw-16px)] overflow-hidden rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] shadow-[var(--abc-shadow-popover)]',
         resolvedMotion !== 'none' &&
           (isVisible ? 'abc-animate-popover-in' : 'abc-animate-popover-out'),

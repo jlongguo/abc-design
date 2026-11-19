@@ -1,5 +1,10 @@
-/* Tailwind CSS v4 主题变量桥接层：允许业务与组件直接使用语义化工具类 */
-@custom-variant dark (&:where(.dark, .dark *, [data-abc-theme="dark"], [data-abc-theme="dark"] *));
+/* Tailwind CSS v4 主题变量桥接层：允许业务与组件直接使用语义化工具类，并同时支持根级与局部子树亮暗覆盖 */
+@custom-variant dark (&:where(
+  :not(:root):is(.dark, [data-abc-theme="dark"], [data-playground-theme="dark"]),
+  :not(:root):is(.dark, [data-abc-theme="dark"], [data-playground-theme="dark"]) *,
+  :root:is(.dark, [data-abc-theme="dark"]),
+  :root:is(.dark, [data-abc-theme="dark"]) :not(:not(:root):is([data-abc-theme="light"], [data-playground-theme="light"]), :not(:root):is([data-abc-theme="light"], [data-playground-theme="light"]) *)
+));
 
 @theme {
   --font-sans: var(--abc-font-sans);

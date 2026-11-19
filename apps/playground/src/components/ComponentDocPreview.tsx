@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Button, Card, StatusTag, copyToClipboard, useAbcConfig } from '@abc-design/react'
 import {
   Check,
@@ -96,6 +97,9 @@ export const ComponentDocPreview: React.FC<ComponentDocPreviewProps> = ({
   const shortLabel = useMemo(() => deriveShortLabel(title, components), [title, components])
   const stableComponentsKey = components ? components.join(',') : ''
 
+  const hasControls = Boolean(controls)
+  const apiCount = apiRows.length
+
   useLayoutEffect(() => {
     if (!showcase) return
     showcase.registerSection({
@@ -103,7 +107,10 @@ export const ComponentDocPreview: React.FC<ComponentDocPreviewProps> = ({
       title,
       shortLabel,
       pkg,
+      description,
       components: components ?? [],
+      hasControls,
+      apiCount,
     })
     return () => showcase.unregisterSection(sectionId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,7 +121,10 @@ export const ComponentDocPreview: React.FC<ComponentDocPreviewProps> = ({
     title,
     shortLabel,
     pkg,
+    description,
     stableComponentsKey,
+    hasControls,
+    apiCount,
   ])
 
   const isMultiPage = (showcase?.sections.length ?? 0) >= 2
@@ -122,6 +132,11 @@ export const ComponentDocPreview: React.FC<ComponentDocPreviewProps> = ({
   const isHiddenByFocus =
     showcase !== null && showcase.focusedSectionId !== null && !isFocusedSelf
   const isHighlighted = showcase?.highlightedSectionId === sectionId
+  const isInspectorDockedMode = Boolean(
+    showcase?.isWideInspector && showcase?.inspectorControlsHost
+  )
+  const isActiveInInspector =
+    isInspectorDockedMode && showcase?.activeInspectorSectionId === sectionId
 
   const sectionIndex = useMemo(() => {
     if (!showcase) return -1
@@ -301,7 +316,7 @@ export const ComponentDocPreview: React.FC<ComponentDocPreviewProps> = ({
         {/* 视图 1：交互控制栏 + 点阵边界独立组件画布 */}
         {activeTab === 'preview' && (
           <div>
-            {controls && (
+            {controls && !isInspectorDockedMode && (
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-[var(--abc-border)] bg-[var(--abc-bg-muted)]/60 px-4 py-2.5 text-xs">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                   <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-[var(--abc-fg-secondary)]">
@@ -322,6 +337,39 @@ export const ComponentDocPreview: React.FC<ComponentDocPreviewProps> = ({
                 )}
               </div>
             )}
+            {controls && isInspectorDockedMode && (
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--abc-border)] bg-[var(--abc-bg-muted)]/40 px-4 py-1.5 text-[11px]">
+                <span className="inline-flex items-center gap-1.5 text-[var(--abc-fg-muted)]">
+                  <SlidersHorizontal className="h-3 w-3 text-[var(--abc-primary)]" />
+                  <span>
+                    {isActiveInInspector
+                      ? '当前为视口首卡：组件说明与全部属性操作项已同步至右侧面板'
+                      : '滑动至视口顶部或点击右侧按钮，在右侧面板实时调节全部属性'}
+                  </span>
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {!isActiveInInspector && showcase && (
+                    <button
+                      type="button"
+                      onClick={() => showcase.selectInspectorSection(sectionId)}
+                      className="rounded-[var(--abc-radius-sm)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-2 py-0.5 text-[11px] font-medium text-[var(--abc-primary)] hover:border-[var(--abc-primary)]/50 hover:bg-[var(--abc-primary-soft)] cursor-pointer"
+                    >
+                      在右侧调参
+                    </button>
+                  )}
+                  {onResetKnobs && (
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      leftIcon={<RotateCcw className="h-3 w-3" />}
+                      onClick={onResetKnobs}
+                    >
+                      重置默认
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="bg-[radial-gradient(var(--abc-border)_1px,transparent_1px)] [background-size:16px_16px] bg-[var(--abc-bg-subtle)]/35 p-3.5 sm:p-4">
               <div className="rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)]/80 bg-[var(--abc-bg-surface)] p-4 sm:p-5 shadow-2xs">
                 {children}
@@ -329,6 +377,30 @@ export const ComponentDocPreview: React.FC<ComponentDocPreviewProps> = ({
             </div>
           </div>
         )}
+
+        {/* 宽屏右侧动态检视面板：将当前视口首个组件的全部实时 Props 操作项 Portal 挂载至右侧空白区 */}
+        {controls &&
+          isActiveInInspector &&
+          showcase?.inspectorControlsHost &&
+          createPortal(
+            <div className="space-y-3">
+              <div className="abc-pg-inspector-knobs-list">{controls}</div>
+              {onResetKnobs && (
+                <div className="border-t border-[var(--abc-border)] pt-2.5">
+                  <Button
+                    size="xs"
+                    variant="secondary"
+                    block
+                    leftIcon={<RotateCcw className="h-3 w-3" />}
+                    onClick={onResetKnobs}
+                  >
+                    重置全部默认属性
+                  </Button>
+                </div>
+              )}
+            </div>,
+            showcase.inspectorControlsHost
+          )}
 
         {/* 视图 2：可直接粘贴的 TSX 源码 */}
         {activeTab === 'code' && (

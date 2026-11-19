@@ -41,10 +41,25 @@ export interface FloatingPositionResult {
   /** 箭头在主轴方向相对浮层左上角的像素偏移量 */
   arrowOffset: number
   portalContainer: HTMLElement | null
+  /** 触发器所处局部主题覆盖子树的明暗值（若未局部覆盖则为 undefined，随根节点主题） */
+  portalTheme?: 'light' | 'dark'
   update: () => void
 }
 
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
+
+/**
+ * 读取触发器所在的非根级局部主题覆盖（data-abc-theme / data-playground-theme），
+ * 让挂载至 document.body 的浮层 Portal 自动继承所在工作台子树的亮暗主题。
+ */
+export function getInheritedAbcTheme(anchor?: Element | null): 'light' | 'dark' | undefined {
+  if (!anchor || typeof document === 'undefined') return undefined
+  const scopedHost = anchor.closest?.('[data-abc-theme], [data-playground-theme]') as HTMLElement | null
+  if (!scopedHost || scopedHost === document.documentElement) return undefined
+  const raw =
+    scopedHost.getAttribute('data-abc-theme') ?? scopedHost.getAttribute('data-playground-theme')
+  return raw === 'dark' || raw === 'light' ? raw : undefined
+}
 
 /**
  * 解析浮层挂载的顶层安全容器：
@@ -341,7 +356,9 @@ export function useFloatingPosition({
     }
   }, [open, update, floatingRef, triggerRef])
 
-  const portalContainer = open ? getOverlayPortalContainer(triggerRef.current) : null
+  const portalAnchor = triggerRef.current ?? fallbackTriggerRef?.current ?? null
+  const portalContainer = open ? getOverlayPortalContainer(portalAnchor) : null
+  const portalTheme = open ? getInheritedAbcTheme(portalAnchor) : undefined
 
   return {
     style: {
@@ -357,6 +374,7 @@ export function useFloatingPosition({
     actualSide: state.actualSide,
     arrowOffset: state.arrowOffset,
     portalContainer,
+    portalTheme,
     update,
   }
 }

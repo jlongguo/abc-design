@@ -2,6 +2,7 @@ export type AbcPackageName =
   | '@abc-design/react'
   | '@abc-design/charts'
   | '@abc-design/markdown'
+  | '@abc-design/flow'
   | '@abc-design/core'
   | '@abc-design/tokens'
 

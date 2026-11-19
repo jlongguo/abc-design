@@ -1,17 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Button, StatusTag } from '@abc-design/react'
+import { Button } from '@abc-design/react'
 import { ArrowLeft, ArrowRight, Compass, Focus, Layers, ListTree } from 'lucide-react'
 import { PLAYGROUND_ROUTE_MAP } from '../registry'
+import { PlaygroundInspectorAside } from './PlaygroundInspectorAside'
 import {
   PlaygroundShowcaseContext,
   type RegisteredSectionMeta,
   type ShowcaseViewMode,
 } from './PlaygroundShowcaseContext'
-import {
-  findNearestScrollContainer,
-  scrollIntoViewAsync,
-  supportsScrollTargetGroup,
-} from './scrollHelpers'
+import { findNearestScrollContainer, scrollIntoViewAsync } from './scrollHelpers'
 
 export interface PendingComponentJump {
   routePath: string
@@ -54,13 +51,32 @@ export const PlaygroundPageFrame: React.FC<PlaygroundPageFrameProps> = ({
   const [focusedSectionId, setFocusedSectionId] = useState<string | null>(null)
   const [highlightedSectionId, setHighlightedSectionId] = useState<string | null>(null)
   const [activeSpyId, setActiveSpyId] = useState<string | null>(null)
+  const [pinnedInspectorId, setPinnedInspectorId] = useState<string | null>(null)
+  const [inspectorControlsHost, setInspectorControlsHost] = useState<HTMLDivElement | null>(null)
+  const [isWideInspector, setIsWideInspector] = useState<boolean>(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
+    return window.matchMedia('(min-width: 1280px)').matches
+  })
+
   const navRef = useRef<HTMLElement>(null)
   const pillStripRef = useRef<HTMLDivElement>(null)
   const scrollTokenRef = useRef(0)
   const highlightTimerRef = useRef<number | undefined>(undefined)
-  const nativeSpySupported = useMemo(() => supportsScrollTargetGroup(), [])
 
   const routeInfo = PLAYGROUND_ROUTE_MAP.get(routePath)
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+    const mql = window.matchMedia('(min-width: 1280px)')
+    const onChange = (e: MediaQueryListEvent) => setIsWideInspector(e.matches)
+    setIsWideInspector(mql.matches)
+    if (typeof mql.addEventListener === 'function') {
+      mql.addEventListener('change', onChange)
+      return () => mql.removeEventListener('change', onChange)
+    }
+    mql.addListener(onChange)
+    return () => mql.removeListener(onChange)
+  }, [])
 
   const registerSection = useCallback((meta: RegisteredSectionMeta) => {
     setSections((prev) => {
@@ -71,6 +87,9 @@ export const PlaygroundPageFrame: React.FC<PlaygroundPageFrameProps> = ({
           existing.title === meta.title &&
           existing.shortLabel === meta.shortLabel &&
           existing.pkg === meta.pkg &&
+          existing.description === meta.description &&
+          existing.hasControls === meta.hasControls &&
+          existing.apiCount === meta.apiCount &&
           existing.components.join(',') === meta.components.join(',')
         ) {
           return prev
@@ -87,7 +106,7 @@ export const PlaygroundPageFrame: React.FC<PlaygroundPageFrameProps> = ({
     setSections((prev) => prev.filter((s) => s.sectionId !== sectionId))
   }, [])
 
-  // 当全局浏览模式从「单卡聚焦」切回「分段全览」时，同步清空本页残留的局部聚焦锁，避免 KeepAlive 缓存页切回后仍处于隐藏态
+  // 当全局浏览模式从「单卡聚焦」切回「分段全览」时，同步清空本页残留的局部聚焦锁
   const prevViewModeRef = useRef(viewMode)
   useEffect(() => {
     if (prevViewModeRef.current !== viewMode) {
@@ -139,6 +158,7 @@ export const PlaygroundPageFrame: React.FC<PlaygroundPageFrameProps> = ({
       setHighlightedSectionId(null)
       const targetEl = document.getElementById(sectionId)
       if (!targetEl) return
+      setPinnedInspectorId(null)
       setActiveSpyId(sectionId)
       await scrollIntoViewAsync(targetEl, { behavior: 'smooth', block: 'start' })
       if (token !== scrollTokenRef.current) return
@@ -159,6 +179,7 @@ export const PlaygroundPageFrame: React.FC<PlaygroundPageFrameProps> = ({
     onConsumeJump(pendingJump.nonce)
     if (!matched) return
 
+    setPinnedInspectorId(null)
     if (viewMode === 'focus' || effectiveFocusedId !== null) {
       setFocusedSectionId(matched.sectionId)
       window.requestAnimationFrame(() => {
@@ -185,64 +206,88 @@ export const PlaygroundPageFrame: React.FC<PlaygroundPageFrameProps> = ({
     scrollToSectionAndHighlight,
   ])
 
-  // ScrollSpy：支持原生 CSS scroll-target-group 同步 aria-current，并在不支持的浏览器降级 IntersectionObserver
-  useEffect(() => {
-    if (effectiveFocusedId !== null || sections.length < 2) return
-    const navEl = navRef.current
-    if (!navEl) return
-
+  // 精准测算当前视口中处于第一顺位的可见组件卡片，供右侧目录与动态组件检视面板实时联动
+  const computeFirstVisibleSectionId = useCallback((): string | null => {
+    if (sections.length === 0) return null
     const firstEl = document.getElementById(sections[0].sectionId)
     const scroller = findNearestScrollContainer(firstEl)
+    const scrollerRect =
+      scroller instanceof HTMLElement
+        ? scroller.getBoundingClientRect()
+        : { top: 0, bottom: window.innerHeight || 800 }
+    // 越过顶部粘性工具栏约 72px 作为阅读视口上沿基线
+    const baselineTop = scrollerRect.top + 72
+    const viewportBottom = scrollerRect.bottom
 
-    if (nativeSpySupported) {
-      let rafId = 0
-      const syncNativeAria = () => {
-        rafId = 0
-        const currentLink = navEl.querySelector<HTMLAnchorElement>('a:target-current')
-        const href = currentLink?.getAttribute('href') ?? ''
-        const matchedId = href.startsWith('#') ? href.slice(1) : null
-        setActiveSpyId(matchedId ?? sections[0]?.sectionId ?? null)
+    let firstVisible: string | null = null
+    let lastAboveBaseline: string | null = null
+
+    for (const sec of sections) {
+      const el = document.getElementById(sec.sectionId)
+      if (!el || el.hasAttribute('hidden')) continue
+      const rect = el.getBoundingClientRect()
+      if (rect.height === 0 && rect.width === 0) continue
+
+      if (rect.bottom > baselineTop + 28 && rect.top <= viewportBottom) {
+        firstVisible = sec.sectionId
+        break
       }
-      const scheduleSync = () => {
-        if (rafId) return
-        rafId = window.requestAnimationFrame(() => {
-          rafId = window.requestAnimationFrame(syncNativeAria)
-        })
-      }
-      scheduleSync()
-      scroller.addEventListener('scroll', scheduleSync, { passive: true })
-      scroller.addEventListener('scrollend', syncNativeAria)
-      return () => {
-        if (rafId) window.cancelAnimationFrame(rafId)
-        scroller.removeEventListener('scroll', scheduleSync)
-        scroller.removeEventListener('scrollend', syncNativeAria)
+      if (rect.top <= baselineTop + 28) {
+        lastAboveBaseline = sec.sectionId
       }
     }
 
-    const rootNode = scroller instanceof HTMLElement ? scroller : null
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
-        if (visible[0]) {
-          const id = visible[0].target.getAttribute('id')
-          if (id) setActiveSpyId(id)
-        }
-      },
-      { root: rootNode, rootMargin: '-18% 0px -65% 0px', threshold: 0 }
-    )
+    return firstVisible ?? lastAboveBaseline ?? sections[0]?.sectionId ?? null
+  }, [sections])
 
-    sections.forEach((sec) => {
-      const el = document.getElementById(sec.sectionId)
-      if (el) observer.observe(el)
-    })
-    setActiveSpyId((prev) => prev ?? sections[0]?.sectionId ?? null)
+  // ScrollSpy：监听最近滚动容器与窗口滚动，实时将视口首个组件同步至目录与右侧属性面板
+  useEffect(() => {
+    if (effectiveFocusedId !== null || sections.length === 0) return
 
-    return () => observer.disconnect()
-  }, [sections, effectiveFocusedId, nativeSpySupported])
+    const firstEl = document.getElementById(sections[0].sectionId)
+    const scroller = findNearestScrollContainer(firstEl)
+    let rafId = 0
 
-  // 切换单卡聚焦项（含浏览器 ⌘F beforematch 或底部步进）时，仅滚动顶部横向胶囊条自身使选中胶囊可见
+    const syncViewportFirst = (fromScroll: boolean) => {
+      rafId = 0
+      const nextId = computeFirstVisibleSectionId()
+      if (fromScroll) {
+        setPinnedInspectorId(null)
+      }
+      if (nextId) {
+        setActiveSpyId((prev) => (prev === nextId ? prev : nextId))
+      }
+    }
+
+    const onScroll = () => {
+      if (rafId) return
+      rafId = window.requestAnimationFrame(() => syncViewportFirst(true))
+    }
+
+    const onResize = () => {
+      if (rafId) return
+      rafId = window.requestAnimationFrame(() => syncViewportFirst(false))
+    }
+
+    syncViewportFirst(false)
+
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    if (scroller !== window) {
+      window.addEventListener('scroll', onScroll, { passive: true })
+    }
+    window.addEventListener('resize', onResize, { passive: true })
+
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId)
+      scroller.removeEventListener('scroll', onScroll)
+      if (scroller !== window) {
+        window.removeEventListener('scroll', onScroll)
+      }
+      window.removeEventListener('resize', onResize)
+    }
+  }, [sections, effectiveFocusedId, computeFirstVisibleSectionId])
+
+  // 切换单卡聚焦项时，仅滚动顶部横向胶囊条自身使选中胶囊可见
   useEffect(() => {
     if (!effectiveFocusedId || !pillStripRef.current) return
     const activePill = pillStripRef.current.querySelector<HTMLElement>(
@@ -257,6 +302,7 @@ export const PlaygroundPageFrame: React.FC<PlaygroundPageFrameProps> = ({
 
   const focusSingleSection = useCallback(
     (nextId: string | null) => {
+      setPinnedInspectorId(null)
       if (nextId === null) {
         setFocusedSectionId(null)
         if (viewMode === 'focus') {
@@ -269,28 +315,61 @@ export const PlaygroundPageFrame: React.FC<PlaygroundPageFrameProps> = ({
     [viewMode, onViewModeChange]
   )
 
+  const selectInspectorSection = useCallback((sectionId: string) => {
+    setPinnedInspectorId(sectionId)
+    setActiveSpyId(sectionId)
+  }, [])
+
+  const activeInspectorSectionId = useMemo(() => {
+    if (sections.length === 0) return null
+    if (effectiveFocusedId) return effectiveFocusedId
+    if (pinnedInspectorId && sections.some((s) => s.sectionId === pinnedInspectorId)) {
+      return pinnedInspectorId
+    }
+    if (activeSpyId && sections.some((s) => s.sectionId === activeSpyId)) {
+      return activeSpyId
+    }
+    return sections[0]?.sectionId ?? null
+  }, [sections, effectiveFocusedId, pinnedInspectorId, activeSpyId])
+
+  const activeInspectorIndex = activeInspectorSectionId
+    ? sections.findIndex((s) => s.sectionId === activeInspectorSectionId)
+    : -1
+  const activeInspectorSection =
+    activeInspectorIndex >= 0 ? sections[activeInspectorIndex] : null
+
   const ctxValue = useMemo(
     () => ({
       sections,
       viewMode,
       focusedSectionId: effectiveFocusedId,
       highlightedSectionId,
+      activeInspectorSectionId,
+      inspectorControlsHost,
+      isWideInspector,
       registerSection,
       unregisterSection,
       focusSingleSection,
+      selectInspectorSection,
     }),
     [
       sections,
       viewMode,
       effectiveFocusedId,
       highlightedSectionId,
+      activeInspectorSectionId,
+      inspectorControlsHost,
+      isWideInspector,
       registerSection,
       unregisterSection,
       focusSingleSection,
+      selectInspectorSection,
     ]
   )
 
   const showMultiToolbar = sections.length >= 2
+  const showTocNav = showMultiToolbar && effectiveFocusedId === null
+  const showRightAside = sections.length >= 1
   const focusedIndex = effectiveFocusedId
     ? sections.findIndex((s) => s.sectionId === effectiveFocusedId)
     : -1
@@ -367,7 +446,7 @@ export const PlaygroundPageFrame: React.FC<PlaygroundPageFrameProps> = ({
                     ? 'bg-[var(--abc-bg-surface)] text-[var(--abc-primary)] shadow-2xs'
                     : 'text-[var(--abc-fg-muted)] hover:text-[var(--abc-fg)]'
                 }`}
-                title="同屏分段展示本页全部组件，并在宽屏右侧挂载实时锚点目录"
+                title="同屏分段展示本页全部组件，并在宽屏右侧联动组件说明与全部属性面板"
               >
                 <ListTree className="h-3 w-3" />
                 <span>分段全览</span>
@@ -395,72 +474,13 @@ export const PlaygroundPageFrame: React.FC<PlaygroundPageFrameProps> = ({
         </div>
       )}
 
-      {showMultiToolbar && effectiveFocusedId === null ? (
-        <div className="grid grid-cols-1 items-start gap-5 2xl:grid-cols-[minmax(0,1fr)_216px]">
-          <div className="min-w-0">{children}</div>
-
-          {/* 宽屏右侧常驻粘性组件大纲目录 (ScrollSpy) */}
-          <aside className="sticky top-14 hidden 2xl:block">
-            <div className="rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] p-3 shadow-2xs">
-              <div className="mb-2 flex items-center justify-between border-b border-[var(--abc-border)] pb-2">
-                <span className="text-xs font-bold text-[var(--abc-fg)]">本页组件目录</span>
-                <StatusTag tone="neutral" size="xs" dot={false}>
-                  {sections.length} 组
-                </StatusTag>
-              </div>
-
-              <nav
-                ref={navRef}
-                aria-label="本页组件目录"
-                className="abc-pg-scrollspy-nav space-y-1"
-              >
-                {sections.map((sec, idx) => {
-                  const isActive = activeSpyId === sec.sectionId
-                  const num = String(idx + 1).padStart(2, '0')
-                  return (
-                    <a
-                      key={sec.sectionId}
-                      href={`#${sec.sectionId}`}
-                      aria-current={isActive ? 'true' : 'false'}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        void scrollToSectionAndHighlight(sec.sectionId)
-                      }}
-                      className={`block rounded-r-[var(--abc-radius-sm)] border-l-2 px-2.5 py-1.5 text-xs transition-colors ${
-                        !nativeSpySupported && isActive
-                          ? 'target-current border-[var(--abc-primary)] bg-[var(--abc-primary-soft)] font-semibold text-[var(--abc-primary)]'
-                          : 'border-transparent text-[var(--abc-fg-secondary)] hover:border-[var(--abc-border-strong)] hover:bg-[var(--abc-bg-muted)] hover:text-[var(--abc-fg)]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[10px] opacity-70">{num}</span>
-                        <span className="truncate">{sec.shortLabel}</span>
-                      </div>
-                      {sec.components.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {sec.components.slice(0, 3).map((sym) => (
-                            <code
-                              key={sym}
-                              className="rounded bg-[var(--abc-bg-subtle)] px-1 py-0.2 font-mono text-[9px] text-[var(--abc-fg-muted)]"
-                            >
-                              {sym}
-                            </code>
-                          ))}
-                          {sec.components.length > 3 && (
-                            <span className="font-mono text-[9px] text-[var(--abc-fg-muted)]">
-                              +{sec.components.length - 3}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </a>
-                  )
-                })}
-              </nav>
-            </div>
-          </aside>
-        </div>
-      ) : (
+      <div
+        className={
+          showRightAside
+            ? 'grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_344px]'
+            : 'min-w-0'
+        }
+      >
         <div className="min-w-0">
           {children}
 
@@ -508,7 +528,20 @@ export const PlaygroundPageFrame: React.FC<PlaygroundPageFrameProps> = ({
             </div>
           )}
         </div>
-      )}
+
+        {showRightAside && (
+          <PlaygroundInspectorAside
+            sections={sections}
+            showTocNav={showTocNav}
+            activeInspectorSectionId={activeInspectorSectionId}
+            activeInspectorIndex={activeInspectorIndex}
+            activeInspectorSection={activeInspectorSection}
+            navRef={navRef}
+            onJumpSection={(sectionId) => void scrollToSectionAndHighlight(sectionId)}
+            setInspectorControlsHost={setInspectorControlsHost}
+          />
+        )}
+      </div>
     </PlaygroundShowcaseContext.Provider>
   )
 }

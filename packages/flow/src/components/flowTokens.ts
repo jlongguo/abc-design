@@ -25,63 +25,69 @@ export interface FlowToneStyleTokens {
 }
 
 /**
- * 5 套柔和低饱和语义色板（参考柔和蓝/浅薄荷绿/暖杏琥珀/浅粉玫瑰/清灰石板）
- * 亮色保持清透浅底高对比，暗色回退为通透低饱和半透明表面，避免刺眼荧光色块。
+ * 5 套柔和低饱和语义色板（柔和蓝/浅薄荷绿/暖杏琥珀/浅粉玫瑰/清灰石板）
+ * 全部通过 --abc-flow-* CSS 变量在亮暗双主题及局部覆盖子树下自动切换，免疫宿主 Tailwind 层叠冲突。
  */
 export const FLOW_TONE_STYLES: Record<FlowTone, FlowToneStyleTokens> = {
   blue: {
     cardShell:
-      'border-blue-300/90 bg-blue-100/85 dark:border-blue-500/45 dark:bg-blue-950/60',
-    headerText: 'text-blue-900 dark:text-blue-100',
-    headerBadgeBg: 'bg-white/65 text-blue-700 dark:bg-blue-900/60 dark:text-blue-200',
-    selectedRing: 'ring-2 ring-blue-500/85 border-blue-500 dark:ring-blue-400/80 dark:border-blue-400',
+      'border-[var(--abc-flow-blue-shell-border)] bg-[var(--abc-flow-blue-shell-bg)]',
+    headerText: 'text-[var(--abc-flow-blue-header-fg)]',
+    headerBadgeBg:
+      'bg-[var(--abc-flow-blue-badge-bg)] text-[var(--abc-flow-blue-badge-fg)]',
+    selectedRing:
+      'ring-2 ring-[var(--abc-flow-blue-ring)] border-[var(--abc-flow-blue-ring)]',
     sectionFrame:
-      'border-blue-300/85 bg-blue-50/35 dark:border-blue-500/45 dark:bg-blue-950/20',
-    sectionTitle: 'text-blue-900/85 dark:text-blue-200',
+      'border-[var(--abc-flow-blue-section-border)] bg-[var(--abc-flow-blue-section-bg)]',
+    sectionTitle: 'text-[var(--abc-flow-blue-section-title)]',
   },
   green: {
     cardShell:
-      'border-emerald-300/90 bg-emerald-100/80 dark:border-emerald-500/45 dark:bg-emerald-950/55',
-    headerText: 'text-emerald-900 dark:text-emerald-100',
-    headerBadgeBg: 'bg-white/65 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-200',
+      'border-[var(--abc-flow-green-shell-border)] bg-[var(--abc-flow-green-shell-bg)]',
+    headerText: 'text-[var(--abc-flow-green-header-fg)]',
+    headerBadgeBg:
+      'bg-[var(--abc-flow-green-badge-bg)] text-[var(--abc-flow-green-badge-fg)]',
     selectedRing:
-      'ring-2 ring-emerald-500/85 border-emerald-500 dark:ring-emerald-400/80 dark:border-emerald-400',
+      'ring-2 ring-[var(--abc-flow-green-ring)] border-[var(--abc-flow-green-ring)]',
     sectionFrame:
-      'border-emerald-300/85 bg-emerald-50/35 dark:border-emerald-500/45 dark:bg-emerald-950/20',
-    sectionTitle: 'text-emerald-900/85 dark:text-emerald-200',
+      'border-[var(--abc-flow-green-section-border)] bg-[var(--abc-flow-green-section-bg)]',
+    sectionTitle: 'text-[var(--abc-flow-green-section-title)]',
   },
   amber: {
     cardShell:
-      'border-amber-300/90 bg-amber-100/85 dark:border-amber-500/45 dark:bg-amber-950/55',
-    headerText: 'text-amber-950 dark:text-amber-100',
-    headerBadgeBg: 'bg-white/65 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200',
+      'border-[var(--abc-flow-amber-shell-border)] bg-[var(--abc-flow-amber-shell-bg)]',
+    headerText: 'text-[var(--abc-flow-amber-header-fg)]',
+    headerBadgeBg:
+      'bg-[var(--abc-flow-amber-badge-bg)] text-[var(--abc-flow-amber-badge-fg)]',
     selectedRing:
-      'ring-2 ring-amber-500/85 border-amber-500 dark:ring-amber-400/80 dark:border-amber-400',
+      'ring-2 ring-[var(--abc-flow-amber-ring)] border-[var(--abc-flow-amber-ring)]',
     sectionFrame:
-      'border-amber-300/85 bg-amber-50/35 dark:border-amber-500/45 dark:bg-amber-950/20',
-    sectionTitle: 'text-amber-950/85 dark:text-amber-200',
+      'border-[var(--abc-flow-amber-section-border)] bg-[var(--abc-flow-amber-section-bg)]',
+    sectionTitle: 'text-[var(--abc-flow-amber-section-title)]',
   },
   rose: {
     cardShell:
-      'border-rose-300/90 bg-rose-100/85 dark:border-rose-500/45 dark:bg-rose-950/55',
-    headerText: 'text-rose-950 dark:text-rose-100',
-    headerBadgeBg: 'bg-white/65 text-rose-700 dark:bg-rose-900/60 dark:text-rose-200',
+      'border-[var(--abc-flow-rose-shell-border)] bg-[var(--abc-flow-rose-shell-bg)]',
+    headerText: 'text-[var(--abc-flow-rose-header-fg)]',
+    headerBadgeBg:
+      'bg-[var(--abc-flow-rose-badge-bg)] text-[var(--abc-flow-rose-badge-fg)]',
     selectedRing:
-      'ring-2 ring-rose-500/85 border-rose-500 dark:ring-rose-400/80 dark:border-rose-400',
+      'ring-2 ring-[var(--abc-flow-rose-ring)] border-[var(--abc-flow-rose-ring)]',
     sectionFrame:
-      'border-rose-300/85 bg-rose-50/35 dark:border-rose-500/45 dark:bg-rose-950/20',
-    sectionTitle: 'text-rose-950/85 dark:text-rose-200',
+      'border-[var(--abc-flow-rose-section-border)] bg-[var(--abc-flow-rose-section-bg)]',
+    sectionTitle: 'text-[var(--abc-flow-rose-section-title)]',
   },
   slate: {
     cardShell:
-      'border-slate-300/95 bg-slate-200/75 dark:border-slate-600/70 dark:bg-slate-800/75',
-    headerText: 'text-slate-800 dark:text-slate-100',
-    headerBadgeBg: 'bg-white/70 text-slate-700 dark:bg-slate-700/75 dark:text-slate-200',
+      'border-[var(--abc-flow-slate-shell-border)] bg-[var(--abc-flow-slate-shell-bg)]',
+    headerText: 'text-[var(--abc-flow-slate-header-fg)]',
+    headerBadgeBg:
+      'bg-[var(--abc-flow-slate-badge-bg)] text-[var(--abc-flow-slate-badge-fg)]',
     selectedRing:
-      'ring-2 ring-[var(--abc-primary)] border-[var(--abc-primary)]',
+      'ring-2 ring-[var(--abc-flow-slate-ring)] border-[var(--abc-flow-slate-ring)]',
     sectionFrame:
-      'border-slate-400/80 bg-slate-100/35 dark:border-slate-500/60 dark:bg-slate-900/35',
-    sectionTitle: 'text-slate-700 dark:text-slate-200',
+      'border-[var(--abc-flow-slate-section-border)] bg-[var(--abc-flow-slate-section-bg)]',
+    sectionTitle: 'text-[var(--abc-flow-slate-section-title)]',
   },
 }
 
@@ -91,23 +97,23 @@ export const FLOW_PORT_TONE_STYLES: Record<
   { dot: string; text: string }
 > = {
   success: {
-    dot: 'bg-emerald-500 dark:bg-emerald-400',
-    text: 'text-emerald-700 dark:text-emerald-300',
+    dot: 'bg-[var(--abc-flow-port-success-dot)]',
+    text: 'text-[var(--abc-flow-port-success-fg)]',
   },
   danger: {
-    dot: 'bg-rose-500 dark:bg-rose-400',
-    text: 'text-rose-700 dark:text-rose-300',
+    dot: 'bg-[var(--abc-flow-port-danger-dot)]',
+    text: 'text-[var(--abc-flow-port-danger-fg)]',
   },
   warning: {
-    dot: 'bg-amber-500 dark:bg-amber-400',
-    text: 'text-amber-700 dark:text-amber-300',
+    dot: 'bg-[var(--abc-flow-port-warning-dot)]',
+    text: 'text-[var(--abc-flow-port-warning-fg)]',
   },
   info: {
-    dot: 'bg-blue-500 dark:bg-blue-400',
-    text: 'text-blue-700 dark:text-blue-300',
+    dot: 'bg-[var(--abc-flow-port-info-dot)]',
+    text: 'text-[var(--abc-flow-port-info-fg)]',
   },
   neutral: {
-    dot: 'bg-slate-400 dark:bg-slate-500',
+    dot: 'bg-[var(--abc-flow-port-neutral-dot)]',
     text: 'text-[var(--abc-fg-secondary)]',
   },
 }

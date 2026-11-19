@@ -1,13 +1,17 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { Braces, X } from 'lucide-react'
-import { useAbcMotion, useAbcSize } from '../../hooks/useAbcDefaults'
-import { useControllableState } from '../../hooks/useControllableState'
-import { useFloatingPosition } from '../../hooks/useFloatingPosition'
-import { usePresence } from '../../hooks/usePresence'
-import { cn } from '../../utils/cn'
-import { Tooltip } from '../display/Overlays'
-import { baseFieldControlClass, type ControlSize } from '../form/Input'
+import {
+  Tooltip,
+  baseFieldControlClass,
+  cn,
+  useAbcMotion,
+  useAbcSize,
+  useControllableState,
+  useFloatingPosition,
+  usePresence,
+  type ControlSize,
+} from '@abc-design/react'
 import {
   extractTemplateVariables,
   insertTemplateVariableAt,
@@ -248,7 +252,7 @@ export const TemplateVariableInput = React.forwardRef<
       resolvedMotion === 'none' ? 0 : 130
     )
 
-    const { style: floatingStyle, actualSide, portalContainer } = useFloatingPosition({
+    const { style: floatingStyle, actualSide, portalContainer, portalTheme } = useFloatingPosition({
       open: isMounted,
       triggerRef,
       floatingRef,
@@ -417,11 +421,11 @@ export const TemplateVariableInput = React.forwardRef<
                   <span
                     key={`${token.key}_${token.occurrenceIndex}`}
                     data-template-chip={token.key}
-                    className="inline-flex max-w-full items-center gap-1 rounded-full bg-slate-700 px-2 py-0.5 text-[11px] font-medium leading-tight text-white shadow-2xs dark:bg-slate-200 dark:text-slate-900"
+                    className="inline-flex max-w-full items-center gap-1 rounded-full bg-[var(--abc-flow-chip-bg)] px-2 py-0.5 text-[11px] font-medium leading-tight text-[var(--abc-flow-chip-fg)] shadow-2xs"
                   >
                     <span className="truncate font-mono">{token.key}</span>
                     {showPreviewLabel && previewHint && previewHint !== token.key && (
-                      <span className="max-w-[110px] truncate rounded-full bg-white/15 px-1.5 py-0 text-[10px] font-normal text-slate-100 dark:bg-slate-900/12 dark:text-slate-700">
+                      <span className="max-w-[110px] truncate rounded-full bg-[var(--abc-flow-chip-sub-bg)] px-1.5 py-0 text-[10px] font-normal text-[var(--abc-flow-chip-sub-fg)]">
                         {previewHint}
                       </span>
                     )}
@@ -433,7 +437,7 @@ export const TemplateVariableInput = React.forwardRef<
                           event.stopPropagation()
                           handleRemoveToken(token)
                         }}
-                        className="inline-flex h-3.5 w-3.5 shrink-0 cursor-pointer items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/30 focus:outline-none focus-visible:ring-1 focus-visible:ring-white dark:bg-slate-900/15 dark:text-slate-900 dark:hover:bg-slate-900/30"
+                        className="inline-flex h-3.5 w-3.5 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[var(--abc-flow-chip-sub-bg)] text-[var(--abc-flow-chip-fg)] transition-colors hover:bg-[var(--abc-flow-chip-close-hover)] focus:outline-none focus-visible:ring-1 focus-visible:ring-current"
                       >
                         <X className="h-2.5 w-2.5" />
                       </button>
@@ -599,6 +603,7 @@ export const TemplateVariableInput = React.forwardRef<
         <TemplateVariablePickerPopover
           floatingRef={floatingRef}
           portalContainer={portalContainer}
+          portalTheme={portalTheme}
           isMounted={isMounted}
           isVisible={isVisible}
           popoverId={popoverId}

@@ -145,10 +145,12 @@ export interface KnobNumberProps {
   max?: number
   step?: number
   widthClass?: string
+  minWidth?: number | string
+  maxWidth?: number | string
 }
 
 /**
- * 数值步进调节项
+ * 数值步进调节项（默认开启内容驱动动态宽度，在 minWidth ~ maxWidth 间随数字位数自动伸缩）
  */
 export const KnobNumber: React.FC<KnobNumberProps> = ({
   label,
@@ -157,22 +159,38 @@ export const KnobNumber: React.FC<KnobNumberProps> = ({
   min,
   max,
   step = 1,
-  widthClass = 'w-24',
+  widthClass,
+  minWidth = 88,
+  maxWidth = 176,
 }) => (
   <div className="inline-flex items-center gap-1.5">
     <span className="font-mono text-[11px] font-medium text-[var(--abc-fg-secondary)]">
       {label}:
     </span>
-    <div className={widthClass}>
+    {widthClass ? (
+      <div className={widthClass}>
+        <InputNumber
+          size="xs"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(v) => onChange(Number(v ?? min ?? 0))}
+        />
+      </div>
+    ) : (
       <InputNumber
         size="xs"
+        autoWidth
+        minWidth={minWidth}
+        maxWidth={maxWidth}
         min={min}
         max={max}
         step={step}
         value={value}
         onChange={(v) => onChange(Number(v ?? min ?? 0))}
       />
-    </div>
+    )}
   </div>
 )
 

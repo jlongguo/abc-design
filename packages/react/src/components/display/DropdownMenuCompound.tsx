@@ -69,6 +69,7 @@ export const DropdownMenuTrigger = React.forwardRef<HTMLButtonElement, DropdownM
         'aria-expanded': ctx?.open ?? false,
         'data-slot': 'dropdown-menu-trigger',
         'data-state': ctx?.open ? 'open' : 'closed',
+        'data-open': ctx?.open ? 'true' : 'false',
         className: cn(child.props.className, className),
         onClick: (e: React.MouseEvent<HTMLElement>) => {
           child.props.onClick?.(e)
@@ -88,6 +89,7 @@ export const DropdownMenuTrigger = React.forwardRef<HTMLButtonElement, DropdownM
         aria-expanded={ctx?.open ?? false}
         data-slot="dropdown-menu-trigger"
         data-state={ctx?.open ? 'open' : 'closed'}
+        data-open={ctx?.open ? 'true' : 'false'}
         onClick={(e) => {
           onClick?.(e)
           if (!e.defaultPrevented) {

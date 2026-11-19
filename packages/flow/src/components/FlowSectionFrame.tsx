@@ -1,5 +1,5 @@
 import React from 'react'
-import { cn } from '../../utils/cn'
+import { cn } from '@abc-design/react'
 import { FLOW_TONE_STYLES, type FlowTone } from './flowTokens'
 
 export type FlowSectionFrameAlign = 'center' | 'top-left'

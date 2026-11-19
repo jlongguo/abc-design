@@ -3,7 +3,6 @@ import path from 'node:path'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { Button, buttonVariants } from '../components/button/Button'
-import { TemplateVariableInput } from '../components/flow/TemplateVariableInput'
 import { SliderVerify, Tree } from '../components/form/AdvancedControls'
 import { Cascader } from '../components/form/Cascader'
 import { CheckableTag, CheckableTagGroup, Checkbox, RadioGroup, Switch } from '../components/form/Controls'
@@ -59,7 +58,7 @@ function assertNoActiveScale(root: ParentNode, label: string) {
 }
 
 describe('所有 Input / 表单录入相关组件禁止 active scale 回归测试', () => {
-  it('1. 文本、数值、搜索、配额与模板变量输入组件均无 active scale 类', () => {
+  it('1. 文本、数值、搜索与配额输入组件均无 active scale 类', () => {
     const { container } = render(
       <AbcProvider persist={false}>
         <div className="space-y-2">
@@ -71,20 +70,11 @@ describe('所有 Input / 表单录入相关组件禁止 active scale 回归测�
           <ByteQuotaInput value={1024 * 1024} onChange={vi.fn()} />
           <DurationQuotaInput value={3600} onChange={vi.fn()} />
           <TagInput defaultValue={['prod', 'canary']} allowClear />
-          <TemplateVariableInput
-            defaultValue="Hello {{user.name}}"
-            allowClear
-            variables={[{ key: 'user.name', label: '用户名' }]}
-          />
         </div>
       </AbcProvider>
     )
 
     assertNoActiveScale(container, '基础与增强输入框集合')
-
-    // 展开 TemplateVariableInput 的 {} 变量选择器浮层并校验浮层内也无 active scale
-    fireEvent.click(container.querySelector('[data-template-picker-trigger]') as HTMLElement)
-    assertNoActiveScale(document.body, 'TemplateVariableInput 展开浮层')
 
     // 验证 InputNumber 的步进小按钮点击交互正常且无缩放类
     const incBtn = screen.getByRole('button', { name: '增加数值' })
@@ -306,20 +296,25 @@ describe('所有 Input / 表单录入相关组件禁止 active scale 回归测�
     assertNoActiveScale(kvRoot, 'KeyValueInput 批量文本模式')
   })
 
-  it('5. Button.pressScale={false} 与 buttonVariants({ pressScale: false }) 禁用按压缩放，默认 Button 保留 abc-motion-control', () => {
+  it('5. Button 与 buttonVariants 默认禁用按压缩放，仅显式传入 pressScale={true} 时启用 abc-motion-control', () => {
     render(
       <>
         <Button data-testid="btn-default">默认按钮</Button>
+        <Button data-testid="btn-scale" pressScale>
+          按压缩放按钮
+        </Button>
         <Button data-testid="btn-flat" pressScale={false} size="xs" iconOnly aria-label="微小图标按钮">
           ×
         </Button>
       </>
     )
 
-    expect(screen.getByTestId('btn-default').className).toContain('abc-motion-control')
+    expect(screen.getByTestId('btn-default').className).not.toContain('abc-motion-control')
+    expect(screen.getByTestId('btn-scale').className).toContain('abc-motion-control')
     expect(screen.getByTestId('btn-flat').className).not.toContain('abc-motion-control')
     expect(screen.getByTestId('btn-flat').className).not.toContain('active:scale')
 
+    expect(buttonVariants()).not.toContain('abc-motion-control')
     expect(buttonVariants({ pressScale: true })).toContain('abc-motion-control')
     expect(buttonVariants({ pressScale: false })).not.toContain('abc-motion-control')
     expect(buttonVariants({ pressScale: false })).not.toContain('active:scale')

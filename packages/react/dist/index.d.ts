@@ -1568,12 +1568,24 @@ export declare interface DataTableProps<T> {
     className?: string;
 }
 
+/**
+ * 企业级多维度日期/时间选择器 (DatePicker)
+ * 支持日 (date)、周 (week)、月 (month)、季度 (quarter)、年 (year) 五大时间维度，
+ * 以及 date 模式下的 showTime 日期时间联动选择，内置视口感知 Portal 定位与快捷预设。
+ */
 export declare const DatePicker: default_2.ForwardRefExoticComponent<DatePickerProps & default_2.RefAttributes<HTMLDivElement>>;
+
+/** 日期选择器时间维度：日 / 周 / 月 / 季度 / 年 */
+export declare type DatePickerMode = 'date' | 'week' | 'month' | 'quarter' | 'year';
 
 export declare interface DatePickerProps {
     value?: string;
     defaultValue?: string;
     onChange?: (dateStr: string) => void;
+    /** 时间选择维度（默认 'date'，支持 'date' | 'week' | 'month' | 'quarter' | 'year'） */
+    picker?: DatePickerMode;
+    /** 仅在 picker='date' 下生效：开启日期时间选择（时:分[:秒]） */
+    showTime?: boolean | DatePickerShowTimeConfig;
     placeholder?: string;
     allowClear?: boolean;
     clearable?: boolean;
@@ -1594,10 +1606,19 @@ export declare interface DatePickerShortcut {
     value: string | (() => string);
 }
 
-/**
- * 企业级单日期选择器 (DatePicker)
- * 基于 @abc-design/core 42 格月历算法 + Portal 浮层定位，支持年/月四向切换、快捷预设与深色模式
- */
+/** DatePicker / DateRangePicker 携带时分秒选择配置 */
+export declare interface DatePickerShowTimeConfig {
+    /** 时间展示格式（如 'HH:mm:ss' 或 'HH:mm'，默认 'HH:mm:ss'） */
+    format?: string;
+    /** 是否显示秒列（默认跟随 format 是否含 s） */
+    showSecond?: boolean;
+    hourStep?: number;
+    minuteStep?: number;
+    secondStep?: number;
+    /** 未选择时间时的默认初始时刻（如 '00:00:00'） */
+    defaultValue?: string;
+}
+
 export declare interface DateRange {
     start: string;
     end: string;
@@ -1608,6 +1629,11 @@ export declare type DateRangeInput = DateRangeTuple | {
     end?: string;
 } | null;
 
+/**
+ * 企业级多维度双栏区间选择器 (DateRangePicker)
+ * 支持日 / 周 / 月 / 季度 / 年五种区间维度及 date 模式下的起止日期时间选择，
+ * 具备悬停区间预览、反向点击自动排序与 { start, end } / [start, end] 双形态回传。
+ */
 export declare const DateRangePicker: default_2.ForwardRefExoticComponent<DateRangePickerProps & default_2.RefAttributes<HTMLDivElement>>;
 
 export declare interface DateRangePickerProps {
@@ -1615,6 +1641,10 @@ export declare interface DateRangePickerProps {
     defaultValue?: DateRangeInput;
     /** 根据传入 value/defaultValue 形态自动返回对象 { start, end } 或元组 [start, end] */
     onChange?: (range: any) => void;
+    /** 时间区间维度（默认 'date'，支持 'date' | 'week' | 'month' | 'quarter' | 'year'） */
+    picker?: DatePickerMode;
+    /** 仅在 picker='date' 下生效：开启起止日期时间选择 */
+    showTime?: boolean | DatePickerShowTimeConfig;
     placeholder?: string | [string, string];
     allowClear?: boolean;
     clearable?: boolean;
@@ -2189,9 +2219,6 @@ export declare function extractLeadingEmojiToken(text: string): {
     rest: string;
 };
 
-/** 从模板字符串中提取所有 {{variable}} 占位符列表 */
-export declare function extractTemplateVariables(text: string): TemplateVariableToken[];
-
 /**
  * 通用多文件拖拽上传与校验列表组件 (FileUpload)
  * 严格遵循原生按钮焦点触发、类型/大小/数量前置校验、上传进度展示与无障碍错误广播。
@@ -2332,76 +2359,6 @@ export declare interface FlattenedRow<T> {
 
 export declare function flattenNodeText(node: default_2.ReactNode): string;
 
-/**
- * 极简圆角白底悬浮图标细条 + 按需滑出 Flyout 浮层 (FloatingIconRail)
- * 适用于可视化画布、流程编排器与设计工具左侧类目入口，点击激活类目平滑滑出内容浮层，再次点击收起。
- */
-export declare const FloatingIconRail: default_2.ForwardRefExoticComponent<FloatingIconRailProps & default_2.RefAttributes<HTMLDivElement>>;
-
-export declare interface FloatingIconRailItem {
-    /** 类目唯一标识 */
-    key: string;
-    /** 图标下方短标签（建议 1~2 词或 2~4 汉字） */
-    label: default_2.ReactNode;
-    /** 类目图标节点 */
-    icon: default_2.ReactNode;
-    /** 可选原生 title / 读屏完整说明 */
-    title?: string;
-    /** 可选右上角轻量角标（如数字或小红点） */
-    badge?: default_2.ReactNode;
-    /** 是否禁用该类目 */
-    disabled?: boolean;
-    /** 该类目展开时的默认 Flyout 内容插槽（优先级低于 renderFlyout） */
-    content?: default_2.ReactNode;
-}
-
-export declare interface FloatingIconRailProps extends Omit<default_2.HTMLAttributes<HTMLDivElement>, 'children'> {
-    /** 左侧垂直类目图标项列表 */
-    items: ReadonlyArray<FloatingIconRailItem>;
-    /** 受控当前展开的类目 key（null 表示收起 Flyout） */
-    activeKey?: string | null;
-    /** 非受控初始展开的类目 key（默认 null 收起） */
-    defaultActiveKey?: string | null;
-    /** 展开/切换/收起类目回调 */
-    onActiveKeyChange?: (key: string | null) => void;
-    /** 自定义 Flyout 浮层内容渲染器（优先于 item.content 与 flyoutContent） */
-    renderFlyout?: (activeItem: FloatingIconRailItem, helpers: {
-        close: () => void;
-    }) => default_2.ReactNode;
-    /** 通用 Flyout 浮层内容回退插槽 */
-    flyoutContent?: default_2.ReactNode;
-    /** 自定义 Flyout 头部（传 null 可隐藏内置头部） */
-    flyoutHeader?: default_2.ReactNode | ((activeItem: FloatingIconRailItem, helpers: {
-        close: () => void;
-    }) => default_2.ReactNode);
-    /** 是否显示内置 Flyout 标题栏与关闭按钮（默认 true） */
-    showFlyoutHeader?: boolean;
-    /** Flyout 面板宽度（数字按 px 处理，默认 264） */
-    flyoutWidth?: number | string;
-    /** 悬浮条停靠侧：left 表示条在左、Flyout 向右滑出；right 反之（默认 'left'） */
-    side?: FloatingIconRailSide;
-    /** 图标栏紧凑尺寸档位（默认 'md'） */
-    size?: FloatingIconRailSize;
-    /** 图标栏底部附加插槽（如设置/快捷帮助按钮） */
-    footer?: default_2.ReactNode;
-    /** 点击悬浮条与 Flyout 外部区域时是否自动收起 Flyout（默认 true） */
-    closeOnOutsideClick?: boolean;
-    /** 按下 Escape 键时是否自动收起 Flyout（默认 true） */
-    closeOnEscape?: boolean;
-    /** 关闭按钮无障碍文案 */
-    closeLabel?: string;
-    /** 微交互动效预设 */
-    motion?: AbcMotionPreset;
-    /** 图标细条容器附加类名 */
-    railClassName?: string;
-    /** 滑出 Flyout 浮层附加类名 */
-    flyoutClassName?: string;
-}
-
-export declare type FloatingIconRailSide = 'left' | 'right';
-
-export declare type FloatingIconRailSize = 'sm' | 'md';
-
 export declare type FloatingPlacement = 'top' | 'bottom' | 'left' | 'right' | 'bottomLeft' | 'bottomRight' | 'topLeft' | 'topRight' | 'rightStart';
 
 export declare interface FloatingPositionResult {
@@ -2410,251 +2367,12 @@ export declare interface FloatingPositionResult {
     /** 箭头在主轴方向相对浮层左上角的像素偏移量 */
     arrowOffset: number;
     portalContainer: HTMLElement | null;
+    /** 触发器所处局部主题覆盖子树的明暗值（若未局部覆盖则为 undefined，随根节点主题） */
+    portalTheme?: 'light' | 'dark';
     update: () => void;
 }
 
 export declare type FloatingSide = 'top' | 'bottom' | 'left' | 'right';
-
-/** 节点出口状态圆点与文字语义样式 */
-export declare const FLOW_PORT_TONE_STYLES: Record<FlowPortTone, {
-    dot: string;
-    text: string;
-}>;
-
-/**
- * 5 套柔和低饱和语义色板（参考柔和蓝/浅薄荷绿/暖杏琥珀/浅粉玫瑰/清灰石板）
- * 亮色保持清透浅底高对比，暗色回退为通透低饱和半透明表面，避免刺眼荧光色块。
- */
-export declare const FLOW_TONE_STYLES: Record<FlowTone, FlowToneStyleTokens>;
-
-/**
- * Flow 画布通用柔和浅色语义节点卡片 (FlowNodeCard)
- * - 视觉结构：柔和浅色圆角外框 + 紧凑语义卡头 + 纯白内嵌正文面 + 行内右对齐状态出口行；
- * - 零业务耦合且外层保持 overflow-visible，允许外部直接挂接 ReactFlow <Handle /> 与 <FlowNodeToolbar />；
- * - 原生支持 5 套浅色语义 tone 与 selected / running / error 状态边框。
- */
-export declare const FlowNodeCard: default_2.ForwardRefExoticComponent<FlowNodeCardProps & default_2.RefAttributes<HTMLDivElement>>;
-
-export declare interface FlowNodeCardProps extends Omit<default_2.HTMLAttributes<HTMLDivElement>, 'title'> {
-    /** 卡片顶部主标题 */
-    title: default_2.ReactNode;
-    /** 可选标题旁副标题或短说明 */
-    subtitle?: default_2.ReactNode;
-    /** 卡头左侧主图标 */
-    icon?: default_2.ReactNode;
-    /** 卡头标题旁轻量徽标 */
-    badge?: default_2.ReactNode;
-    /** 卡头右侧副图标/紧凑微操作区 */
-    headerExtra?: default_2.ReactNode;
-    /** 柔和浅色语义卡头色调（默认 'blue'） */
-    tone?: FlowNodeTone;
-    /** 白色正文区顶部副图标（例如类型标识） */
-    subIcon?: default_2.ReactNode;
-    /** 白色正文区顶部副标题 */
-    subTitle?: default_2.ReactNode;
-    /** 白色正文区顶部右侧扩展插槽（如拖拽把手 || 图标） */
-    subExtra?: default_2.ReactNode;
-    /** 声明式紧凑元数据行列表（默认最多渲染 maxMetaRows=3 行） */
-    metaRows?: ReadonlyArray<FlowNodeMetaRow>;
-    /** 最大展示元数据行数（默认 3，符合画布卡片 ≤3 行密度规范） */
-    maxMetaRows?: number;
-    /** 行内状态/分支出口行列表（如绿点 Success / 红点 Else） */
-    outputs?: ReadonlyArray<FlowNodeOutputPort>;
-    /** 统一为每个出口行生成外部连接点（如 ReactFlow <Handle />），优先级低于单项 port.handle */
-    renderOutputHandle?: (port: FlowNodeOutputPort) => default_2.ReactNode;
-    /** 外部入参连接点插槽（如 ReactFlow <Handle type="target" position={Position.Left} />） */
-    inputHandle?: default_2.ReactNode;
-    /** 卡片顶部悬浮微操作条插槽（推荐传入 <FlowNodeToolbar />） */
-    toolbar?: default_2.ReactNode;
-    /** 白色正文区底部扩展插槽 */
-    footer?: default_2.ReactNode;
-    /** 卡片是否处于选中态 */
-    selected?: boolean;
-    /** 卡片是否处于运行中态（等价 status="running"） */
-    running?: boolean;
-    /** 卡片是否处于异常错误态（等价 status="error"，优先级高于 running） */
-    error?: boolean;
-    /** 统一状态枚举（与 running/error 布尔属性兼容） */
-    status?: FlowNodeStatus;
-    /** 卡片宽度（数字按 px 处理，默认 256） */
-    width?: number | string;
-    /** 微交互动效预设 */
-    motion?: AbcMotionPreset;
-    /** 卡头附加类名 */
-    headerClassName?: string;
-    /** 白色正文容器附加类名 */
-    bodyClassName?: string;
-}
-
-/** 节点正文紧凑元数据行（默认最多展示 3 行，保持画布卡片轻盈可读） */
-export declare interface FlowNodeMetaRow {
-    /** 行唯一键（未传时回退数组下标） */
-    key?: string;
-    /** 行首小图标 */
-    icon?: default_2.ReactNode;
-    /** 可选字段短标签（如 Model / URL） */
-    label?: default_2.ReactNode;
-    /** 字段值内容（自动单行截断） */
-    value: default_2.ReactNode;
-    /** 是否使用等宽字体 */
-    mono?: boolean;
-    /** 悬停完整提示文本 */
-    title?: string;
-}
-
-/** 节点行内状态/分支出口定义（支持外部挂载 ReactFlow <Handle />） */
-export declare interface FlowNodeOutputPort {
-    /** 出口唯一 ID（建议与 ReactFlow Handle id 保持一致） */
-    id: string;
-    /** 出口展示文案（如 Success / Else / Branch A） */
-    label: default_2.ReactNode;
-    /** 状态圆点与文案语义色（默认 'neutral'） */
-    tone?: FlowPortTone;
-    /** 文案前可选语义小图标 */
-    icon?: default_2.ReactNode;
-    /** 出口旁辅助微标签 */
-    hint?: default_2.ReactNode;
-    /**
-     * 外部挂接的连接点元素（如 ReactFlow 的 <Handle type="source" position={Position.Right} id={port.id} />）。
-     * 该节点会直接挂载在带 `relative` 且右边界贴齐卡片外缘的出口行内，确保连线坐标与该行垂直中心精准对齐且不被裁剪。
-     */
-    handle?: default_2.ReactNode;
-    /**
-     * 是否在右侧展示内置语义状态圆点：
-     * 未传入 handle 时默认 true；传入自定义 handle 时默认 false（可显式设为 true 实现透明 Handle 叠盖圆点）。
-     */
-    showDot?: boolean;
-    /** 是否置灰禁用该出口行 */
-    disabled?: boolean;
-    /** 出口行附加类名 */
-    className?: string;
-}
-
-/** FlowNodeCard 运行状态枚举 */
-export declare type FlowNodeStatus = 'idle' | 'running' | 'success' | 'error';
-
-/** FlowNodeCard 柔和卡头色调类型 */
-export declare type FlowNodeTone = FlowTone;
-
-/**
- * Flow 节点顶部紧凑悬浮微操作条 (FlowNodeToolbar)
- * 圆角白底阴影容器 + 图标按钮组 + 视口感知 Tooltip，默认附加 `nodrag nopan` 防止画布拖拽冲突。
- */
-export declare const FlowNodeToolbar: default_2.ForwardRefExoticComponent<FlowNodeToolbarProps & default_2.RefAttributes<HTMLDivElement>>;
-
-export declare interface FlowNodeToolbarItem {
-    /** 操作项唯一键 */
-    key: string;
-    /** 图标节点 */
-    icon: default_2.ReactNode;
-    /** 按钮无障碍名称与默认提示文案 */
-    label: string;
-    /** 自定义 Tooltip 浮层内容（默认回退 label） */
-    tooltip?: default_2.ReactNode;
-    /** 点击回调 */
-    onClick?: (event: default_2.MouseEvent<HTMLButtonElement>) => void;
-    /** 是否禁用 */
-    disabled?: boolean;
-    /** 是否处于激活/选中高亮态 */
-    active?: boolean;
-    /** 是否为危险操作（悬停红色语义高亮） */
-    danger?: boolean;
-    /** 在该按钮前插入轻量分隔竖线/横线 */
-    dividerBefore?: boolean;
-    /** 自定义按钮无障碍标签（默认取 label） */
-    'aria-label'?: string;
-    /** 单项按钮附加类名 */
-    className?: string;
-}
-
-export declare interface FlowNodeToolbarProps extends default_2.HTMLAttributes<HTMLDivElement> {
-    /** 图标微操作按钮集合 */
-    items: ReadonlyArray<FlowNodeToolbarItem>;
-    /** 排列方向（默认水平 'horizontal'） */
-    orientation?: 'horizontal' | 'vertical';
-    /** 按钮紧凑尺寸（默认 'sm'） */
-    size?: FlowNodeToolbarSize;
-    /** 控制工具条是否显示（为 false 时不渲染，便于绑定节点 selected / hovered 态） */
-    visible?: boolean;
-    /** Tooltip 弹出方向（默认 'top'） */
-    tooltipPlacement?: 'top' | 'bottom' | 'left' | 'right';
-    /** 是否关闭内置 Tooltip 提示 */
-    disableTooltips?: boolean;
-    /** 点击按钮时是否阻止事件冒泡到画布节点（默认 true，防止误触发节点拖拽或取消选中） */
-    stopPropagation?: boolean;
-    /** 微交互动效预设 */
-    motion?: AbcMotionPreset;
-    /** 尾部可选自定义扩展节点（如嵌套 Dropdown 更多菜单） */
-    children?: default_2.ReactNode;
-}
-
-export declare type FlowNodeToolbarSize = 'xs' | 'sm';
-
-/** Flow 节点行内出口状态色调 */
-export declare type FlowPortTone = 'success' | 'danger' | 'warning' | 'info' | 'neutral';
-
-/**
- * Flow 画布圆角虚线视觉分组注释框 (FlowSectionFrame)
- * 支持空注释说明块（居中排版，如画布左下角分组标注）与包裹子节点的分区容器（左上角标题栏 + 内容区）双形态。
- */
-export declare const FlowSectionFrame: default_2.ForwardRefExoticComponent<FlowSectionFrameProps & default_2.RefAttributes<HTMLDivElement>>;
-
-export declare type FlowSectionFrameAlign = 'center' | 'top-left';
-
-export declare interface FlowSectionFrameProps extends Omit<default_2.HTMLAttributes<HTMLDivElement>, 'title'> {
-    /** 分组框标题（支持文本或自定义节点） */
-    title?: default_2.ReactNode;
-    /** 可选辅助说明文案 */
-    description?: default_2.ReactNode;
-    /** 标题前置图标 */
-    icon?: default_2.ReactNode;
-    /** 标题旁徽标 */
-    badge?: default_2.ReactNode;
-    /** 右上角附加操作区（仅在顶部对齐或存在 children 时展示在右上角） */
-    headerExtra?: default_2.ReactNode;
-    /** 柔和语义色调（默认 'slate'） */
-    tone?: FlowTone;
-    /** 标题排版对齐方式：无 children 默认 'center'（注释卡片风），有 children 默认 'top-left'（分组包裹框） */
-    align?: FlowSectionFrameAlign;
-    /** 是否使用虚线边框（默认 true） */
-    dashed?: boolean;
-    /** 画布选中态高亮边框 */
-    selected?: boolean;
-    /** 自定义宽度（数字按 px 处理） */
-    width?: number | string;
-    /** 自定义高度（数字按 px 处理） */
-    height?: number | string;
-    /** 最小宽度 */
-    minWidth?: number | string;
-    /** 最小高度 */
-    minHeight?: number | string;
-    /** 标题区附加类名 */
-    headerClassName?: string;
-    /** 内容区附加类名 */
-    bodyClassName?: string;
-}
-
-/**
- * Flow 画布通用原语视觉令牌与纯函数辅助工具
- * 严格零业务耦合，统一消费 @abc-design/tokens CSS 变量并兼顾亮暗双主题可读性。
- */
-/** Flow 画布通用语义色调 */
-export declare type FlowTone = 'blue' | 'green' | 'amber' | 'rose' | 'slate';
-
-export declare interface FlowToneStyleTokens {
-    /** 卡片柔和浅色外框（壳层背景 + 边框） */
-    cardShell: string;
-    /** 卡头文本与图标强调色 */
-    headerText: string;
-    /** 卡头副操作图标柔和底色 */
-    headerBadgeBg: string;
-    /** 选中态光环颜色 */
-    selectedRing: string;
-    /** 虚线分组框边框与浅色填充 */
-    sectionFrame: string;
-    /** 虚线分组框标题文本色 */
-    sectionTitle: string;
-}
 
 export declare function formatFilterText(field: ProCrudSearchFieldItem, value: unknown): string;
 
@@ -2708,6 +2426,12 @@ export declare interface FormFieldProps extends Omit<InputProps, 'size' | 'error
     className?: string;
     children?: default_2.ReactNode;
 }
+
+/**
+ * 读取触发器所在的非根级局部主题覆盖（data-abc-theme / data-playground-theme），
+ * 让挂载至 document.body 的浮层 Portal 自动继承所在工作台子树的亮暗主题。
+ */
+export declare function getInheritedAbcTheme(anchor?: Element | null): 'light' | 'dark' | undefined;
 
 export declare function getNestedValue(obj: any, path: string | string[] | undefined): any;
 
@@ -2898,7 +2622,7 @@ export declare const Input: default_2.ForwardRefExoticComponent<InputProps & def
 /** 输入框基础样式（紧凑高度，与次要/主按钮对齐） */
 export declare const inputClass = "w-full h-8.5 rounded-[var(--abc-radius-md,0.5rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-3 py-1.5 text-xs text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] hover:border-[var(--abc-border-strong)] focus:border-[var(--abc-primary)] focus:ring-2 focus:ring-[var(--abc-ring)] focus:outline-none transition-all disabled:bg-[var(--abc-bg-muted)] disabled:text-[var(--abc-fg-muted)] disabled:cursor-not-allowed";
 
-/** 步进数值输入框（等宽数字对齐） */
+/** 步进数值输入框（等宽数字对齐，内置隐藏浏览器原生微调按钮与可选内容自适应宽度） */
 export declare const InputNumber: default_2.FC<InputNumberProps>;
 
 export declare interface InputNumberProps {
@@ -2913,6 +2637,13 @@ export declare interface InputNumberProps {
     disabled?: boolean;
     placeholder?: string;
     invalid?: boolean;
+    /** 开启内容驱动动态宽度：在 minWidth 与 maxWidth 区间内随数字位数自动伸缩，避免窄框遮挡 */
+    autoWidth?: boolean;
+    /** 最小宽度（支持像素数字或 CSS 长度值，autoWidth 开启时默认按尺寸档位提供安全下限） */
+    minWidth?: number | string;
+    /** 最大宽度（支持像素数字或 CSS 长度值，autoWidth 开启时默认 220px 防止无限撑爆布局） */
+    maxWidth?: number | string;
+    style?: default_2.CSSProperties;
     className?: string;
 }
 
@@ -2952,12 +2683,6 @@ export declare interface InputProps extends Omit<default_2.InputHTMLAttributes<H
     invalid?: boolean;
     wrapperClassName?: string;
 }
-
-/** 在指定选区（start..end）处插入变量表达式并返回新文本与新光标位置 */
-export declare function insertTemplateVariableAt(text: string, expression: string, selectionStart: number | null | undefined, selectionEnd: number | null | undefined, replaceAll?: boolean): {
-    nextValue: string;
-    nextCaret: number;
-};
 
 /**
  * 右侧检视面板 (InspectorPanel)
@@ -5260,9 +4985,6 @@ export declare function registerAbcIcons(icons: Record<string, AbcIconComponent>
 
 export { RejectedTagItem }
 
-/** 从模板字符串中按偏移精确移除指定 {{variable}} 片段，并清理多余相邻空白 */
-export declare function removeTemplateVariableToken(text: string, token: Pick<TemplateVariableToken, 'start' | 'end'>): string;
-
 export declare function renderBuiltInValue<T extends Record<string, any>>(rawVal: any, record: T, col: AbcColumn<T>, onRowView?: (record: T, linkTarget?: string) => void): default_2.ReactNode;
 
 /**
@@ -5552,6 +5274,8 @@ export declare interface SelectProps extends Omit<default_2.SelectHTMLAttributes
     popoverClassName?: string;
     /** 是否同步触发器宽度至下拉菜单最小宽度（默认 true） */
     matchWidth?: boolean;
+    /** 下拉面板相对触发器的默认对齐方位（默认 bottomLeft，窄后缀选择器可设为 bottomRight 防止向右溢出父容器） */
+    placement?: 'bottomLeft' | 'bottomRight' | 'topLeft' | 'topRight';
     /** 是否隐藏右侧下拉箭头 */
     hideChevron?: boolean;
     /** 自定义 Portal 挂载容器（未传时自动探测祖先 dialog[open] 或 document.body） */
@@ -6510,122 +6234,6 @@ export declare function tagVariants(_opts?: {
     variant?: string;
 }): string;
 
-/**
- * 通用模板变量输入器 (TemplateVariableInput)
- * - 支持单行输入与多行文本域双形态，零业务耦合；
- * - 自动识别 `{{variable}}` 并展示深色胶囊芯片（带移除按钮与变量预览标签）；
- * - 右下角提供 `{}` 快捷变量选择器浮层（Portal 定位防裁切，支持分组与搜索过滤，按光标位置精确插值）。
- */
-export declare const TemplateVariableInput: default_2.ForwardRefExoticComponent<TemplateVariableInputProps & default_2.RefAttributes<HTMLInputElement | HTMLTextAreaElement>>;
-
-export declare interface TemplateVariableInputProps {
-    /** 受控模板文本值（可包含任意数量 {{variable}}） */
-    value?: string;
-    /** 非受控初始值 */
-    defaultValue?: string;
-    /** 值变更回调 */
-    onChange?: (value: string) => void;
-    /** 是否启用多行文本域模式（默认 false 为单行输入） */
-    multiline?: boolean;
-    /** 多行模式默认行数（默认 3） */
-    rows?: number;
-    /** 右下角 {} 变量选择器提供的可选变量字典 */
-    variables?: ReadonlyArray<TemplateVariableOption>;
-    /**
-     * 深色 {{variable}} 胶囊芯片展示模式：
-     * - 'auto'（默认）：检测到 {{variable}} 时自动展示深色胶囊芯片区
-     * - 'always'：始终保留芯片区（便于稳定布局或提示变量绑定）
-     * - 'none'：仅使用文本输入与 {} 选择器，不渲染芯片条
-     */
-    chipDisplay?: 'auto' | 'always' | 'none';
-    /** 胶囊芯片是否提供 × 移除按钮（默认 true） */
-    removableChips?: boolean;
-    /** 匹配到变量字典时是否在芯片或提示中展示预览标签（默认 true） */
-    showPreviewLabel?: boolean;
-    /** 选择变量时是否替换整个字段值（用于单变量输出绑定框，默认 false 在光标处插入） */
-    replaceOnSelect?: boolean;
-    /** 自定义变量插入格式（默认 `(v) => \`{{${v.key}}}\``） */
-    insertFormat?: (variable: TemplateVariableOption) => string;
-    /** 是否显示右下角 {} 变量选择器触发按钮（默认 true） */
-    showPickerButton?: boolean;
-    /** 变量浮层内是否启用关键字搜索（默认 true） */
-    searchable?: boolean;
-    /** 受控浮层展开状态 */
-    pickerOpen?: boolean;
-    /** 非受控浮层默认展开状态 */
-    defaultPickerOpen?: boolean;
-    /** 浮层开关状态变更回调 */
-    onPickerOpenChange?: (open: boolean) => void;
-    /** 选择器浮层标题 */
-    pickerTitle?: default_2.ReactNode;
-    /** 选择器浮层搜索框占位文案 */
-    pickerPlaceholder?: string;
-    /** {} 按钮无障碍标签与提示文案 */
-    pickerTriggerLabel?: string;
-    /** 无可用变量或无搜索匹配时的空态文案 */
-    emptyVariablesText?: default_2.ReactNode;
-    /** 选中并插入变量后的回调 */
-    onSelectVariable?: (variable: TemplateVariableOption, nextValue: string) => void;
-    /** 点击芯片移除某个变量后的回调 */
-    onRemoveVariable?: (token: TemplateVariableToken, nextValue: string) => void;
-    /** 标准表单字段属性 */
-    id?: string;
-    name?: string;
-    label?: default_2.ReactNode;
-    error?: default_2.ReactNode;
-    helperText?: default_2.ReactNode;
-    invalid?: boolean;
-    required?: boolean;
-    disabled?: boolean;
-    readOnly?: boolean;
-    placeholder?: string;
-    size?: ControlSize;
-    mono?: boolean;
-    allowClear?: boolean;
-    clearLabel?: string;
-    motion?: AbcMotionPreset;
-    onFocus?: default_2.FocusEventHandler<HTMLInputElement | HTMLTextAreaElement>;
-    onBlur?: default_2.FocusEventHandler<HTMLInputElement | HTMLTextAreaElement>;
-    'aria-label'?: string;
-    'aria-labelledby'?: string;
-    'aria-describedby'?: string;
-    className?: string;
-    wrapperClassName?: string;
-    inputClassName?: string;
-    popoverClassName?: string;
-}
-
-export declare interface TemplateVariableOption {
-    /** 变量键名（插入时默认包裹为 {{key}}） */
-    key: string;
-    /** 可读展示名称 */
-    label?: string;
-    /** 变量分组名称（例如 Trigger / Step Output / Context） */
-    group?: string;
-    /** 变量数据类型标签（例如 string / json / secret） */
-    type?: string;
-    /** 变量用途说明 */
-    description?: string;
-    /** 可选示例值或实时预览标签 */
-    sampleValue?: string;
-    /** 是否禁用该变量选项 */
-    disabled?: boolean;
-}
-
-/** 解析出的 {{variable}} 模板变量位置与内容 */
-export declare interface TemplateVariableToken {
-    /** 完整匹配片段（如 "{{lastUserText}}"） */
-    raw: string;
-    /** 去除花括号与首尾空白后的变量键（如 "lastUserText"） */
-    key: string;
-    /** 在原字符串中的起始偏移 */
-    start: number;
-    /** 在原字符串中的结束偏移（开区间） */
-    end: number;
-    /** 出现序号（便于同一变量多次出现时精确区分 key 与定向移除） */
-    occurrenceIndex: number;
-}
-
 export declare const TenantIcon: default_2.FC<BrandIconProps>;
 
 export declare type TenantIconProps = BrandIconProps;
@@ -6693,6 +6301,82 @@ export declare interface TimelineProps {
     motion?: AbcMotionPreset;
     className?: string;
 }
+
+/**
+ * 企业级单时刻选择器 (TimePicker)
+ * 支持时:分:秒 / 时:分双格式、自定义步进刻度、快捷时刻预设与视口感知 Portal 定位
+ */
+export declare const TimePicker: default_2.ForwardRefExoticComponent<TimePickerProps & default_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface TimePickerProps {
+    value?: string;
+    defaultValue?: string;
+    onChange?: (timeStr: string) => void;
+    placeholder?: string;
+    /** 时间格式：'HH:mm:ss'（默认）或 'HH:mm' */
+    format?: string;
+    hourStep?: number;
+    minuteStep?: number;
+    secondStep?: number;
+    allowClear?: boolean;
+    clearable?: boolean;
+    disabled?: boolean;
+    shortcuts?: boolean | TimePickerShortcut[];
+    id?: string;
+    name?: string;
+    size?: ControlSize;
+    motion?: AbcMotionPreset;
+    className?: string;
+}
+
+export declare interface TimePickerShortcut {
+    label: string;
+    value: string | (() => string);
+}
+
+export declare interface TimeRange {
+    start: string;
+    end: string;
+}
+
+export declare type TimeRangeInput = TimeRangeTuple | {
+    start?: string;
+    end?: string;
+} | null;
+
+/**
+ * 企业级起止时间区间选择器 (TimeRangePicker)
+ * 左右双列同步调节开始与结束时刻，确认时自动纠正起止顺序，兼容 [start, end] 与 { start, end } 双形态
+ */
+export declare const TimeRangePicker: default_2.ForwardRefExoticComponent<TimeRangePickerProps & default_2.RefAttributes<HTMLDivElement>>;
+
+export declare interface TimeRangePickerProps {
+    value?: TimeRangeInput;
+    defaultValue?: TimeRangeInput;
+    /** 按传入 value/defaultValue 形态自动回传 [start, end] 元组或 { start, end } 对象 */
+    onChange?: (range: any) => void;
+    placeholder?: string | [string, string];
+    /** 时间格式：'HH:mm:ss'（默认）或 'HH:mm' */
+    format?: string;
+    hourStep?: number;
+    minuteStep?: number;
+    secondStep?: number;
+    allowClear?: boolean;
+    clearable?: boolean;
+    disabled?: boolean;
+    shortcuts?: boolean | TimeRangeShortcut[];
+    id?: string;
+    size?: ControlSize;
+    motion?: AbcMotionPreset;
+    className?: string;
+}
+
+export declare interface TimeRangeShortcut {
+    label: string;
+    getValue: () => TimeRangeTuple | TimeRange;
+}
+
+export declare type TimeRangeTuple = [string, string];
 
 /** 兼容简短别名 */
 export declare const toast: AbcToastMethods;

@@ -247,7 +247,7 @@ export const DropdownAndCommandPage: React.FC = () => {
               <Dropdown trigger={trigger} items={dropdownItems}>
                 <Button size="sm" variant="outline">
                   声明式 Dropdown ({trigger})
-                  <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                  <ChevronDown className="abc-chevron ml-1 h-3.5 w-3.5" />
                 </Button>
               </Dropdown>
 
@@ -255,7 +255,7 @@ export const DropdownAndCommandPage: React.FC = () => {
                 <DropdownMenuTrigger asChild>
                   <Button size="sm" variant="primary">
                     复合 DropdownMenu (align={contentAlign})
-                    <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                    <ChevronDown className="abc-chevron ml-1 h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align={contentAlign} className="w-52">

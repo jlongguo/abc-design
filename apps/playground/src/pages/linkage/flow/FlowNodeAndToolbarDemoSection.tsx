@@ -2,12 +2,11 @@ import React, { useState } from 'react'
 import {
   FlowNodeCard,
   FlowNodeToolbar,
-  StatusTag,
-  abcToast,
   type FlowNodeStatus,
   type FlowNodeTone,
   type FlowNodeToolbarItem,
-} from '@abc-design/react'
+} from '@abc-design/flow'
+import { StatusTag, abcToast } from '@abc-design/react'
 import {
   BookOpen,
   CheckCircle2,
@@ -133,7 +132,7 @@ export const FlowNodeAndToolbarDemoSection: React.FC = () => {
             />
           </>
         }
-        code={`import { FlowNodeCard, FlowNodeToolbar } from '@abc-design/react'
+        code={`import { FlowNodeCard, FlowNodeToolbar } from '@abc-design/flow'
 
 <FlowNodeCard
   tone="${tone}"
@@ -266,7 +265,7 @@ export const FlowNodeAndToolbarDemoSection: React.FC = () => {
             <KnobSwitch label="visible" checked={toolbarVisible} onChange={setToolbarVisible} />
           </>
         }
-        code={`import { FlowNodeToolbar } from '@abc-design/react'
+        code={`import { FlowNodeToolbar } from '@abc-design/flow'
 
 <FlowNodeToolbar
   orientation="${toolbarOrientation}"

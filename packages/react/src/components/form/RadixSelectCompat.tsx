@@ -177,7 +177,7 @@ export const SelectContent = React.forwardRef<HTMLDivElement, SelectContentProps
   ({ className, children, style: propStyle, ...props }, ref) => {
     const ctx = useContext(RadixSelectContext)
     const contentRef = useRef<HTMLDivElement | null>(null)
-    const { style: floatStyle, portalContainer } = useFloatingPosition({
+    const { style: floatStyle, portalContainer, portalTheme } = useFloatingPosition({
       open: Boolean(ctx?.open),
       triggerRef: ctx?.triggerRef as React.RefObject<HTMLElement | null>,
       floatingRef: contentRef,
@@ -213,9 +213,13 @@ export const SelectContent = React.forwardRef<HTMLDivElement, SelectContentProps
         }}
         role="listbox"
         data-slot="radix-select-content"
+        data-abc-theme={portalTheme}
+        data-playground-theme={portalTheme}
         data-state={ctx.open ? 'open' : 'closed'}
         style={ctx.open ? { ...floatStyle, ...propStyle, pointerEvents: 'auto' } : undefined}
         className={cn(
+          portalTheme === 'dark' && 'dark',
+          portalTheme === 'light' && 'light',
           !ctx.open && 'hidden',
           'z-[1400] max-h-96 min-w-[8rem] overflow-auto rounded-xl border border-[var(--abc-border)] bg-[var(--abc-bg-elevated,var(--abc-bg-surface))] p-1 text-[var(--abc-fg)] shadow-xl backdrop-blur-md pointer-events-auto',
           className

@@ -50,6 +50,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       dropdownClassName,
       popoverClassName,
       matchWidth = true,
+      placement = 'bottomLeft',
       hideChevron = false,
       container: containerProp,
       'aria-label': ariaLabel,
@@ -147,12 +148,12 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     const isClearable = Boolean(allowClear ?? clearable)
     const isInvalid = Boolean(invalid || error)
 
-    const { style, actualSide, portalContainer } = useFloatingPosition({
+    const { style, actualSide, portalContainer, portalTheme } = useFloatingPosition({
       open: isMounted,
       triggerRef,
       fallbackTriggerRef: rootRef,
       floatingRef: listboxRef,
-      placement: 'bottomLeft',
+      placement,
       offset: 4,
       matchWidth,
       rightAnchorOnOverflow: true,
@@ -389,7 +390,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         className={cn(
           'relative min-w-0',
           size === 'ghost'
-            ? 'inline-flex w-auto'
+            ? cn('inline-flex w-auto', effectiveWrapperClass)
             : effectiveWrapperClass
               ? effectiveWrapperClass
               : hasExplicitInlineWidth
@@ -591,12 +592,16 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
               role="listbox"
               data-slot="select-popover"
               data-abc-floating=""
+              data-abc-theme={portalTheme}
+              data-playground-theme={portalTheme}
               data-motion={resolvedMotion}
               data-placement={actualSide}
               aria-multiselectable={multiple || undefined}
               onMouseDown={(e) => e.stopPropagation()}
               style={{ ...style, pointerEvents: 'auto' }}
               className={cn(
+                portalTheme === 'dark' && 'dark',
+                portalTheme === 'light' && 'light',
                 'pointer-events-auto z-[1500] max-w-[min(480px,calc(100vw-16px))] overflow-hidden rounded-[var(--abc-radius-lg)] border border-[var(--abc-border)] bg-[var(--abc-bg-elevated)] shadow-[var(--abc-shadow-popover)]',
                 matchWidth ? 'min-w-full' : 'min-w-[140px]',
                 isVisible ? 'abc-animate-popover-in' : 'abc-animate-popover-out',

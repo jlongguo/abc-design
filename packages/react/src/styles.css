@@ -3,3 +3,4 @@
 
 @source "./**/*.{ts,tsx}";
 @source "../../charts/src/**/*.{ts,tsx}";
+@source "../../flow/src/**/*.{ts,tsx}";
