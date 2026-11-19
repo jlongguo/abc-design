@@ -121,7 +121,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   const isSvg = isInlineSvgMarkup(trimmed)
 
   return (
-    <div data-motion={resolvedMotion} className="w-full">
+    <div data-slot="image-upload" data-motion={resolvedMotion} className="w-full">
       {label && (
         <label
           htmlFor={inputId}

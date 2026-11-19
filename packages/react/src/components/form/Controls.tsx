@@ -122,7 +122,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
           />
           <span
             className={cn(
-              'flex items-center justify-center rounded-[var(--abc-radius-xs)] border abc-motion-control',
+              'flex items-center justify-center rounded-[var(--abc-radius-xs)] border transition-colors duration-[var(--abc-motion-fast,140ms)]',
               CHECKBOX_BOX_SIZE[resolvedSize],
               'peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--abc-ring)]',
               isChecked || indeterminate
@@ -251,7 +251,7 @@ export const Switch: React.FC<SwitchProps> = ({
         if (!isDisabled) setIsOn(!isOn)
       }}
       className={cn(
-        'relative inline-flex shrink-0 items-center rounded-full border border-transparent transition-colors duration-[var(--abc-motion-base,220ms)] cursor-pointer select-none abc-motion-control',
+        'relative inline-flex shrink-0 items-center rounded-full border border-transparent transition-colors duration-[var(--abc-motion-base,220ms)] cursor-pointer select-none',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)]',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         SWITCH_TRACK_CLASS[resolvedSize],
@@ -380,6 +380,7 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
     return (
       <div
         role="radiogroup"
+        data-slot="radio-group"
         data-motion={resolvedMotion}
         className={cn(
           'inline-flex items-center rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-muted)]',
@@ -399,7 +400,7 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
               disabled={isDisabled}
               onClick={() => setCurrent(opt.value)}
               className={cn(
-                'rounded-[var(--abc-radius-sm)] font-medium cursor-pointer select-none abc-motion-control',
+                'rounded-[var(--abc-radius-sm)] font-medium transition-colors duration-[var(--abc-motion-fast,140ms)] cursor-pointer select-none',
                 SEGMENTED_ITEM_CLASS[resolvedSize],
                 active
                   ? 'bg-[var(--abc-bg-surface)] text-[var(--abc-primary)] shadow-2xs'
@@ -418,6 +419,7 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
   return (
     <div
       role="radiogroup"
+      data-slot="radio-group"
       data-motion={resolvedMotion}
       className={cn('inline-flex flex-wrap items-center gap-4', className)}
     >
@@ -442,7 +444,7 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
             />
             <span
               className={cn(
-                'flex items-center justify-center rounded-full border abc-motion-control',
+                'flex items-center justify-center rounded-full border transition-colors duration-[var(--abc-motion-fast,140ms)]',
                 RADIO_CIRCLE_CLASS[resolvedSize],
                 active
                   ? 'border-[var(--abc-primary)]'
@@ -504,7 +506,7 @@ export const CheckableTag = React.forwardRef<HTMLInputElement, CheckableTagProps
         checked
           ? 'border-[var(--abc-primary)]/40 bg-[var(--abc-primary-soft)] text-[var(--abc-primary)] shadow-2xs'
           : 'border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] hover:bg-[var(--abc-bg-subtle)]',
-        disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer active:scale-[0.98]',
+        disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
         labelClassName,
         className
       )}

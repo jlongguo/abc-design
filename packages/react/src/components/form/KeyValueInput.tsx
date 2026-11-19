@@ -423,6 +423,7 @@ export const KeyValueInput: React.FC<KeyValueInputProps> = ({
               type="button"
               variant="secondary"
               size="xs"
+              pressScale={false}
               disabled={disabled}
               onClick={cancelBulkChanges}
             >
@@ -433,6 +434,7 @@ export const KeyValueInput: React.FC<KeyValueInputProps> = ({
                 type="button"
                 variant="primary"
                 size="xs"
+                pressScale={false}
                 disabled={disabled}
                 onClick={applyBulkChanges}
               >
@@ -530,6 +532,7 @@ export const KeyValueInput: React.FC<KeyValueInputProps> = ({
                         variant="ghost"
                         size="xs"
                         iconOnly
+                        pressScale={false}
                         disabled={disabled}
                         aria-label={labels.removeItemLabel(idx)}
                         title={labels.removeItemTitle}
@@ -551,6 +554,7 @@ export const KeyValueInput: React.FC<KeyValueInputProps> = ({
                 type="button"
                 variant="secondary"
                 size="xs"
+                pressScale={false}
                 disabled={!canAdd}
                 icon={<Plus className="h-3.5 w-3.5" />}
                 onClick={addEntry}

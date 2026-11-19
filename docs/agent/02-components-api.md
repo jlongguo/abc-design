@@ -13,7 +13,7 @@
 - `Button`:
   - `variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'warning' | 'ghost' | 'text' | 'default' | 'destructive' | 'link'`
   - `size?: 'xs' | 'sm' | 'md' | 'lg' | 'default' | 'icon' | 'icon-sm'`（纯图标按钮可直接传 `size="icon"` / `size="icon-sm"` 或 `iconOnly` + `aria-label`，不要寻找不存在的 `IconButton` 或 `ButtonGroup`）
-  - `loading?: boolean`、`loadingText?: ReactNode`、`block?: boolean`、`disabled?: boolean`、`motion?: AbcMotionPreset`、`asChild?: boolean`
+  - `loading?: boolean`、`loadingText?: ReactNode`、`block?: boolean`、`disabled?: boolean`、`motion?: AbcMotionPreset`、`asChild?: boolean`、`pressScale?: boolean`（默认 `true`，表单输入内嵌按钮与微小图标按钮可设为 `false` 禁用按压缩放防点击漂移）
   - `leftIcon?: ReactNode`、`rightIcon?: ReactNode`、`icon?: ReactNode`（`leftIcon` 兼容别名）
 
 ### `Badge` / `StatusTag` / `Tag` / `StatusBadge`

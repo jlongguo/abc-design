@@ -450,7 +450,7 @@ export const Cascader: React.FC<CascaderProps> = ({
   const hiddenTagCount = multiple ? Math.max(0, selectedPaths.length - maxTagCount) : 0
 
   return (
-    <div className={cn('w-full', className)}>
+    <div data-slot="cascader" className={cn('w-full', className)}>
       {label ? (
         <label
           htmlFor={triggerId}

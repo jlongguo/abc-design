@@ -382,7 +382,12 @@ export const Transfer: React.FC<TransferProps> = ({
   }
 
   return (
-    <div id={baseId} className={cn('w-full', className)} aria-describedby={error || helperText ? feedbackId : undefined}>
+    <div
+      id={baseId}
+      data-slot="transfer"
+      className={cn('w-full', className)}
+      aria-describedby={error || helperText ? feedbackId : undefined}
+    >
       {label ? (
         <div className="mb-1.5 text-xs font-medium text-[var(--abc-fg-secondary)]">
           {label}
@@ -416,6 +421,7 @@ export const Transfer: React.FC<TransferProps> = ({
             type="button"
             size="sm"
             variant="secondary"
+            pressScale={false}
             aria-label="移至右侧已选列表"
             disabled={disabled || moveRightKeys.length === 0}
             onClick={moveToRight}
@@ -427,6 +433,7 @@ export const Transfer: React.FC<TransferProps> = ({
               type="button"
               size="sm"
               variant="secondary"
+              pressScale={false}
               aria-label="移回左侧待选列表"
               disabled={disabled || moveLeftKeys.length === 0}
               onClick={() => moveToLeft()}

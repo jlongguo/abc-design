@@ -123,6 +123,7 @@ export const RuleGroupNode: React.FC<RuleGroupNodeProps> = ({
             type="button"
             variant="secondary"
             size="xs"
+            pressScale={false}
             disabled={groupDisabled || fields.length === 0}
             icon={<Plus className="h-3.5 w-3.5" aria-hidden="true" />}
             onClick={handleAddCondition}
@@ -135,6 +136,7 @@ export const RuleGroupNode: React.FC<RuleGroupNodeProps> = ({
               type="button"
               variant="secondary"
               size="xs"
+              pressScale={false}
               disabled={groupDisabled || fields.length === 0}
               icon={<FolderPlus className="h-3.5 w-3.5" aria-hidden="true" />}
               onClick={handleAddSubGroup}
@@ -157,6 +159,7 @@ export const RuleGroupNode: React.FC<RuleGroupNodeProps> = ({
                 variant="ghost"
                 size="xs"
                 iconOnly
+                pressScale={false}
                 disabled={disabled}
                 aria-label="删除条件组"
                 title="删除条件组"

@@ -50,7 +50,7 @@ export function PageHeader({
           ) : null}
         </div>
         {resolvedAction ? (
-          <div className="flex shrink-0 flex-wrap items-center gap-2">{resolvedAction}</div>
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{resolvedAction}</div>
         ) : null}
       </div>
     </header>
@@ -112,7 +112,9 @@ export function PageSection({
               <p className="mt-1 text-sm text-[var(--abc-fg-muted)]">{description}</p>
             ) : null}
           </div>
-          {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
+          {action ? (
+            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{action}</div>
+          ) : null}
         </div>
       )}
       <div className={cn(hasHeader && !noPadding && 'mt-5', contentClassName)}>{children}</div>

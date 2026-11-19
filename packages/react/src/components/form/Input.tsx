@@ -179,6 +179,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
 
     const controlBox = (
       <div
+        data-slot="input-wrapper"
         className={cn(
           'relative flex items-center',
           !hasExplicitWidth && 'w-full',
@@ -359,6 +360,7 @@ export const InputNumber: React.FC<InputNumberProps> = ({
 
   return (
     <div
+      data-slot="input-number"
       data-motion={resolvedMotion}
       className={cn(
         'inline-flex w-full items-center overflow-hidden',
@@ -374,7 +376,7 @@ export const InputNumber: React.FC<InputNumberProps> = ({
         aria-label="减少数值"
         disabled={disabled || (min !== undefined && (current ?? 0) <= min)}
         onClick={() => commit((current ?? 0) - step)}
-        className="flex h-full w-7 shrink-0 items-center justify-center border-r border-[var(--abc-border)] text-[var(--abc-fg-muted)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)] disabled:opacity-40 cursor-pointer abc-motion-control"
+        className="flex h-full w-7 shrink-0 items-center justify-center border-r border-[var(--abc-border)] text-[var(--abc-fg-muted)] transition-colors duration-[var(--abc-motion-fast,140ms)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)] disabled:opacity-40 cursor-pointer"
       >
         <Minus className="h-3 w-3" />
       </button>
@@ -398,7 +400,7 @@ export const InputNumber: React.FC<InputNumberProps> = ({
         aria-label="增加数值"
         disabled={disabled || (max !== undefined && (current ?? 0) >= max)}
         onClick={() => commit((current ?? 0) + step)}
-        className="flex h-full w-7 shrink-0 items-center justify-center border-l border-[var(--abc-border)] text-[var(--abc-fg-muted)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)] disabled:opacity-40 cursor-pointer abc-motion-control"
+        className="flex h-full w-7 shrink-0 items-center justify-center border-l border-[var(--abc-border)] text-[var(--abc-fg-muted)] transition-colors duration-[var(--abc-motion-fast,140ms)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)] disabled:opacity-40 cursor-pointer"
       >
         <Plus className="h-3 w-3" />
       </button>

@@ -36,6 +36,7 @@ export const ButtonsAndSegmentedPage: React.FC = () => {
   const [disabled, setDisabled] = useState(false)
   const [block, setBlock] = useState(false)
   const [iconOnly, setIconOnly] = useState(false)
+  const [pressScale, setPressScale] = useState(true)
   const [hasLeftIcon, setHasLeftIcon] = useState(true)
   const [hasRightIcon, setHasRightIcon] = useState(false)
 
@@ -89,6 +90,7 @@ export const ButtonsAndSegmentedPage: React.FC = () => {
               <KnobSwitch label="disabled" checked={disabled} onChange={setDisabled} />
               <KnobSwitch label="block" checked={block} onChange={setBlock} />
               <KnobSwitch label="iconOnly" checked={iconOnly} onChange={setIconOnly} />
+              <KnobSwitch label="pressScale" checked={pressScale} onChange={setPressScale} />
               <KnobSwitch label="leftIcon" checked={hasLeftIcon} onChange={setHasLeftIcon} />
               <KnobSwitch label="rightIcon" checked={hasRightIcon} onChange={setHasRightIcon} />
             </>
@@ -102,6 +104,7 @@ export const ButtonsAndSegmentedPage: React.FC = () => {
             setDisabled(false)
             setBlock(false)
             setIconOnly(false)
+            setPressScale(true)
             setHasLeftIcon(true)
             setHasRightIcon(false)
           }}
@@ -111,17 +114,18 @@ import { Download, ArrowRight } from 'lucide-react'
 <Button
   variant="${variant}"
   size="${btnSize}"
-  motion="${btnMotion}"${loading ? `\n  loading\n  loadingText="${loadingText}"` : ''}${disabled ? '\n  disabled' : ''}${block ? '\n  block' : ''}${iconOnly ? '\n  iconOnly\n  aria-label="导出财务报表"' : ''}${!iconOnly && hasLeftIcon ? '\n  leftIcon={<Download className="h-3.5 w-3.5" />}' : ''}${!iconOnly && hasRightIcon ? '\n  rightIcon={<ArrowRight className="h-3.5 w-3.5" />}' : ''}
+  motion="${btnMotion}"${!pressScale ? '\n  pressScale={false}' : ''}${loading ? `\n  loading\n  loadingText="${loadingText}"` : ''}${disabled ? '\n  disabled' : ''}${block ? '\n  block' : ''}${iconOnly ? '\n  iconOnly\n  aria-label="导出财务报表"' : ''}${!iconOnly && hasLeftIcon ? '\n  leftIcon={<Download className="h-3.5 w-3.5" />}' : ''}${!iconOnly && hasRightIcon ? '\n  rightIcon={<ArrowRight className="h-3.5 w-3.5" />}' : ''}
 >
   ${iconOnly ? '<Download className="h-3.5 w-3.5" />' : '导出财务对账报表'}
 </Button>
 
 {/* buttonVariants 可直接用于原生 <a> 链接 */}
-<a href="#top" className={buttonVariants({ variant: '${variant}', size: '${btnSize}' })}>原生链接复用样式</a>`}
+<a href="#top" className={buttonVariants({ variant: '${variant}', size: '${btnSize}'${!pressScale ? ', pressScale: false' : ''} })}>原生链接复用样式</a>`}
           apiRows={[
             { prop: 'variant', type: "'primary' | 'secondary' | 'outline' | 'danger' | 'warning' | 'success' | 'ghost' | 'text' | 'link'", defaultValue: "'primary'", description: '9 种核心视觉语义变体（并兼容 default / destructive）' },
             { prop: 'size', type: "'xs' | 'sm' | 'md' | 'lg' | 'default' | 'icon' | 'icon-sm'", defaultValue: "'sm'", description: '绑定 --abc-control-h-*，支持继承全局 componentSize' },
             { prop: 'motion', type: "'none' | 'subtle' | 'smooth' | 'spring'", defaultValue: "'smooth'", description: '按压微缩与过渡阻尼动效预设' },
+            { prop: 'pressScale', type: 'boolean', defaultValue: 'true', description: '是否启用按压缩放微交互（表单输入内嵌按钮与微小图标按钮建议设为 false 防止点击热区漂移）' },
             { prop: 'loading / loadingText', type: 'boolean / ReactNode', defaultValue: 'false', description: '加载态自动渲染转圈图标并禁用交互，可选替换展示文案' },
             { prop: 'disabled / block / iconOnly', type: 'boolean', defaultValue: 'false', description: '禁用状态、宽度 100% 撑满、正方形纯图标按钮（需配合 aria-label）' },
             { prop: 'leftIcon / rightIcon', type: 'ReactNode', description: '按钮前后置图标插槽（iconOnly 模式下忽略）' },
@@ -133,6 +137,7 @@ import { Download, ArrowRight } from 'lucide-react'
                 variant={variant}
                 size={btnSize}
                 motion={btnMotion}
+                pressScale={pressScale}
                 loading={loading}
                 loadingText={loadingText || undefined}
                 disabled={disabled}
@@ -153,7 +158,7 @@ import { Download, ArrowRight } from 'lucide-react'
                     e.preventDefault()
                     abcToast.success('触发 buttonVariants 复用链接')
                   }}
-                  className={buttonVariants({ variant: 'outline', size: btnSize })}
+                  className={buttonVariants({ variant: 'outline', size: btnSize, pressScale })}
                 >
                   buttonVariants 链接复用
                 </a>

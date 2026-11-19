@@ -182,6 +182,7 @@ export const ProIconFieldControl: React.FC<ProIconFieldControlProps> = ({
           type="button"
           variant="secondary"
           size="sm"
+          pressScale={false}
           disabled={disabled}
           onClick={() => setPickerOpen(true)}
         >

@@ -309,6 +309,7 @@ export function ProFormList<T = Record<string, any>>({
                       variant="ghost"
                       size="xs"
                       iconOnly
+                      pressScale={false}
                       disabled={!helpers.canMoveUp}
                       aria-label={`上移第 ${index + 1} 项`}
                       title="上移"
@@ -321,6 +322,7 @@ export function ProFormList<T = Record<string, any>>({
                       variant="ghost"
                       size="xs"
                       iconOnly
+                      pressScale={false}
                       disabled={!helpers.canMoveDown}
                       aria-label={`下移第 ${index + 1} 项`}
                       title="下移"
@@ -336,6 +338,7 @@ export function ProFormList<T = Record<string, any>>({
                     variant="ghost"
                     size="xs"
                     iconOnly
+                    pressScale={false}
                     disabled={!helpers.canAdd}
                     aria-label={`复制第 ${index + 1} 项`}
                     title="复制当前行"
@@ -349,6 +352,7 @@ export function ProFormList<T = Record<string, any>>({
                   variant="ghost"
                   size="xs"
                   iconOnly
+                  pressScale={false}
                   disabled={!helpers.canRemove}
                   aria-label={`删除第 ${index + 1} 项`}
                   title="删除"
@@ -418,6 +422,7 @@ export function ProFormList<T = Record<string, any>>({
           type="button"
           variant="secondary"
           size="sm"
+          pressScale={false}
           disabled={!canAdd}
           icon={<Plus className="h-3.5 w-3.5" />}
           onClick={handleAdd}

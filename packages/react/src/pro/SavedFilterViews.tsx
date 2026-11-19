@@ -391,6 +391,7 @@ export function SavedFilterViews<TFilter = any>({
                 type="button"
                 variant="primary"
                 size="xs"
+                pressScale={false}
                 disabled={!draftName.trim()}
                 icon={<Check className="h-3 w-3" aria-hidden="true" />}
                 onClick={confirmSaveAs}
@@ -401,6 +402,7 @@ export function SavedFilterViews<TFilter = any>({
                 type="button"
                 variant="ghost"
                 size="xs"
+                pressScale={false}
                 onClick={cancelSaveAs}
               >
                 取消

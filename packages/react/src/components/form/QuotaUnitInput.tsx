@@ -244,7 +244,7 @@ function QuotaUnitControl<U extends string>({
     [externalDescribedBy, !hideHint ? hintId : undefined].filter(Boolean).join(' ') || undefined
 
   return (
-    <div className={cn('space-y-1', className)}>
+    <div data-slot="quota-unit-input" className={cn('space-y-1', className)}>
       <div
         className={cn(
           'flex items-stretch rounded-[var(--abc-radius-md,8px)] border border-[var(--abc-border,#e2e8f0)] bg-[var(--abc-bg-surface,#ffffff)] shadow-2xs transition-all duration-[var(--abc-motion-fast,140ms)] hover:border-[var(--abc-border-strong,#cbd5e1)] focus-within:border-[var(--abc-primary,#2563eb)] focus-within:ring-2 focus-within:ring-[var(--abc-ring,rgba(37,99,235,0.2))] overflow-hidden w-full',

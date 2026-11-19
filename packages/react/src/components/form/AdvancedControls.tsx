@@ -186,7 +186,7 @@ export const Tree: React.FC<TreeProps> = ({
                       type="button"
                       aria-label={isExpanded ? `收起 ${node.title}` : `展开 ${node.title}`}
                       onClick={() => toggleExpand(node.key)}
-                      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-xs text-[var(--abc-fg-muted)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer abc-motion-control"
+                      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-xs text-[var(--abc-fg-muted)] transition-colors duration-[var(--abc-motion-fast,140ms)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)] cursor-pointer"
                     >
                       <ChevronRight
                         data-open={isExpanded ? 'true' : 'false'}
@@ -237,7 +237,7 @@ export const Tree: React.FC<TreeProps> = ({
   }
 
   return (
-    <div data-motion={resolvedMotion} className={cn('space-y-2', className)}>
+    <div data-slot="tree" data-motion={resolvedMotion} className={cn('space-y-2', className)}>
       {(searchable || showToolbar) && (
         <div className="flex flex-wrap items-center gap-2">
           {searchable && (

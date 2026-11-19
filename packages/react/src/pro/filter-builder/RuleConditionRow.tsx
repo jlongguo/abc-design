@@ -321,6 +321,7 @@ export const RuleConditionRow: React.FC<RuleConditionRowProps> = ({
           variant="ghost"
           size="xs"
           iconOnly
+          pressScale={false}
           disabled={disabled}
           aria-label="删除条件"
           title="删除条件"

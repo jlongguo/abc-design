@@ -42,6 +42,8 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   block?: boolean
   /** 是否将样式透传给子元素 */
   asChild?: boolean
+  /** 是否启用按压缩放微交互（默认 true；表单输入内嵌按钮与微小图标按钮建议设为 false 避免点击热区漂移） */
+  pressScale?: boolean
 }
 
 const VARIANT_CLASSES: Record<string, string> = {
@@ -87,15 +89,20 @@ const ICON_ONLY_SIZE_CLASSES: Record<string, string> = {
   lg: 'h-[var(--abc-control-h-lg)] w-[var(--abc-control-h-lg)] p-0',
 }
 
+const BUTTON_FLAT_TRANSITION_CLASS =
+  'transition-[color,background-color,border-color,box-shadow,opacity] duration-[var(--abc-motion-fast,140ms)] ease-out'
+
 export function buttonVariants({
   variant = 'primary',
   size = 'sm',
   iconOnly = false,
+  pressScale = false,
   className,
 }: {
   variant?: ButtonVariant
   size?: ButtonSize
   iconOnly?: boolean
+  pressScale?: boolean
   className?: string
 } = {}): string {
   const vClass = VARIANT_CLASSES[variant] || VARIANT_CLASSES.primary
@@ -103,7 +110,8 @@ export function buttonVariants({
     ? ICON_ONLY_SIZE_CLASSES[size] || ICON_ONLY_SIZE_CLASSES.sm
     : SIZE_CLASSES[size] || SIZE_CLASSES.sm
   return cn(
-    'inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md)] font-medium select-none shrink-0 cursor-pointer abc-motion-control',
+    'inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md)] font-medium select-none shrink-0 cursor-pointer',
+    pressScale ? 'abc-motion-control' : BUTTON_FLAT_TRANSITION_CLASS,
     'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-primary)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--abc-bg-surface)]',
     'disabled:opacity-45 disabled:cursor-not-allowed',
     vClass,
@@ -132,6 +140,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       iconOnly = false,
       block = false,
       asChild = false,
+      pressScale = false,
       type,
       children,
       ...rest
@@ -147,7 +156,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const activeIcon = leftIcon ?? icon
 
     const computedClass = cn(
-      'inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md)] font-medium select-none shrink-0 cursor-pointer abc-motion-control',
+      'inline-flex items-center justify-center gap-1.5 rounded-[var(--abc-radius-md)] font-medium select-none shrink-0 cursor-pointer',
+      pressScale ? 'abc-motion-control' : BUTTON_FLAT_TRANSITION_CLASS,
       'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-primary)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--abc-bg-surface)]',
       'disabled:opacity-45 disabled:cursor-not-allowed',
       VARIANT_CLASSES[variant] || VARIANT_CLASSES.primary,

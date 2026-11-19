@@ -98,6 +98,116 @@
     }
   }
 
+  /* 所有输入与表单录入类控件（含前后置插槽及内嵌微小按钮）统一禁用 :active 缩放，避免小热区点击漂移漏点 */
+  :is(
+    input,
+    textarea,
+    select,
+    [data-abc-no-press-scale],
+    [data-slot="input-wrapper"],
+    [data-slot="input-number"],
+    [data-slot="tag-input"],
+    [data-slot="key-value-input"],
+    [data-slot="quota-unit-input"],
+    [data-slot="select-wrapper"],
+    [data-slot="select-popover"],
+    [data-slot="tree-select-wrapper"],
+    [data-slot="tree-select-popover"],
+    [data-slot="radix-select-trigger"],
+    [data-slot="radix-select-content"],
+    [data-slot="cascader"],
+    [data-datepicker-trigger],
+    [data-daterangepicker-trigger],
+    [data-slot="icon-picker-trigger"],
+    [data-slot="transfer"],
+    [data-slot="file-upload"],
+    [data-slot="image-upload"],
+    [data-slot="tree"],
+    [data-slot="template-variable-input"],
+    [data-slot="checkbox"],
+    [data-slot="switch"],
+    [data-slot="radio-group"],
+    [data-slot="checkable-tag"],
+    [data-slot="check-card"],
+    [data-slot="pro-form-list"],
+    [data-slot="rule-condition-row"],
+    [data-slot="rule-group-node"]
+  ) {
+    --abc-press-scale: 1;
+  }
+
+  :is(
+    input,
+    textarea,
+    select,
+    [data-abc-no-press-scale],
+    [data-slot="input-wrapper"],
+    [data-slot="input-number"],
+    [data-slot="tag-input"],
+    [data-slot="key-value-input"],
+    [data-slot="quota-unit-input"],
+    [data-slot="select-wrapper"],
+    [data-slot="select-popover"],
+    [data-slot="tree-select-wrapper"],
+    [data-slot="tree-select-popover"],
+    [data-slot="radix-select-trigger"],
+    [data-slot="radix-select-content"],
+    [data-slot="cascader"],
+    [data-datepicker-trigger],
+    [data-daterangepicker-trigger],
+    [data-slot="icon-picker-trigger"],
+    [data-slot="transfer"],
+    [data-slot="file-upload"],
+    [data-slot="image-upload"],
+    [data-slot="tree"],
+    [data-slot="template-variable-input"],
+    [data-slot="checkbox"],
+    [data-slot="switch"],
+    [data-slot="radio-group"],
+    [data-slot="checkable-tag"],
+    [data-slot="check-card"],
+    [data-slot="pro-form-list"],
+    [data-slot="rule-condition-row"],
+    [data-slot="rule-group-node"]
+  ) .abc-motion-control,
+  .abc-motion-control:is(
+    input,
+    textarea,
+    select,
+    [data-abc-no-press-scale],
+    [data-slot="input-wrapper"],
+    [data-slot="input-number"],
+    [data-slot="tag-input"],
+    [data-slot="key-value-input"],
+    [data-slot="quota-unit-input"],
+    [data-slot="select-wrapper"],
+    [data-slot="select-popover"],
+    [data-slot="tree-select-wrapper"],
+    [data-slot="tree-select-popover"],
+    [data-slot="radix-select-trigger"],
+    [data-slot="radix-select-content"],
+    [data-slot="cascader"],
+    [data-datepicker-trigger],
+    [data-daterangepicker-trigger],
+    [data-slot="icon-picker-trigger"],
+    [data-slot="transfer"],
+    [data-slot="file-upload"],
+    [data-slot="image-upload"],
+    [data-slot="tree"],
+    [data-slot="template-variable-input"],
+    [data-slot="checkbox"],
+    [data-slot="switch"],
+    [data-slot="radio-group"],
+    [data-slot="checkable-tag"],
+    [data-slot="check-card"],
+    [data-slot="pro-form-list"],
+    [data-slot="rule-condition-row"],
+    [data-slot="rule-group-node"]
+  ) {
+    --abc-press-scale: 1;
+    transition-property: color, background-color, border-color, box-shadow, opacity;
+  }
+
   .abc-motion-surface {
     transition-property: border-color, background-color, box-shadow, translate, transform, scale;
     transition-duration: var(--abc-motion-base, 220ms);

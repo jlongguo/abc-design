@@ -235,7 +235,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       .join(' · ')
 
   return (
-    <div className={cn('w-full', className)}>
+    <div data-slot="file-upload" className={cn('w-full', className)}>
       {label ? (
         <label
           htmlFor={inputId}

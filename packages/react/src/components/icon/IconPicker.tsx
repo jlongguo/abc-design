@@ -305,6 +305,7 @@ export const IconPicker: React.FC<IconPickerProps> = ({
       <div
         role="button"
         tabIndex={disabled ? -1 : 0}
+        data-slot="icon-picker-trigger"
         data-motion={resolvedMotion}
         onClick={() => !disabled && setInnerOpen(true)}
         onKeyDown={(e) => {
@@ -314,7 +315,7 @@ export const IconPicker: React.FC<IconPickerProps> = ({
           }
         }}
         className={cn(
-          'flex w-full items-center justify-between gap-2 px-2.5 cursor-pointer select-none abc-motion-control',
+          'flex w-full items-center justify-between gap-2 px-2.5 cursor-pointer select-none',
           TRIGGER_SIZE_CLASS[resolvedSize],
           baseFieldControlClass,
           disabled && 'opacity-65 cursor-not-allowed bg-[var(--abc-bg-muted)]',

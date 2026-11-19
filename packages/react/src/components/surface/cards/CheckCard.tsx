@@ -168,11 +168,12 @@ export const CheckCard: React.FC<CheckCardProps> = ({
 
   return (
     <label
+      data-slot="check-card"
       data-motion={resolvedMotion}
       data-size={resolvedSize}
       data-checked={isChecked ? 'true' : 'false'}
       className={cn(
-        '@container abc-motion-control group relative flex items-start gap-3 rounded-[var(--abc-radius-lg)] border transition-colors select-none',
+        '@container group relative flex items-start gap-3 rounded-[var(--abc-radius-lg)] border transition-colors select-none',
         SURFACE_PAD[resolvedSize],
         isChecked
           ? 'border-[var(--abc-primary)] bg-[var(--abc-primary-soft)]/35 ring-2 ring-[var(--abc-primary)]/20'

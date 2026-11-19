@@ -16,9 +16,9 @@ describe('Playground 7 大分类重构、页内单卡聚焦/分段展示与组�
     window.location.hash = ''
   })
 
-  it('1. 权威目录注册表完整收敛为 7 大分类 × 36 个路由，且全部 241 个组件符号精确搜索 100% 排名第 1', () => {
+  it('1. 权威目录注册表完整收敛为 7 大分类 × 37 个路由，且全部组件符号精确搜索 100% 排名第 1', () => {
     expect(PLAYGROUND_CATEGORIES).toHaveLength(7)
-    expect(ALL_PLAYGROUND_ROUTES).toHaveLength(36)
+    expect(ALL_PLAYGROUND_ROUTES).toHaveLength(37)
 
     const symbols = new Set(ALL_PLAYGROUND_COMPONENT_HITS.map((h) => h.symbol))
     for (const requiredSym of [
@@ -38,6 +38,11 @@ describe('Playground 7 大分类重构、页内单卡聚焦/分段展示与组�
       'CommandPalette',
       'MultiTabBar',
       'ThemeCustomizer',
+      'FloatingIconRail',
+      'FlowNodeCard',
+      'FlowNodeToolbar',
+      'TemplateVariableInput',
+      'FlowSectionFrame',
     ]) {
       expect(symbols.has(requiredSym)).toBe(true)
     }

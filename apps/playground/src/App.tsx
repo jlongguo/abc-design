@@ -40,6 +40,7 @@ import { TypographyAndCodePage } from './pages/foundation/TypographyAndCodePage'
 import { CrossFilterDashboardPage } from './pages/linkage/CrossFilterDashboardPage'
 import { DynamicFormOrchestrationPage } from './pages/linkage/DynamicFormOrchestrationPage'
 import { EditableTableLinkagePage } from './pages/linkage/EditableTableLinkagePage'
+import { FlowPrimitivesPage } from './pages/linkage/flow/FlowPrimitivesPage'
 import { MasterDetailWorkbenchPage } from './pages/linkage/MasterDetailWorkbenchPage'
 import { QueryBuilderAndViewsPage } from './pages/linkage/QueryBuilderAndViewsPage'
 import { WizardDiffAndBatchPage } from './pages/linkage/WizardDiffAndBatchPage'
@@ -282,6 +283,8 @@ export const App: React.FC = () => {
         return <CrossFilterDashboardPage />
       case '/linkage/wizard-batch':
         return <WizardDiffAndBatchPage />
+      case '/linkage/flow-primitives':
+        return <FlowPrimitivesPage />
       default:
         return (
           <OverviewPage
