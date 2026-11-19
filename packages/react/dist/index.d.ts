@@ -2221,7 +2221,8 @@ export declare function extractLeadingEmojiToken(text: string): {
 
 /**
  * 通用多文件拖拽上传与校验列表组件 (FileUpload)
- * 严格遵循原生按钮焦点触发、类型/大小/数量前置校验、上传进度展示与无障碍错误广播。
+ * 支持 dragger / button / card / compact 四种交互模式与 text / picture 双列表样式，
+ * 遵循原生按钮焦点触发、类型/大小/数量前置校验、上传进度展示、图片灯箱预览与失败重试。
  */
 export declare const FileUpload: default_2.FC<FileUploadProps>;
 
@@ -2236,6 +2237,8 @@ export declare interface FileUploadItem {
     error?: string;
 }
 
+export declare type FileUploadListType = 'text' | 'picture';
+
 export declare interface FileUploadProps {
     value?: FileUploadItem[];
     defaultValue?: FileUploadItem[];
@@ -2244,6 +2247,14 @@ export declare interface FileUploadProps {
     customUpload?: (file: File, onProgress?: (percent: number) => void) => Promise<string | {
         url: string;
     }>;
+    /** 交互展示模式：拖拽大面板 (dragger) / 按钮触发 (button) / 卡片网格 (card) / 紧凑胶囊条 (compact) */
+    variant?: FileUploadVariant;
+    /** 文件列表项视觉样式：纯文本列表 (text) 或图文缩略图列表 (picture) */
+    listType?: FileUploadListType;
+    /** button / compact 模式的触发按钮文案 */
+    buttonText?: default_2.ReactNode;
+    /** 点击图片/可预览项的回调（缺省时对带 url 的图片项自动打开内置灯箱预览） */
+    onPreview?: (file: FileUploadItem) => void;
     accept?: string;
     multiple?: boolean;
     maxCount?: number;
@@ -2260,6 +2271,8 @@ export declare interface FileUploadProps {
 }
 
 export declare type FileUploadStatus = 'uploading' | 'done' | 'error';
+
+export declare type FileUploadVariant = 'dragger' | 'button' | 'card' | 'compact';
 
 export declare const FILTER_HIGHLIGHT_SWATCHES: {
     color: string;
@@ -2584,7 +2597,7 @@ export declare interface ImagePreviewProps {
 
 /**
  * 零业务耦合图片/SVG 上传组件
- * 通过 AbcProvider.uploadAdapter 或 customUpload 注入上传逻辑，彻底剥离固定后端 API 耦合
+ * 支持 dropzone（拖拽大面板）、avatar（头像）、card（照片卡片）与 button（紧凑按钮）四种交互展示模式
  */
 export declare const ImageUpload: default_2.FC<ImageUploadProps>;
 
@@ -2593,6 +2606,12 @@ export declare interface ImageUploadProps {
     value?: string;
     /** 上传成功或清空后的回调 */
     onChange?: (nextUrl: string) => void;
+    /** 展示交互模式：拖拽面板 (dropzone) / 头像上传 (avatar) / 照片卡片 (card) / 紧凑按钮 (button) */
+    variant?: ImageUploadVariant;
+    /** 预览容器圆角形态（在 avatar / card 模式下尤为明显，avatar 模式默认 circle） */
+    shape?: ImageUploadShape;
+    /** button 模式的触发按钮文案 */
+    buttonText?: default_2.ReactNode;
     /** 可选内联表单标签 */
     label?: default_2.ReactNode;
     /** 底部辅助说明文案 */
@@ -2612,6 +2631,10 @@ export declare interface ImageUploadProps {
     placeholder?: string;
     className?: string;
 }
+
+export declare type ImageUploadShape = 'rounded' | 'circle';
+
+export declare type ImageUploadVariant = 'dropzone' | 'avatar' | 'card' | 'button';
 
 /**
  * 企业级文本输入框
@@ -3286,6 +3309,11 @@ export declare interface ParsedSelectOption {
     description?: string;
     group?: string;
 }
+
+/**
+ * 解析多图值（兼容数组、换行分隔或逗号分隔字符串，且完整保留 data:image/*;base64,... 等内含逗号的 DataURL）
+ */
+export declare function parseMultiImageValue(value: string | string[] | null | undefined): string[];
 
 export declare function parseNumericWidth(w?: number | string, fallback?: number): number;
 
@@ -4220,20 +4248,36 @@ export declare interface ProLogViewerProps {
 }
 
 /**
- * 零业务耦合多图上传控件：通过 customUpload 或 AbcProvider.uploadAdapter 完成上传，支持灯箱预览与移除
+ * 零业务耦合多图上传控件：通过 customUpload 或 AbcProvider.uploadAdapter 完成上传，
+ * 支持照片墙 / 图文列表 / 紧凑网格三态模式、拖拽上传、灯箱预览、调序与移除。
  */
 export declare const ProMultiImageUpload: default_2.FC<ProMultiImageUploadProps>;
 
 export declare interface ProMultiImageUploadProps {
-    /** 图片 URL 列表（兼容逗号分隔字符串或字符串数组） */
+    /** 图片 URL 列表（兼容逗号分隔字符串、DataURL 串或字符串数组） */
     value: string | string[];
     disabled?: boolean;
     maxCount?: number;
+    /** 单张图片大小上限（MB，默认 10） */
+    maxSizeMB?: number;
+    /** 允许的 MIME / 扩展名（默认 image/*,.svg） */
+    accept?: string;
+    /** 展示交互模式：照片墙 (picture-card) / 图文列表 (picture-list) / 紧凑缩略网格 (compact-grid) */
+    variant?: ProMultiImageUploadVariant;
+    /** 是否支持拖拽文件至上传区直接上传（默认 true） */
+    draggable?: boolean;
+    /** 是否开启图片前后调序按钮（默认 false） */
+    reorderable?: boolean;
+    /** 是否在首张图片左上角显示「封面」角标（默认 false） */
+    showCoverBadge?: boolean;
     customUpload?: (file: File) => Promise<{
         url: string;
     } | string | undefined>;
     onChange: (val: string) => void;
+    className?: string;
 }
+
+export declare type ProMultiImageUploadVariant = 'picture-card' | 'picture-list' | 'compact-grid';
 
 export declare interface ProPageGuide {
     /** 抽屉头部徽章文案（如 "工作流指南" / "Guide"） */

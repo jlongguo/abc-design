@@ -9,12 +9,18 @@ import {
   SliderVerify,
   StatusTag,
   abcToast,
+  type AbcSize,
   type FileUploadItem,
+  type FileUploadListType,
+  type FileUploadVariant,
+  type ImageUploadShape,
+  type ImageUploadVariant,
+  type ProMultiImageUploadVariant,
 } from '@abc-design/react'
 import { MarkdownEditor, type MarkdownEditorHandle } from '@abc-design/markdown'
 import { FileCode2 } from 'lucide-react'
 import { ComponentDocPreview } from '../../components/ComponentDocPreview'
-import { KnobSegmented, KnobSwitch, KnobText } from '../../components/PropKnobs'
+import { KnobSegmented, KnobSwitch } from '../../components/PropKnobs'
 
 const DEMO_SVG_A =
   'data:image/svg+xml;utf8,' +
@@ -37,24 +43,64 @@ const INITIAL_MARKDOWN = `## ABC Design 发版与安全核验说明
 - **命令插值**：点击上方按钮调用 \`ref.current?.insertText(...)\`
 `
 
+const IMAGE_VARIANT_OPTIONS: ReadonlyArray<{ label: string; value: ImageUploadVariant }> = [
+  { label: 'dropzone (拖拽)', value: 'dropzone' },
+  { label: 'avatar (头像)', value: 'avatar' },
+  { label: 'card (照片卡)', value: 'card' },
+  { label: 'button (按钮)', value: 'button' },
+]
+
+const MULTI_VARIANT_OPTIONS: ReadonlyArray<{ label: string; value: ProMultiImageUploadVariant }> = [
+  { label: 'picture-card', value: 'picture-card' },
+  { label: 'picture-list', value: 'picture-list' },
+  { label: 'compact-grid', value: 'compact-grid' },
+]
+
+const FILE_VARIANT_OPTIONS: ReadonlyArray<{ label: string; value: FileUploadVariant }> = [
+  { label: 'dragger (拖拽)', value: 'dragger' },
+  { label: 'button (按钮)', value: 'button' },
+  { label: 'card (卡片网格)', value: 'card' },
+  { label: 'compact (紧凑条)', value: 'compact' },
+]
+
 export const UploadsVerifyAndMarkdownPage: React.FC = () => {
-  // Card 1: ImageUpload & ProMultiImageUpload
+  // Card 1: ImageUpload & ProMultiImageUpload 多模式交互
+  const [imgVariant, setImgVariant] = useState<ImageUploadVariant>('dropzone')
+  const [imgShape, setImgShape] = useState<ImageUploadShape>('rounded')
+  const [imgSize, setImgSize] = useState<AbcSize>('sm')
+  const [multiVariant, setMultiVariant] = useState<ProMultiImageUploadVariant>('picture-card')
   const [multiMaxCount, setMultiMaxCount] = useState<number>(4)
+  const [multiReorderable, setMultiReorderable] = useState<boolean>(true)
+  const [showCoverBadge, setShowCoverBadge] = useState<boolean>(true)
   const [imgDisabled, setImgDisabled] = useState(false)
-  const [helperText, setHelperText] = useState('支持 JPG / PNG / WEBP / SVG，本地自动生成 DataURL 预览')
   const [singleImg, setSingleImg] = useState(DEMO_SVG_A)
+  const [avatarImg, setAvatarImg] = useState(DEMO_SVG_A)
+  const [cardImg, setCardImg] = useState(DEMO_SVG_B)
+  const [btnImg, setBtnImg] = useState(DEMO_SVG_A)
   const [multiImgs, setMultiImgs] = useState(`${DEMO_SVG_A},${DEMO_SVG_B}`)
 
-  // Card 2: FileUpload & SliderVerify
-  const [accept, setAccept] = useState<'.json,.pdf,.txt' | 'image/*'>('.json,.pdf,.txt')
+  // Card 2: FileUpload & SliderVerify 多模式交互
+  const [fileVariant, setFileVariant] = useState<FileUploadVariant>('dragger')
+  const [fileListType, setFileListType] = useState<FileUploadListType>('picture')
+  const [accept, setAccept] = useState<string>('.json,.pdf,.txt,image/*')
   const [maxSizeMB, setMaxSizeMB] = useState<number>(5)
-  const [fileMaxCount, setFileMaxCount] = useState<number>(2)
+  const [fileMaxCount, setFileMaxCount] = useState<number>(4)
+  const [simulateFail, setSimulateFail] = useState<boolean>(false)
   const [fileDisabled, setFileDisabled] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<FileUploadItem[]>([
     {
       uid: 'init-1',
       name: 'sandbox-policy-schema.json',
       size: 18432,
+      status: 'done',
+      percent: 100,
+    },
+    {
+      uid: 'init-2',
+      name: 'brand-badge-preview.svg',
+      size: 4096,
+      type: 'image/svg+xml',
+      url: DEMO_SVG_A,
       status: 'done',
       percent: 100,
     },
@@ -68,129 +114,220 @@ export const UploadsVerifyAndMarkdownPage: React.FC = () => {
   const [mdHeight, setMdHeight] = useState<number>(280)
   const [mdContent, setMdContent] = useState(INITIAL_MARKDOWN)
 
+  const handleSimulatedUpload = async (file: File, onProgress?: (percent: number) => void) => {
+    onProgress?.(45)
+    await new Promise((r) => window.setTimeout(r, 260))
+    if (simulateFail) {
+      throw new Error('模拟网络超时：点击右侧重试图标即可重新上传')
+    }
+    onProgress?.(100)
+    if (file.type.startsWith('image/')) {
+      return await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result || ''))
+        reader.readAsDataURL(file)
+      })
+    }
+    return `https://cdn.abc-design.dev/uploads/${encodeURIComponent(file.name)}`
+  }
+
   return (
     <PageContainer
       title="文件图片上传、验证码与 Markdown"
-      subtitle="涵盖单图/SVG 上传 ImageUpload、多图灯箱上传 ProMultiImageUpload、多文件校验列表 FileUpload、拼图滑块 SliderVerify 与 MarkdownEditor。"
+      subtitle="涵盖四态单图上传 ImageUpload、三态多图上传 ProMultiImageUpload、四态多文件校验上传 FileUpload、拼图滑块 SliderVerify 与 MarkdownEditor。"
     >
       <div className="space-y-5">
         {/* 卡片 1：ImageUpload & ProMultiImageUpload */}
         <ComponentDocPreview
-          title="ImageUpload & ProMultiImageUpload 单图与多图上传"
+          title="ImageUpload & ProMultiImageUpload 多模式单图与多图上传"
           components={['ImageUpload', 'ProMultiImageUpload']}
-          description="零后端硬编码的图片/SVG 上传套件：默认集成 AbcProvider.uploadAdapter，缺省时自动转本地 DataURL 预览，支持放大灯箱与替换删除。"
+          description="零后端硬编码的图片/SVG 上传套件：ImageUpload 支持 dropzone / avatar / card / button 四种交互模式；ProMultiImageUpload 安全兼容含逗号的 DataURL 预览，支持照片墙 / 图文列表 / 紧凑网格三态、拖拽上传、前后调序与封面角标。"
           onResetKnobs={() => {
+            setImgVariant('dropzone')
+            setImgShape('rounded')
+            setImgSize('sm')
+            setMultiVariant('picture-card')
             setMultiMaxCount(4)
+            setMultiReorderable(true)
+            setShowCoverBadge(true)
             setImgDisabled(false)
-            setHelperText('支持 JPG / PNG / WEBP / SVG，本地自动生成 DataURL 预览')
+            setSingleImg(DEMO_SVG_A)
+            setMultiImgs(`${DEMO_SVG_A},${DEMO_SVG_B}`)
           }}
           controls={
             <>
+              <KnobSegmented label="Image.variant" value={imgVariant} options={IMAGE_VARIANT_OPTIONS} onChange={setImgVariant} />
               <KnobSegmented
-                label="ProMultiImageUpload.maxCount"
+                label="Image.shape"
+                value={imgShape}
+                options={[
+                  { label: 'rounded', value: 'rounded' as const },
+                  { label: 'circle', value: 'circle' as const },
+                ]}
+                onChange={setImgShape}
+              />
+              <KnobSegmented
+                label="size"
+                value={imgSize}
+                options={[
+                  { label: 'xs', value: 'xs' as const },
+                  { label: 'sm', value: 'sm' as const },
+                  { label: 'md', value: 'md' as const },
+                  { label: 'lg', value: 'lg' as const },
+                ]}
+                onChange={setImgSize}
+              />
+              <KnobSegmented label="Multi.variant" value={multiVariant} options={MULTI_VARIANT_OPTIONS} onChange={setMultiVariant} />
+              <KnobSegmented
+                label="maxCount"
                 value={multiMaxCount}
                 options={[
-                  { label: '2', value: 2 },
+                  { label: '3', value: 3 },
                   { label: '4', value: 4 },
                   { label: '8', value: 8 },
                 ]}
                 onChange={setMultiMaxCount}
               />
-              <KnobText
-                label="helperText"
-                value={helperText}
-                onChange={setHelperText}
-                widthClass="w-56"
-              />
+              <KnobSwitch label="reorderable" checked={multiReorderable} onChange={setMultiReorderable} />
+              <KnobSwitch label="showCoverBadge" checked={showCoverBadge} onChange={setShowCoverBadge} />
               <KnobSwitch label="disabled" checked={imgDisabled} onChange={setImgDisabled} />
             </>
           }
           code={`import { ImageUpload, ProMultiImageUpload } from '@abc-design/react'
 
 <ImageUpload
+  variant="${imgVariant}"
+  shape="${imgShape}"
+  size="${imgSize}"
   label="租户品牌 Logo"
   value={singleUrl}
   onChange={setSingleUrl}
   disabled={${imgDisabled}}
-  helperText="${helperText}"
 />
 
 <ProMultiImageUpload
+  variant="${multiVariant}"
   value={multiUrls}
   onChange={setMultiUrls}
   maxCount={${multiMaxCount}}
+  reorderable={${multiReorderable}}
+  showCoverBadge={${showCoverBadge}}
   disabled={${imgDisabled}}
 />`}
           apiRows={[
-            { prop: 'ImageUpload.value / onChange', type: 'string / (nextUrl: string) => void', description: '图片 URL 或内联 <svg> 字符串' },
-            { prop: 'ImageUpload.helperText / error', type: 'ReactNode / string', description: '底部辅助说明或错误态高亮文案' },
-            { prop: 'ImageUpload.customUpload', type: '(file: File) => Promise<string>', description: '局部上传执行器，优先于 AbcProvider.uploadAdapter' },
-            { prop: 'ProMultiImageUpload.value / onChange', type: 'string | string[] / (val: string) => void', required: true, description: '支持逗号分隔 URL 串或数组，回传逗号拼接字符串' },
-            { prop: 'ProMultiImageUpload.maxCount', type: 'number', defaultValue: '9', description: '最大可上传图片数，达上限后隐藏添加按钮' },
+            { prop: 'ImageUpload.variant', type: "'dropzone' | 'avatar' | 'card' | 'button'", defaultValue: "'dropzone'", description: '四态交互模式：拖拽大面板、头像、照片卡片、紧凑按钮' },
+            { prop: 'ImageUpload.shape / size', type: "'rounded' | 'circle' / AbcSize", defaultValue: "avatar 默认 'circle'", description: '预览区圆角形态与四档尺寸规格' },
+            { prop: 'ProMultiImageUpload.variant', type: "'picture-card' | 'picture-list' | 'compact-grid'", defaultValue: "'picture-card'", description: '照片墙、图文列表或高密度紧凑网格三态展示' },
+            { prop: 'ProMultiImageUpload.reorderable / showCoverBadge', type: 'boolean', defaultValue: 'false', description: '开启图片前后调序按钮及首图「封面」角标' },
+            { prop: 'ProMultiImageUpload.value / onChange', type: 'string | string[] / (val: string) => void', required: true, description: '安全解析逗号分隔 URL 与含逗号 DataURL，零截断乱码' },
           ]}
         >
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            <ImageUpload
-              label="单图 / SVG 品牌凭证 (ImageUpload)"
-              value={singleImg}
-              onChange={setSingleImg}
-              disabled={imgDisabled}
-              helperText={helperText}
-            />
-            <div className="space-y-2">
-              <Label>多图灯箱矩阵 (ProMultiImageUpload, maxCount={multiMaxCount})</Label>
-              <ProMultiImageUpload
-                value={multiImgs}
-                onChange={setMultiImgs}
-                maxCount={multiMaxCount}
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+              <ImageUpload
+                label={`主控单图上传 (ImageUpload · variant="${imgVariant}")`}
+                variant={imgVariant}
+                shape={imgShape}
+                size={imgSize}
+                value={singleImg}
+                onChange={setSingleImg}
+                disabled={imgDisabled}
+                helperText="支持点击或拖拽本地图片自动生成 DataURL 预览与灯箱放大"
+              />
+              <div className="space-y-2">
+                <Label>
+                  多图上传矩阵 (ProMultiImageUpload · {multiVariant}, maxCount={multiMaxCount})
+                </Label>
+                <ProMultiImageUpload
+                  variant={multiVariant}
+                  value={multiImgs}
+                  onChange={setMultiImgs}
+                  maxCount={multiMaxCount}
+                  reorderable={multiReorderable}
+                  showCoverBadge={showCoverBadge}
+                  disabled={imgDisabled}
+                />
+              </div>
+            </div>
+
+            {/* 四态快捷同屏对照区 */}
+            <div className="grid grid-cols-1 gap-4 rounded-[var(--abc-radius-md)] border border-[var(--abc-border)] bg-[var(--abc-bg-subtle)]/40 p-3.5 md:grid-cols-3">
+              <ImageUpload
+                label="头像模式 (avatar · circle)"
+                variant="avatar"
+                shape="circle"
+                size="sm"
+                value={avatarImg}
+                onChange={setAvatarImg}
                 disabled={imgDisabled}
               />
-              <p className="text-[11px] text-[var(--abc-fg-muted)]">{helperText}</p>
+              <ImageUpload
+                label="照片卡片模式 (card)"
+                variant="card"
+                size="sm"
+                value={cardImg}
+                onChange={setCardImg}
+                disabled={imgDisabled}
+              />
+              <ImageUpload
+                label="紧凑按钮模式 (button)"
+                variant="button"
+                buttonText="上传凭证图"
+                value={btnImg}
+                onChange={setBtnImg}
+                disabled={imgDisabled}
+              />
             </div>
           </div>
         </ComponentDocPreview>
 
         {/* 卡片 2：FileUpload & SliderVerify */}
         <ComponentDocPreview
-          title="FileUpload & SliderVerify 文件校验上传与行为验证"
+          title="FileUpload & SliderVerify 多模式文件上传与行为验证"
           components={['FileUpload', 'SliderVerify']}
-          description="FileUpload 提供原生按钮焦点触发、类型/体积/数量前置拦截与进度条；SliderVerify 未配置远程 captchaAdapter 时启用离线 SVG 拼图挑战。"
+          description="FileUpload 支持 dragger（拖拽大面板）、button（按钮触发）、card（文件卡片网格）与 compact（紧凑胶囊条）四态交互，搭配 text / picture 双列表样式、格式体积前置校验、图片灯箱与失败一键重试。"
           onResetKnobs={() => {
-            setAccept('.json,.pdf,.txt')
+            setFileVariant('dragger')
+            setFileListType('picture')
+            setAccept('.json,.pdf,.txt,image/*')
             setMaxSizeMB(5)
-            setFileMaxCount(2)
+            setFileMaxCount(4)
+            setSimulateFail(false)
             setFileDisabled(false)
           }}
           controls={
             <>
+              <KnobSegmented label="variant" value={fileVariant} options={FILE_VARIANT_OPTIONS} onChange={setFileVariant} />
+              <KnobSegmented
+                label="listType"
+                value={fileListType}
+                options={[
+                  { label: 'text', value: 'text' as const },
+                  { label: 'picture', value: 'picture' as const },
+                ]}
+                onChange={setFileListType}
+              />
               <KnobSegmented
                 label="accept"
                 value={accept}
                 options={[
-                  { label: '.json,.pdf,.txt', value: '.json,.pdf,.txt' },
-                  { label: 'image/*', value: 'image/*' },
+                  { label: '文档+图片', value: '.json,.pdf,.txt,image/*' },
+                  { label: '仅图片', value: 'image/*' },
+                  { label: '全部格式', value: '' },
                 ]}
                 onChange={setAccept}
-              />
-              <KnobSegmented
-                label="maxSizeMB"
-                value={maxSizeMB}
-                options={[
-                  { label: '2', value: 2 },
-                  { label: '5', value: 5 },
-                  { label: '20', value: 20 },
-                ]}
-                onChange={setMaxSizeMB}
               />
               <KnobSegmented
                 label="maxCount"
                 value={fileMaxCount}
                 options={[
                   { label: '2', value: 2 },
-                  { label: '5', value: 5 },
+                  { label: '4', value: 4 },
+                  { label: '6', value: 6 },
                 ]}
                 onChange={setFileMaxCount}
               />
+              <KnobSwitch label="模拟上传失败(测重试)" checked={simulateFail} onChange={setSimulateFail} />
               <KnobSwitch label="disabled" checked={fileDisabled} onChange={setFileDisabled} />
             </>
           }
@@ -198,7 +335,8 @@ export const UploadsVerifyAndMarkdownPage: React.FC = () => {
 
 <FileUpload
   label="策略与合规附件"
-  accept="${accept}"
+  variant="${fileVariant}"
+  listType="${fileListType}"${accept ? `\n  accept="${accept}"` : ''}
   maxSizeMB={${maxSizeMB}}
   maxCount={${fileMaxCount}}
   disabled={${fileDisabled}}
@@ -210,20 +348,23 @@ export const UploadsVerifyAndMarkdownPage: React.FC = () => {
   onSuccess={({ nonceStr, value }) => setToken(\`\${nonceStr}:\${value}\`)}
 />`}
           apiRows={[
-            { prop: 'FileUpload.accept', type: 'string', description: '允许的扩展名或 MIME 通配符（如 .json,.pdf,.txt 或 image/*）' },
-            { prop: 'FileUpload.maxSizeMB / maxCount', type: 'number', defaultValue: 'maxSizeMB: 20', description: '单文件大小上限与多文件最大数量前置校验' },
-            { prop: 'FileUpload.value / onChange', type: 'FileUploadItem[] / (files) => void', description: '受控文件状态列表（uploading / done / error）' },
+            { prop: 'FileUpload.variant', type: "'dragger' | 'button' | 'card' | 'compact'", defaultValue: "'dragger'", description: '四种上传交互形态，适配大表单、常规弹窗、媒体库与紧凑工具条' },
+            { prop: 'FileUpload.listType', type: "'text' | 'picture'", defaultValue: "'text'", description: 'picture 模式下自动为图片附件展示缩略图与点击放大灯箱' },
+            { prop: 'FileUpload.accept / maxSizeMB / maxCount', type: 'string / number / number', defaultValue: 'maxSizeMB: 20', description: '扩展名/MIME、单文件体积与文件总数前置校验' },
+            { prop: 'FileUpload.customUpload', type: '(file, onProgress?) => Promise<string | { url }>', description: '支持进度回调与异常抛出自动触发单条目重试按钮' },
             { prop: 'SliderVerify.onSuccess', type: '(data: { nonceStr: string; value: number }) => void', required: true, description: '对齐缺口校验通过后返回令牌与横向偏移像素' },
-            { prop: 'SliderVerify.captchaFetcher', type: '() => Promise<AbcCaptchaData>', description: '局部验证码拉取函数（缺省依次回退 AbcProvider.captchaAdapter 与内置 SVG 拼图）' },
           ]}
         >
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <FileUpload
-              label="多文件拖拽校验队列 (FileUpload)"
-              accept={accept}
+              label={`多模式文件上传 (FileUpload · ${fileVariant})`}
+              variant={fileVariant}
+              listType={fileListType}
+              accept={accept || undefined}
               maxSizeMB={maxSizeMB}
               maxCount={fileMaxCount}
               disabled={fileDisabled}
+              customUpload={handleSimulatedUpload}
               value={uploadedFiles}
               onChange={setUploadedFiles}
             />

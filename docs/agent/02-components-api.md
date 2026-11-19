@@ -161,12 +161,14 @@ import { TreeSelect } from '@abc-design/react'
 
 ### `FileUpload` & `ImageUpload` & `ProMultiImageUpload` & `ProFormLayout`
 - `FileUpload`:
+  - `variant?: 'dragger' | 'button' | 'card' | 'compact'`（默认 `'dragger'`）、`listType?: 'text' | 'picture'`（默认 `'text'`）、`buttonText?: ReactNode`、`onPreview?: (file: FileUploadItem) => void`
   - `value?: FileUploadItem[]`（`{ uid, name, size, type?, url?, status?: 'uploading' | 'done' | 'error', percent?, error? }`）、`defaultValue?: FileUploadItem[]`、`onChange?: (files: FileUploadItem[]) => void`
   - `customUpload?: (file: File, onProgress?: (percent: number) => void) => Promise<string | { url: string }>`（缺省回退使用 `AbcProvider.uploadAdapter` 或本地预览 URL）
   - `accept?: string`、`multiple?: boolean`、`maxCount?: number`、`maxSizeMB?: number`、`dragTitle?: ReactNode`、`dragHint?: ReactNode`
-- `ImageUpload`: `value?: string`、`onChange?: (url: string) => void`、`customUpload?`、`previewShape?: 'rounded' | 'circle'`
+- `ImageUpload`: `variant?: 'dropzone' | 'avatar' | 'card' | 'button'`（默认 `'dropzone'`）、`shape?: 'rounded' | 'circle'`（`avatar` 模式默认 `'circle'`）、`buttonText?: ReactNode`、`value?: string`、`onChange?: (url: string) => void`、`customUpload?`
 - `ProMultiImageUpload`（别名 `MultiImageFieldControl`）:
-  - `value: string | string[]`（兼容数组或逗号分隔字符串）、`onChange: (val: string) => void`（输出逗号分隔 URL 字符串）、`maxCount?: number`（默认 `9`）、`disabled?: boolean`、`customUpload?: (file: File) => Promise<{ url: string } | string | undefined>`
+  - `variant?: 'picture-card' | 'picture-list' | 'compact-grid'`（默认 `'picture-card'`）、`reorderable?: boolean`、`showCoverBadge?: boolean`、`draggable?: boolean`、`maxSizeMB?: number`（默认 `10`）、`accept?: string`
+  - `value: string | string[]`（兼容数组、普通逗号分隔 URL 串及内含逗号的 DataURL 串，内部使用 `parseMultiImageValue` 安全拆分不截断）、`onChange: (val: string) => void`、`maxCount?: number`（默认 `9`）、`disabled?: boolean`、`customUpload?: (file: File) => Promise<{ url: string } | string | undefined>`
 - `ProFormLayout`: 分组表单排版容器：`mode?: 'split' | 'grid'`（`split` 为左侧标题导览 + 右侧卡片，`grid` 为多列卡片堆叠）、`sections: ProFormSection[]`（`{ key, title, description?, columns?: 1 | 2 | 3, children }`）
 
 ### 日期与时间选择器
