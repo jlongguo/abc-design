@@ -34,6 +34,10 @@ export interface FlowFloatingEdgeData extends Record<string, unknown> {
 
 export type FlowFloatingEdgeType = Edge<FlowFloatingEdgeData, 'flow-floating'>
 
+const CAN_USE_SVG_EDGE_TEXT =
+  typeof SVGElement !== 'undefined' &&
+  typeof (SVGElement.prototype as unknown as { getBBox?: unknown }).getBBox === 'function'
+
 const FLOATING_STROKE_BY_TONE: Record<FlowEdgeTone, string> = {
   default: 'var(--abc-flow-edge-default-stroke, #94a3b8)',
   primary: 'var(--abc-flow-edge-primary-stroke, #6366f1)',
@@ -177,26 +181,39 @@ export const FlowFloatingEdge: React.FC<FlowFloatingEdgeProps> = ({
           transition: 'stroke 150ms ease, stroke-width 150ms ease',
         }}
       />
-      {data?.label && (
-        <EdgeText
-          x={labelX}
-          y={labelY}
-          label={data.label}
-          labelStyle={{
-            fill: 'var(--abc-fg, #0f172a)',
-            fontSize: 10.5,
-            fontWeight: 600,
-          }}
-          labelShowBg
-          labelBgPadding={[6, 3]}
-          labelBgBorderRadius={999}
-          labelBgStyle={{
-            fill: 'var(--abc-bg-surface, #ffffff)',
-            stroke: 'var(--abc-border, #cbd5e1)',
-            strokeWidth: 1,
-          }}
-        />
-      )}
+      {data?.label &&
+        (CAN_USE_SVG_EDGE_TEXT ? (
+          <EdgeText
+            x={labelX}
+            y={labelY}
+            label={data.label}
+            labelStyle={{
+              fill: 'var(--abc-fg, #0f172a)',
+              fontSize: 10.5,
+              fontWeight: 600,
+            }}
+            labelShowBg
+            labelBgPadding={[6, 3]}
+            labelBgBorderRadius={999}
+            labelBgStyle={{
+              fill: 'var(--abc-bg-surface, #ffffff)',
+              stroke: 'var(--abc-border, #cbd5e1)',
+              strokeWidth: 1,
+            }}
+          />
+        ) : (
+          <text
+            x={labelX}
+            y={labelY}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={10.5}
+            fontWeight={600}
+            fill="var(--abc-fg, #0f172a)"
+          >
+            {data.label}
+          </text>
+        ))}
     </g>
   )
 }

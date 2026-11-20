@@ -765,6 +765,95 @@ export declare interface BorderBeamProps {
 }
 
 /**
+ * DevTools / IDE 风格底部可拖拽调高停靠坞面板 (BottomDockPanel)
+ *
+ * 为什么抽离为通用布局轮子：
+ * 工作台/调试器/日志控制台普遍需要底部吸底面板，带顶部拖拽调高、键盘无障碍高度调节、
+ * 标准/高视图快速切换、本地高度记忆与单行折叠态；沉淀至 @abc-design/react 后，
+ * 业务页面只需专注渲染头部状态与标签页主体，彻底消除手写 mousemove 监听与主题割裂。
+ */
+export declare function BottomDockPanel<T extends string = string>({ open: controlledOpen, defaultOpen, onOpenChange, defaultHeight, minHeight, maxHeight, tallHeight, height: controlledHeight, onHeightChange, storageKey, title, statusSlot, tabs, activeTab, onTabChange, headerCenter, headerExtra, allowTallToggle, collapsible, ariaLabel, resizeAriaLabel, expandLabel, collapseLabel, tallLabel, standardHeightLabel, keepMounted, bodyHidden, bodyId: customBodyId, tabsAriaLabel, banner, children, className, bodyClassName, }: BottomDockPanelProps<T>): React_2.JSX.Element;
+
+export declare interface BottomDockPanelProps<T extends string = string> {
+    /** 是否展开（受控） */
+    open?: boolean;
+    /** 默认展开态（非受控，默认 true） */
+    defaultOpen?: boolean;
+    /** 展开/折叠切换回调 */
+    onOpenChange?: (open: boolean) => void;
+    /** 展开时的默认高度（px，默认 320） */
+    defaultHeight?: number;
+    /** 最小可拖高度（px，默认 160） */
+    minHeight?: number;
+    /** 最大可拖高度（px，默认 680） */
+    maxHeight?: number;
+    /** 高视图（放大）高度（px，默认 540） */
+    tallHeight?: number;
+    /** 受控高度（px） */
+    height?: number;
+    /** 高度变化回调 */
+    onHeightChange?: (nextHeight: number) => void;
+    /** 本地持久化高度的存储键 */
+    storageKey?: string;
+    /** 头部左侧标题区（图标 + 标题） */
+    title?: React_2.ReactNode;
+    /** 头部标题旁的运行状态徽标/指标插槽 */
+    statusSlot?: React_2.ReactNode;
+    /** 内置选项卡配置（可选） */
+    tabs?: ReadonlyArray<BottomDockTab<T>>;
+    /** 当前选中选项卡 */
+    activeTab?: T;
+    /** 选项卡切换回调 */
+    onTabChange?: (tab: T) => void;
+    /** 头部中部自定义扩展插槽 */
+    headerCenter?: React_2.ReactNode;
+    /** 头部右侧自定义操作插槽（置于高视图/收起按钮左侧） */
+    headerExtra?: React_2.ReactNode;
+    /** 是否显示高视图切换按钮（默认 true） */
+    allowTallToggle?: boolean;
+    /** 是否显示折叠/展开按钮（默认 true） */
+    collapsible?: boolean;
+    /** 区域无障碍名称（挂接在 <section aria-label>） */
+    ariaLabel?: string;
+    /** 拖拽手柄无障碍文案 */
+    resizeAriaLabel?: string;
+    /** 展开按钮文案 */
+    expandLabel?: string;
+    /** 收起按钮文案 */
+    collapseLabel?: string;
+    /** 高视图按钮文案 */
+    tallLabel?: string;
+    /** 标准高度按钮文案 */
+    standardHeightLabel?: string;
+    /** 面板主体内容 */
+    children: React_2.ReactNode;
+    /** 折叠时是否保活子树 DOM（以 hidden 属性隐藏，适用于含实时查询/视频流的子面板，默认 false） */
+    keepMounted?: boolean;
+    /** 额外强制隐藏主体区（例如尚未加载数据但停靠条需常驻时） */
+    bodyHidden?: boolean;
+    /** 自定义主体容器 ID（供外部按钮 aria-controls 关联） */
+    bodyId?: string;
+    /** 内置标签组无障碍名称 */
+    tabsAriaLabel?: string;
+    /** 头部与主体之间的可选固定横幅插槽（如告警或加载条） */
+    banner?: React_2.ReactNode;
+    /** 根容器类名 */
+    className?: string;
+    /** 主体滚动区类名 */
+    bodyClassName?: string;
+}
+
+export declare interface BottomDockTab<T extends string = string> {
+    value: T;
+    label: React_2.ReactNode;
+    icon?: React_2.ReactNode;
+    badge?: React_2.ReactNode;
+    disabled?: boolean;
+    ariaLabel?: string;
+    testId?: string;
+}
+
+/**
  * 多品牌 / 多租户自适应前缀图标组件 (BrandIcon / TenantIcon)
  * 支持远程图片加载失败优雅回退矢量图标，以及基于 CSS mask-image 的 SVG 主题色动态着色。
  */
@@ -1915,6 +2004,8 @@ export declare interface DrawerNavigation {
 }
 
 export declare interface DrawerProps {
+    /** 允许透传自定义 data-* 属性（如局部暗/亮主题 data-abc-theme）至 Portal 根节点 */
+    [dataAttr: `data-${string}`]: string | number | boolean | undefined;
     open?: boolean;
     visible?: boolean;
     onClose: () => void;
@@ -2746,6 +2837,94 @@ export declare function isProApiFailure(res: any): boolean;
 export declare function isSchemaFieldRequired(schema: ProSchemaLike | undefined, fieldKey: string): boolean;
 
 export declare function isSvgSource(src?: string | null): boolean;
+
+/**
+ * IDE 级 JSON 源码与结构树一体化编辑器 (JsonCodeEditor)
+ *
+ * 为什么在设计系统层沉淀为独立轮子：
+ * 业务中直接用裸 Textarea 编辑 JSON 缺乏行号定位、缩进体验、实时合法性指示、一键格式化/压缩与树视图互看；
+ * 本组件零重型编辑器依赖（不引入 Monaco/CodeMirror 巨型包体），同时转发 ref/aria-label 至底层 textarea，
+ * 兼顾 60FPS 响应、完整无障碍表单语义与亮/暗双主题统一视觉。
+ */
+export declare const JsonCodeEditor: React_2.ForwardRefExoticComponent<JsonCodeEditorProps & React_2.RefAttributes<HTMLTextAreaElement>>;
+
+export declare interface JsonCodeEditorExtraView {
+    key: string;
+    label: React_2.ReactNode;
+    icon?: React_2.ReactNode;
+    render: (parsedValue: unknown | null, rawText: string) => React_2.ReactNode;
+}
+
+export declare interface JsonCodeEditorLabels {
+    valid?: string;
+    invalid?: string;
+    schemaInvalid?: string;
+    format?: string;
+    minify?: string;
+    copy?: string;
+    copied?: string;
+    download?: string;
+    importFile?: string;
+    wrap?: string;
+    codeView?: string;
+    splitView?: string;
+    treeView?: string;
+    viewModeAriaLabel?: string;
+    treeUnavailable?: string;
+    linesUnit?: string;
+    charsUnit?: string;
+    fileTooLargeError?: string;
+    importReadError?: string;
+}
+
+export declare interface JsonCodeEditorProps {
+    /** 受控 JSON 文本值 */
+    value: string;
+    /** 文本变更回调 */
+    onChange: (nextValue: string) => void;
+    /** 是否只读 */
+    readOnly?: boolean;
+    /** 是否禁用编辑 */
+    disabled?: boolean;
+    /** 顶部左侧标题/文件名 */
+    title?: React_2.ReactNode;
+    /** 导出下载的默认文件名 */
+    fileName?: string;
+    /** 外部 Schema 或业务校验错误文案（优先或并行展示于语法错误条） */
+    externalError?: string | null;
+    /** 外部错误条右侧恢复/修复动作插槽（如“恢复最近有效草稿”） */
+    errorAction?: React_2.ReactNode;
+    /** 顶部工具栏右侧自定义扩展操作 */
+    toolbarExtra?: React_2.ReactNode;
+    /** 默认视图模式（默认 'code'，允许切至 'split' / 'tree'） */
+    defaultViewMode?: JsonCodeEditorViewMode | string;
+    /** 是否允许在 Code / Split / Tree 之间切换（默认 true） */
+    allowViewSwitch?: boolean;
+    /** 可选扩展视图标签页（例如挂接 ConfigDiffViewer 与基线对比） */
+    extraViews?: ReadonlyArray<JsonCodeEditorExtraView>;
+    /** 是否显示行号槽（默认 true） */
+    showLineNumbers?: boolean;
+    /** 是否允许文件导入与下载（默认 true） */
+    allowFileTransfer?: boolean;
+    /** 编辑器区域最小高度（px，默认 320） */
+    minHeight?: number;
+    /** 编辑器区域最大高度（px，默认 600） */
+    maxHeight?: number;
+    /** 文本域占位提示 */
+    placeholder?: string;
+    /** 文本域无障碍标签（直接挂接在底层 textarea 上） */
+    ariaLabel?: string;
+    /** 文本域 id */
+    id?: string;
+    /** 文本域 name */
+    name?: string;
+    /** 多语言文案覆盖 */
+    labels?: JsonCodeEditorLabels;
+    /** 容器自定义类名 */
+    className?: string;
+}
+
+export declare type JsonCodeEditorViewMode = 'code' | 'split' | 'tree';
 
 /** JsonTreeViewer 复制事件回调载荷 */
 export declare interface JsonTreeCopyInfo {
@@ -4218,7 +4397,7 @@ export declare interface ProLayoutProps {
     children: default_2.ReactNode;
 }
 
-export declare function ProLogViewer({ logs, heightClass, estimateSize, overscan, defaultStickBottom, labels, className, }: ProLogViewerProps): React_2.JSX.Element;
+export declare function ProLogViewer({ logs, variant, heightClass, estimateSize, overscan, defaultStickBottom, toolbarExtra, labels, className, }: ProLogViewerProps): React_2.JSX.Element;
 
 export declare interface ProLogViewerLabels {
     searchPlaceholder?: string;
@@ -4233,6 +4412,8 @@ export declare interface ProLogViewerLabels {
 export declare interface ProLogViewerProps {
     /** 日志条目列表（支持结构化 LogEntry 或纯文本行） */
     logs: Array<LogEntry | string>;
+    /** 外观变体：'terminal' 深色终端（默认） | 'surface' 跟随亮/暗语义表面 */
+    variant?: 'terminal' | 'surface';
     /** 容器自定义高度类名（默认 h-[440px]） */
     heightClass?: string;
     /** 默认预估单行高度（像素，默认 26） */
@@ -4241,6 +4422,8 @@ export declare interface ProLogViewerProps {
     overscan?: number;
     /** 是否默认开启粘滞贴底滚动（默认 false） */
     defaultStickBottom?: boolean;
+    /** 顶部工具栏右侧扩展操作区 */
+    toolbarExtra?: React_2.ReactNode;
     /** 多语言与文案定制 */
     labels?: ProLogViewerLabels;
     /** 额外的容器类名 */
@@ -5228,6 +5411,12 @@ export declare interface SegmentedOption<T extends string | number> {
     icon?: React_2.ReactNode;
     disabled?: boolean;
     badge?: React_2.ReactNode;
+    /** 可选按钮无障碍名称（当展示文案与屏幕阅读器/自动化测试名称不一致时使用） */
+    ariaLabel?: string;
+    /** 可选按钮原生悬浮提示 */
+    title?: string;
+    /** 可选按钮 data-testid 钩子 */
+    testId?: string;
 }
 
 export declare const Select: default_2.ForwardRefExoticComponent<SelectProps & default_2.RefAttributes<HTMLSelectElement>>;
@@ -6277,6 +6466,86 @@ export { TagRejectReason }
 export declare function tagVariants(_opts?: {
     variant?: string;
 }): string;
+
+export declare interface TemplateGalleryCategory {
+    key: string;
+    label: React_2.ReactNode;
+}
+
+/**
+ * 模板与预设画廊抽屉 (TemplateGalleryDrawer)
+ *
+ * 为什么抽离为 Pro 通用组件：
+ * 下拉框仅适合 <10 项的短列表，当预设模板达到数十个且包含分类、描述、步骤数与自定义管理时，
+ * 需要可调宽 Drawer + 拼音即时搜索 + 分类计数胶囊 + 卡片化网格预览，让用户一眼挑中目标模板。
+ */
+export declare const TemplateGalleryDrawer: React_2.FC<TemplateGalleryDrawerProps>;
+
+export declare interface TemplateGalleryDrawerLabels {
+    searchPlaceholder?: string;
+    categoryFilterAriaLabel?: string;
+    allCategory?: string;
+    customBadge?: string;
+    activeBadge?: string;
+    applyButton?: string;
+    deleteAriaLabel?: string;
+    emptyTitle?: string;
+    emptyDescription?: string;
+    resetFilter?: string;
+    countSummary?: (matched: number, total: number) => string;
+}
+
+export declare interface TemplateGalleryDrawerProps {
+    /** 允许透传 data-*（如局部暗/亮主题 data-abc-theme）至 Drawer Portal 节点 */
+    [dataAttr: `data-${string}`]: string | number | boolean | undefined;
+    open: boolean;
+    onClose: () => void;
+    title?: React_2.ReactNode;
+    description?: React_2.ReactNode;
+    /** 全部可浏览模板项 */
+    items: ReadonlyArray<TemplateGalleryItem>;
+    /** 显式分类顺序（未传时自动从 items 聚合） */
+    categories?: ReadonlyArray<TemplateGalleryCategory>;
+    /** 当前已选中的模板 ID（高亮边框与徽标） */
+    activeId?: string | null;
+    /** 应用模板回调 */
+    onSelect: (item: TemplateGalleryItem) => void;
+    /** 可选删除回调（仅对 isCustom 为真的项渲染删除按钮） */
+    onDelete?: (item: TemplateGalleryItem) => void;
+    /** 抽屉顶栏右侧附加动作（如“新建空白”或“保存当前”） */
+    headerActions?: React_2.ReactNode;
+    /** 抽屉尺寸（默认 'lg'） */
+    size?: DrawerSize;
+    /** 本地持久化宽度键 */
+    storageKey?: string;
+    /** 卡片列数（默认 2 列） */
+    columns?: 1 | 2;
+    /** 多语言文案覆盖 */
+    labels?: TemplateGalleryDrawerLabels;
+}
+
+export declare interface TemplateGalleryItem {
+    /** 唯一标识 */
+    id: string;
+    /** 模板展示名称 */
+    title: string;
+    /** 详细用途描述 */
+    description?: string;
+    /** 分类键 */
+    category: string;
+    /** 分类展示文案（未传则回退 category） */
+    categoryLabel?: string;
+    /** 卡片前置图标 */
+    icon?: React_2.ReactNode;
+    /** 检索与展示标签 */
+    tags?: ReadonlyArray<string>;
+    /** 右上角/底部元信息列表（如步骤数、引擎模式、难度等） */
+    meta?: ReadonlyArray<string>;
+    /** 是否为用户/项目自定义模板 */
+    isCustom?: boolean;
+    /** 附加拼音/关键字检索词 */
+    keywords?: string;
+}
 
 export declare const TenantIcon: default_2.FC<BrandIconProps>;
 

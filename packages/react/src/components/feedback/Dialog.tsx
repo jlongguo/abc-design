@@ -360,6 +360,10 @@ export const Dialog: React.FC<DialogProps> = ({
       }}
       className={cn(
         'fixed inset-0 z-[1100] m-0 h-dvh max-h-none w-dvw max-w-none border-0 p-4 flex items-center justify-center',
+        (dialogHtmlProps['data-abc-theme'] ?? dialogHtmlProps['data-playground-theme']) === 'dark' &&
+          'dark',
+        (dialogHtmlProps['data-abc-theme'] ?? dialogHtmlProps['data-playground-theme']) === 'light' &&
+          'light',
         isFullscreen && 'p-0',
         resolvedMotion !== 'none' && (isVisible ? 'abc-animate-fade-in' : 'abc-animate-fade-out')
       )}

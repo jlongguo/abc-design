@@ -37,6 +37,7 @@ function buildSimulationLogs(count: number): LogEntry[] {
  */
 export const ProLogViewerPage: React.FC = () => {
   const [logScale, setLogScale] = useState<number>(2000)
+  const [variant, setVariant] = useState<'terminal' | 'surface'>('terminal')
   const [heightClass, setHeightClass] = useState<'h-[320px]' | 'h-[440px]'>('h-[440px]')
   const [defaultStickBottom, setDefaultStickBottom] = useState(false)
   const [estimateSize, setEstimateSize] = useState(26)
@@ -98,6 +99,7 @@ export const ProLogViewerPage: React.FC = () => {
         description="支持结构化 LogEntry 与纯文本行混排；当过滤后行数超过 80 行时自动切换至绝对定位虚拟切片窗口，内置关键字即时检索、级别过滤胶囊、自动贴底追踪及一键格式化复制。"
         onResetKnobs={() => {
           setLogScale(2000)
+          setVariant('terminal')
           setHeightClass('h-[440px]')
           setDefaultStickBottom(false)
           setEstimateSize(26)
@@ -115,6 +117,15 @@ export const ProLogViewerPage: React.FC = () => {
                 { label: '200 行', value: 200 },
                 { label: '2,000 行', value: 2000 },
                 { label: '8,000 行', value: 8000 },
+              ]}
+            />
+            <KnobSegmented
+              label="variant"
+              value={variant}
+              onChange={setVariant}
+              options={[
+                { label: 'terminal', value: 'terminal' },
+                { label: 'surface', value: 'surface' },
               ]}
             />
             <KnobSegmented
@@ -220,6 +231,7 @@ export const ProLogViewerPage: React.FC = () => {
           <ProLogViewer
             key={`log-viewer-${String(defaultStickBottom)}`}
             logs={logs}
+            variant={variant}
             heightClass={heightClass}
             defaultStickBottom={defaultStickBottom}
             estimateSize={estimateSize}

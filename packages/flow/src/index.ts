@@ -66,10 +66,21 @@ export {
 } from './components/FlowLabeledEdge'
 
 export {
+  FlowFloatingEdge,
+  type FlowFloatingEdgeData,
+  type FlowFloatingEdgeProps,
+  type FlowFloatingEdgeRouteStyle,
+  type FlowFloatingEdgeType,
+} from './components/FlowFloatingEdge'
+
+export {
   FlowCanvasSurface,
+  FlowProvider,
   type FlowBackgroundStyle,
   type FlowCanvasSurfaceProps,
+  type FlowGesturePreset,
   type FlowInteractionMode,
+  type FlowSecondaryBackgroundConfig,
 } from './components/FlowCanvasSurface'
 
 export {
@@ -82,6 +93,11 @@ export {
   FlowNodeResizer,
   type FlowNodeResizerProps,
 } from './components/FlowNodeResizer'
+
+export {
+  FlowCornerResizer,
+  type FlowCornerResizerProps,
+} from './components/FlowCornerResizer'
 
 export {
   FlowGroupNode,
@@ -101,9 +117,28 @@ export {
 } from './components/FlowContextMenu'
 
 export {
+  FlowQuickConnectMenu,
+  type FlowQuickConnectItem,
+  type FlowQuickConnectMenuProps,
+} from './components/FlowQuickConnectMenu'
+
+export {
+  FlowAlignmentToolbar,
+  type FlowAlignmentToolbarLabels,
+  type FlowAlignmentToolbarProps,
+} from './components/FlowAlignmentToolbar'
+
+export {
   FlowViewportOverlay,
   type FlowViewportOverlayProps,
 } from './components/FlowViewportOverlay'
+
+export { FlowMiniMapNode } from './components/FlowMiniMapNode'
+
+export {
+  FlowInteractiveZone,
+  type FlowInteractiveZoneProps,
+} from './components/FlowInteractiveZone'
 
 export {
   computeFlowHelperLines,
@@ -121,8 +156,102 @@ export {
 } from './utils/flowGraph'
 
 export {
+  FLOW_ARIA_LABELS_EN,
+  FLOW_ARIA_LABELS_ZH,
+  FLOW_CONNECTION_MODE,
+  FLOW_MARKER_TYPE,
+  FLOW_POSITION,
+  alignFlowNodes,
+  computeFlowExportViewport,
+  computeProximityEdge,
+  duplicateFlowSubgraph,
+  exportFlowToSvgDataUrl,
+  findIntersectingGroupNode,
+  type DuplicateFlowSubgraphResult,
+  type FlowExportViewportResult,
+  type FlowGroupDropResult,
+  type FlowNodeAlignment,
+  type FlowProximityCandidate,
+} from './utils/flowAdvancedGraph'
+
+export {
   useFlowHistory,
   type FlowHistorySnapshot,
   type UseFlowHistoryOptions,
   type UseFlowHistoryReturn,
 } from './hooks/useFlowHistory'
+
+export {
+  useFlowDropToConnect,
+  type FlowDropConnectPending,
+  type UseFlowDropToConnectOptions,
+  type UseFlowDropToConnectReturn,
+} from './hooks/useFlowDropToConnect'
+
+export {
+  useFlowClipboard,
+  type UseFlowClipboardOptions,
+  type UseFlowClipboardReturn,
+} from './hooks/useFlowClipboard'
+
+export {
+  useFlowViewportFocus,
+  type FocusFlowNodeOptions,
+  type UseFlowViewportFocusOptions,
+} from './hooks/useFlowViewportFocus'
+
+export {
+  useFlowComputing,
+  type FlowUpstreamRecord,
+} from './hooks/useFlowComputing'
+
+export {
+  addFlowEdge,
+  applyFlowEdgeChanges,
+  applyFlowNodeChanges,
+  getFlowBezierPath,
+  getFlowSimpleBezierPath,
+  getFlowSmoothStepPath,
+  getFlowStraightPath,
+  reconnectFlowEdge,
+  useFlowConnection,
+  useFlowEdges,
+  useFlowEdgesState,
+  useFlowInstance,
+  useFlowInternalNode,
+  useFlowKeyPress,
+  useFlowNodeConnections,
+  useFlowNodeId,
+  useFlowNodes,
+  useFlowNodesData,
+  useFlowNodesInitialized,
+  useFlowNodesState,
+  useFlowOnSelectionChange,
+  useFlowOnViewportChange,
+  useFlowStore,
+  useFlowStoreApi,
+  useFlowUpdateNodeInternals,
+  useFlowViewport,
+  type FlowAriaLabelConfig,
+  type FlowConnection,
+  type FlowConnectionModeType,
+  type FlowEdge,
+  type FlowEdgeChange,
+  type FlowEdgeProps,
+  type FlowEdgeTypes,
+  type FlowFinalConnectionState,
+  type FlowNode,
+  type FlowNodeChange,
+  type FlowNodeProps,
+  type FlowNodeTypes,
+  type FlowOnBeforeDelete,
+  type FlowOnConnect,
+  type FlowOnConnectEnd,
+  type FlowOnConnectStart,
+  type FlowOnNodeDrag,
+  type FlowOnReconnect,
+  type FlowPositionType,
+  type FlowViewport,
+  type FlowXYPosition,
+  type FlowZIndexMode,
+} from './hooks/flowBindings'

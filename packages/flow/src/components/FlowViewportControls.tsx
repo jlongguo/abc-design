@@ -3,18 +3,20 @@ import { Button, cn } from '@abc-design/react'
 import {
   BoxSelect,
   Hand,
+  ImageDown,
   LayoutGrid,
   Lock,
   Magnet,
   Map as MapIcon,
   Maximize,
   Minus,
+  MousePointerClick,
   Plus,
   Redo2,
   Undo2,
   Unlock,
 } from 'lucide-react'
-import type { FlowInteractionMode } from './FlowCanvasSurface'
+import type { FlowGesturePreset, FlowInteractionMode } from './FlowCanvasSurface'
 
 export interface FlowViewportControlAction {
   /** 唯一标识 */
@@ -71,6 +73,8 @@ export interface FlowViewportControlsLabels {
   snapToGrid?: string
   undo?: string
   redo?: string
+  gesturePreset?: string
+  exportImage?: string
 }
 
 export interface FlowViewportControlsProps {
@@ -110,6 +114,12 @@ export interface FlowViewportControlsProps {
   canUndo?: boolean
   /** 是否可重做 */
   canRedo?: boolean
+  /** 触控板手势模式（default 滚轮缩放 vs figma 滚轮平移+捏合缩放） */
+  gesturePreset?: FlowGesturePreset
+  /** 切换触控板手势模式回调 */
+  onToggleGesturePreset?: () => void
+  /** 导出画布图像回调（提供时渲染导出图片按钮） */
+  onExportImage?: () => void
   /** 附加扩展图标操作（如便签、导出 JSON 等由业务注入） */
   extraActions?: ReadonlyArray<FlowViewportControlAction>
   /** 右侧主行动按钮（如“添加步骤”） */
@@ -145,16 +155,25 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
   onRedo,
   canUndo = false,
   canRedo = false,
+  gesturePreset = 'default',
+  onToggleGesturePreset,
+  onExportImage,
   extraActions,
   primaryAction,
   labels,
   className,
   testId = 'abc-flow-viewport-controls',
 }) => {
-  const hasModeGroup = Boolean(onInteractionModeChange || onToggleInteractive || onToggleSnapToGrid)
+  const hasModeGroup = Boolean(
+    onInteractionModeChange || onToggleInteractive || onToggleSnapToGrid || onToggleGesturePreset
+  )
   const hasHistoryGroup = Boolean(onUndo || onRedo)
   const hasMiddleGroup = Boolean(
-    onFitView || onAutoLayout || onToggleMiniMap || (extraActions && extraActions.length > 0),
+    onFitView ||
+      onAutoLayout ||
+      onToggleMiniMap ||
+      onExportImage ||
+      (extraActions && extraActions.length > 0),
   )
 
   const iconButtonClass =
@@ -162,6 +181,8 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
 
   return (
     <div
+      data-slot="flow-viewport-controls"
+      data-abc-no-press-scale=""
       data-testid={testId}
       className={cn(
         'nodrag nopan flex flex-wrap items-center gap-1 rounded-xl border border-[var(--abc-border)] bg-[var(--abc-bg-surface)]/95 p-1 text-xs text-[var(--abc-fg)] shadow-[var(--abc-shadow-popover)] backdrop-blur',
@@ -172,6 +193,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
         type="button"
         variant="ghost"
         size="icon-sm"
+        pressScale={false}
         aria-label={labels?.zoomOut ?? '缩小画布'}
         title={labels?.zoomOutTitle ?? labels?.zoomOut ?? '缩小画布 (-)'}
         onClick={onZoomOut}
@@ -183,6 +205,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
         type="button"
         variant="ghost"
         size="xs"
+        pressScale={false}
         aria-label={labels?.zoomReset ?? '重置画布缩放至 100%'}
         title={labels?.zoomResetTitle ?? labels?.zoomReset ?? '重置缩放比例 (0)'}
         onClick={onZoomReset}
@@ -194,6 +217,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
         type="button"
         variant="ghost"
         size="icon-sm"
+        pressScale={false}
         aria-label={labels?.zoomIn ?? '放大画布'}
         title={labels?.zoomInTitle ?? labels?.zoomIn ?? '放大画布 (+)'}
         onClick={onZoomIn}
@@ -211,6 +235,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
                 type="button"
                 variant={interactionMode === 'pan' ? 'secondary' : 'ghost'}
                 size="icon-sm"
+                pressScale={false}
                 aria-pressed={interactionMode === 'pan'}
                 aria-label={labels?.panMode ?? '拖拽平移模式'}
                 title={labels?.panMode ?? '拖拽平移模式 (Hand)'}
@@ -223,6 +248,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
                 type="button"
                 variant={interactionMode === 'select' ? 'secondary' : 'ghost'}
                 size="icon-sm"
+                pressScale={false}
                 aria-pressed={interactionMode === 'select'}
                 aria-label={labels?.selectMode ?? '框选多节点模式'}
                 title={labels?.selectMode ?? '左键框选模式 (Select)'}
@@ -238,6 +264,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
               type="button"
               variant={!interactive ? 'secondary' : 'ghost'}
               size="icon-sm"
+              pressScale={false}
               aria-pressed={!interactive}
               aria-label={
                 interactive
@@ -260,6 +287,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
               type="button"
               variant={snapToGrid ? 'secondary' : 'ghost'}
               size="icon-sm"
+              pressScale={false}
               aria-pressed={snapToGrid}
               aria-label={labels?.snapToGrid ?? '开关网格磁吸对齐'}
               title={labels?.snapToGrid ?? '网格磁吸对齐 (Snap to Grid)'}
@@ -267,6 +295,25 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
               className={iconButtonClass}
             >
               <Magnet size={13} />
+            </Button>
+          )}
+          {onToggleGesturePreset && (
+            <Button
+              type="button"
+              variant={gesturePreset === 'figma' ? 'secondary' : 'ghost'}
+              size="icon-sm"
+              pressScale={false}
+              aria-pressed={gesturePreset === 'figma'}
+              aria-label={labels?.gesturePreset ?? '切换触控板平移手势 (Figma 模式)'}
+              title={
+                gesturePreset === 'figma'
+                  ? (labels?.gesturePreset ?? '当前：Figma 触控板双指平移 + 捏合缩放')
+                  : (labels?.gesturePreset ?? '切换至 Figma 触控板平移手势')
+              }
+              onClick={onToggleGesturePreset}
+              className={iconButtonClass}
+            >
+              <MousePointerClick size={13} />
             </Button>
           )}
         </>
@@ -280,6 +327,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
               type="button"
               variant="ghost"
               size="icon-sm"
+              pressScale={false}
               disabled={!canUndo}
               aria-label={labels?.undo ?? '撤销操作'}
               title={labels?.undo ?? '撤销 (⌘Z)'}
@@ -294,6 +342,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
               type="button"
               variant="ghost"
               size="icon-sm"
+              pressScale={false}
               disabled={!canRedo}
               aria-label={labels?.redo ?? '重做操作'}
               title={labels?.redo ?? '重做 (⇧⌘Z)'}
@@ -315,6 +364,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
           type="button"
           variant="ghost"
           size="icon-sm"
+          pressScale={false}
           aria-label={labels?.fitView ?? '自适应居中视口'}
           title={labels?.fitViewTitle ?? labels?.fitView ?? '自适应居中视口'}
           onClick={onFitView}
@@ -329,6 +379,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
           type="button"
           variant="ghost"
           size="icon-sm"
+          pressScale={false}
           aria-label={labels?.autoLayout ?? '一键整理排版'}
           title={labels?.autoLayoutTitle ?? labels?.autoLayout ?? '一键整理排版'}
           onClick={onAutoLayout}
@@ -343,6 +394,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
           type="button"
           variant={showMiniMap ? 'secondary' : 'ghost'}
           size="icon-sm"
+          pressScale={false}
           data-testid="toggle-minimap-btn"
           aria-pressed={showMiniMap}
           aria-label={labels?.toggleMiniMap ?? '开关缩略图导航'}
@@ -358,12 +410,29 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
         </Button>
       )}
 
+      {onExportImage && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          pressScale={false}
+          data-testid="export-flow-image-btn"
+          aria-label={labels?.exportImage ?? '导出流程图矢量图像 (SVG)'}
+          title={labels?.exportImage ?? '导出完整画布图像 (SVG)'}
+          onClick={onExportImage}
+          className={iconButtonClass}
+        >
+          <ImageDown size={13} />
+        </Button>
+      )}
+
       {extraActions?.map((action) => (
         <Button
           key={action.key}
           type="button"
           variant={action.active ? 'secondary' : 'ghost'}
           size="icon-sm"
+          pressScale={false}
           disabled={action.disabled}
           data-testid={action.testId}
           aria-label={action.label}

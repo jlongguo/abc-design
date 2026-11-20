@@ -35,6 +35,8 @@ export interface ProLogViewerLabels {
 export interface ProLogViewerProps {
   /** 日志条目列表（支持结构化 LogEntry 或纯文本行） */
   logs: Array<LogEntry | string>
+  /** 外观变体：'terminal' 深色终端（默认） | 'surface' 跟随亮/暗语义表面 */
+  variant?: 'terminal' | 'surface'
   /** 容器自定义高度类名（默认 h-[440px]） */
   heightClass?: string
   /** 默认预估单行高度（像素，默认 26） */
@@ -43,6 +45,8 @@ export interface ProLogViewerProps {
   overscan?: number
   /** 是否默认开启粘滞贴底滚动（默认 false） */
   defaultStickBottom?: boolean
+  /** 顶部工具栏右侧扩展操作区 */
+  toolbarExtra?: React.ReactNode
   /** 多语言与文案定制 */
   labels?: ProLogViewerLabels
   /** 额外的容器类名 */
@@ -63,13 +67,16 @@ const LOG_LEVELS = ['all', 'info', 'warn', 'error'] as const
 
 export function ProLogViewer({
   logs,
+  variant = 'terminal',
   heightClass = 'h-[440px]',
   estimateSize = 26,
   overscan = 12,
   defaultStickBottom = false,
+  toolbarExtra,
   labels,
   className,
 }: ProLogViewerProps) {
+  const isSurface = variant === 'surface'
   const mergedLabels = { ...DEFAULT_LABELS, ...labels }
   const parentRef = React.useRef<HTMLDivElement>(null)
   const [search, setSearch] = React.useState('')
@@ -188,17 +195,31 @@ export function ProLogViewer({
   return (
     <div
       data-slot="pro-log-viewer"
+      data-variant={variant}
       className={cn(
-        'flex flex-col overflow-hidden rounded-[var(--abc-radius-lg)] border border-slate-800 bg-slate-950 font-mono text-slate-200 shadow-md',
+        'flex flex-col overflow-hidden rounded-[var(--abc-radius-lg)] border font-mono',
+        isSurface
+          ? 'border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] shadow-[var(--abc-shadow-card)]'
+          : 'border-slate-800 bg-slate-950 text-slate-200 shadow-md',
         className
       )}
     >
       {/* 顶部过滤与操作工具栏 */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 bg-slate-900/90 px-3 py-2 text-xs">
+      <div
+        className={cn(
+          'flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 text-xs',
+          isSurface
+            ? 'border-[var(--abc-border)] bg-[var(--abc-bg-muted)]'
+            : 'border-slate-800 bg-slate-900/90'
+        )}
+      >
         <div className="flex min-w-44 flex-1 items-center gap-2">
           <div className="relative max-w-sm flex-1">
             <Search
-              className="pointer-events-none absolute inset-y-0 left-2.5 my-auto h-3.5 w-3.5 text-slate-400"
+              className={cn(
+                'pointer-events-none absolute inset-y-0 left-2.5 my-auto h-3.5 w-3.5',
+                isSurface ? 'text-[var(--abc-fg-muted)]' : 'text-slate-400'
+              )}
               aria-hidden="true"
             />
             <input
@@ -206,35 +227,61 @@ export function ProLogViewer({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={mergedLabels.searchPlaceholder}
-              className="h-7 w-full rounded-md border border-slate-700 bg-slate-950 pl-8 pr-7 text-xs text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
+              className={cn(
+                'h-7 w-full rounded-md border pl-8 pr-7 text-xs focus:border-[var(--abc-primary)] focus:outline-none',
+                isSurface
+                  ? 'border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)]'
+                  : 'border-slate-700 bg-slate-950 text-slate-100 placeholder:text-slate-500'
+              )}
             />
             {search && (
               <button
                 type="button"
                 aria-label={mergedLabels.clearSearchLabel}
                 onClick={() => setSearch('')}
-                className="absolute inset-y-0 right-2 my-auto flex items-center text-slate-400 hover:text-slate-200 cursor-pointer"
+                className={cn(
+                  'absolute inset-y-0 right-2 my-auto flex items-center cursor-pointer',
+                  isSurface
+                    ? 'text-[var(--abc-fg-muted)] hover:text-[var(--abc-fg)]'
+                    : 'text-slate-400 hover:text-slate-200'
+                )}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-1 rounded-md border border-slate-800 bg-slate-950 p-0.5">
+          <div
+            className={cn(
+              'flex items-center gap-1 rounded-md border p-0.5',
+              isSurface
+                ? 'border-[var(--abc-border)] bg-[var(--abc-bg-surface)]'
+                : 'border-slate-800 bg-slate-950'
+            )}
+          >
             {LOG_LEVELS.map((lvl) => (
               <button
                 key={lvl}
                 type="button"
+                data-abc-no-press-scale="true"
                 onClick={() => setSelectedLevel(lvl)}
                 className={cn(
                   'rounded px-2 py-0.5 text-[10px] font-semibold uppercase transition cursor-pointer',
                   selectedLevel === lvl
                     ? lvl === 'error'
-                      ? 'bg-rose-500/20 text-rose-300'
+                      ? isSurface
+                        ? 'bg-rose-500/15 text-rose-600 dark:text-rose-300'
+                        : 'bg-rose-500/20 text-rose-300'
                       : lvl === 'warn'
-                        ? 'bg-amber-500/20 text-amber-300'
-                        : 'bg-blue-500/25 text-blue-300'
-                    : 'text-slate-400 hover:text-slate-200'
+                        ? isSurface
+                          ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                          : 'bg-amber-500/20 text-amber-300'
+                        : isSurface
+                          ? 'bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]'
+                          : 'bg-blue-500/25 text-blue-300'
+                    : isSurface
+                      ? 'text-[var(--abc-fg-muted)] hover:text-[var(--abc-fg)]'
+                      : 'text-slate-400 hover:text-slate-200'
                 )}
               >
                 {lvl}
@@ -243,30 +290,57 @@ export function ProLogViewer({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 text-[11px] text-slate-400">
+        <div
+          className={cn(
+            'flex items-center gap-3 text-[11px]',
+            isSurface ? 'text-[var(--abc-fg-muted)]' : 'text-slate-400'
+          )}
+        >
+          {toolbarExtra}
           <span className="tabular-nums">
             {mergedLabels.formatLineCount(filteredLogs.length, normalizedLogs.length)}
           </span>
 
-          <label className="flex cursor-pointer items-center gap-1.5 select-none hover:text-slate-200">
+          <label
+            className={cn(
+              'flex cursor-pointer items-center gap-1.5 select-none',
+              isSurface ? 'hover:text-[var(--abc-fg)]' : 'hover:text-slate-200'
+            )}
+          >
             <input
               type="checkbox"
               checked={stickBottom}
               onChange={(e) => setStickBottom(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-0"
+              className={cn(
+                'h-3.5 w-3.5 rounded focus:ring-0',
+                isSurface
+                  ? 'border-[var(--abc-border)] bg-[var(--abc-bg-surface)] accent-[var(--abc-primary)]'
+                  : 'border-slate-700 bg-slate-900 text-blue-500'
+              )}
             />
             <span>{mergedLabels.stickBottomLabel}</span>
           </label>
 
           <button
             type="button"
+            data-abc-no-press-scale="true"
             onClick={() => void handleCopyVisible()}
-            className="flex items-center gap-1 rounded border border-slate-700 bg-slate-800/80 px-2 py-0.5 text-[11px] text-slate-300 transition hover:bg-slate-700 hover:text-white cursor-pointer"
+            className={cn(
+              'flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] transition cursor-pointer',
+              isSurface
+                ? 'border-[var(--abc-border)] bg-[var(--abc-bg-surface)] text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
+                : 'border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-slate-700 hover:text-white'
+            )}
           >
             {copied ? (
               <>
-                <Check className="h-3 w-3 text-emerald-400" aria-hidden="true" />
-                <span className="text-emerald-300">{mergedLabels.copiedLabel}</span>
+                <Check
+                  className={cn('h-3 w-3', isSurface ? 'text-emerald-600 dark:text-emerald-400' : 'text-emerald-400')}
+                  aria-hidden="true"
+                />
+                <span className={isSurface ? 'text-emerald-700 dark:text-emerald-300' : 'text-emerald-300'}>
+                  {mergedLabels.copiedLabel}
+                </span>
               </>
             ) : (
               <>
@@ -285,7 +359,12 @@ export function ProLogViewer({
         className={cn('relative w-full overflow-auto', heightClass)}
       >
         {filteredLogs.length === 0 ? (
-          <div className="flex h-full items-center justify-center p-8 text-xs text-slate-500">
+          <div
+            className={cn(
+              'flex h-full items-center justify-center p-8 text-xs',
+              isSurface ? 'text-[var(--abc-fg-muted)]' : 'text-slate-500'
+            )}
+          >
             {mergedLabels.emptyText}
           </div>
         ) : (
@@ -318,21 +397,38 @@ export function ProLogViewer({
                       : undefined
                   }
                   className={cn(
-                    'flex items-center gap-2.5 px-3 py-1 text-xs leading-5 transition-colors hover:bg-slate-900/60',
+                    'flex items-center gap-2.5 px-3 py-1 text-xs leading-5 transition-colors',
+                    isSurface ? 'hover:bg-[var(--abc-bg-muted)]/60' : 'hover:bg-slate-900/60',
                     shouldVirtualize ? 'overflow-hidden whitespace-nowrap' : 'items-start',
                     isError
-                      ? 'bg-rose-950/20 text-rose-200'
+                      ? isSurface
+                        ? 'bg-rose-500/10 text-rose-700 dark:text-rose-200'
+                        : 'bg-rose-950/20 text-rose-200'
                       : isWarn
-                        ? 'bg-amber-950/15 text-amber-200'
-                        : 'text-slate-300'
+                        ? isSurface
+                          ? 'bg-amber-500/10 text-amber-800 dark:text-amber-200'
+                          : 'bg-amber-950/15 text-amber-200'
+                        : isSurface
+                          ? 'text-[var(--abc-fg)]'
+                          : 'text-slate-300'
                   )}
                 >
-                  <span className="w-10 shrink-0 select-none text-right text-[10px] text-slate-600 tabular-nums">
+                  <span
+                    className={cn(
+                      'w-10 shrink-0 select-none text-right text-[10px] tabular-nums',
+                      isSurface ? 'text-[var(--abc-fg-muted)]' : 'text-slate-600'
+                    )}
+                  >
                     {log.seq}
                   </span>
 
                   {log.created_at && (
-                    <span className="shrink-0 select-none text-[11px] text-slate-500 tabular-nums">
+                    <span
+                      className={cn(
+                        'shrink-0 select-none text-[11px] tabular-nums',
+                        isSurface ? 'text-[var(--abc-fg-muted)]' : 'text-slate-500'
+                      )}
+                    >
                       {log.created_at.length >= 19 ? log.created_at.slice(11, 19) : log.created_at}
                     </span>
                   )}
@@ -341,10 +437,16 @@ export function ProLogViewer({
                     className={cn(
                       'inline-block w-12 shrink-0 select-none rounded px-1 py-0.5 text-center text-[9px] font-bold uppercase leading-none',
                       isError
-                        ? 'bg-rose-500/25 text-rose-300'
+                        ? isSurface
+                          ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300'
+                          : 'bg-rose-500/25 text-rose-300'
                         : isWarn
-                          ? 'bg-amber-500/25 text-amber-300'
-                          : 'bg-slate-800 text-slate-400'
+                          ? isSurface
+                            ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300'
+                            : 'bg-amber-500/25 text-amber-300'
+                          : isSurface
+                            ? 'bg-[var(--abc-bg-muted)] text-[var(--abc-fg-secondary)]'
+                            : 'bg-slate-800 text-slate-400'
                     )}
                   >
                     {level.slice(0, 5)}
@@ -359,7 +461,12 @@ export function ProLogViewer({
                   >
                     <span>{log.message}</span>
                     {log.detail && Object.keys(log.detail).length > 0 && (
-                      <span className="ml-2 text-[11px] text-slate-500">
+                      <span
+                        className={cn(
+                          'ml-2 text-[11px]',
+                          isSurface ? 'text-[var(--abc-fg-muted)]' : 'text-slate-500'
+                        )}
+                      >
                         {JSON.stringify(log.detail)}
                       </span>
                     )}

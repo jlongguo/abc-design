@@ -1,4 +1,5 @@
 import React from 'react'
+import { NodeToolbar, Position } from '@xyflow/react'
 import type { AbcMotionPreset } from '@abc-design/tokens'
 import { Tooltip, cn, useAbcMotion } from '@abc-design/react'
 
@@ -44,6 +45,14 @@ export interface FlowNodeToolbarProps extends React.HTMLAttributes<HTMLDivElemen
   disableTooltips?: boolean
   /** 点击按钮时是否阻止事件冒泡到画布节点（默认 true，防止误触发节点拖拽或取消选中） */
   stopPropagation?: boolean
+  /** 是否在 ReactFlow 节点内部自动挂载原生 `<NodeToolbar>` 悬浮定位容器（默认 false） */
+  floating?: boolean
+  /** 当 floating=true 时的停靠方位（默认 Position.Top） */
+  floatingPosition?: Position
+  /** 当 floating=true 时距离节点边框的像素间距（默认 8） */
+  floatingOffset?: number
+  /** 当 floating=true 时的对齐方式（默认 'center'） */
+  floatingAlign?: 'start' | 'center' | 'end'
   /** 微交互动效预设 */
   motion?: AbcMotionPreset
   /** 尾部可选自定义扩展节点（如嵌套 Dropdown 更多菜单） */
@@ -69,6 +78,10 @@ export const FlowNodeToolbar = React.forwardRef<HTMLDivElement, FlowNodeToolbarP
       tooltipPlacement = 'top',
       disableTooltips = false,
       stopPropagation = true,
+      floating = false,
+      floatingPosition = Position.Top,
+      floatingOffset = 8,
+      floatingAlign = 'center',
       motion,
       className,
       children,
@@ -79,15 +92,17 @@ export const FlowNodeToolbar = React.forwardRef<HTMLDivElement, FlowNodeToolbarP
   ) => {
     const resolvedMotion = useAbcMotion(motion)
 
-    if (!visible) return null
+    if (!visible && !floating) return null
 
     const isVertical = orientation === 'vertical'
     const btnSizeClass = TOOLBAR_BUTTON_SIZE[size]
 
-    return (
+    const toolbarContent = (
       <div
         ref={ref}
         role="toolbar"
+        data-slot="flow-node-toolbar"
+        data-abc-no-press-scale=""
         aria-label={ariaLabel}
         aria-orientation={orientation}
         data-motion={resolvedMotion}
@@ -181,6 +196,21 @@ export const FlowNodeToolbar = React.forwardRef<HTMLDivElement, FlowNodeToolbarP
         )}
       </div>
     )
+
+    if (floating) {
+      return (
+        <NodeToolbar
+          isVisible={visible}
+          position={floatingPosition}
+          offset={floatingOffset}
+          align={floatingAlign}
+        >
+          {toolbarContent}
+        </NodeToolbar>
+      )
+    }
+
+    return toolbarContent
   }
 )
 

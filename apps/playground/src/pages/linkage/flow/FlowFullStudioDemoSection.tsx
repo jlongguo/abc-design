@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
-import type {
-  FlowBackgroundStyle,
-  FlowEdgeRouteStyle,
-  FlowLayoutDirection,
+import {
+  FlowProvider,
+  type FlowBackgroundStyle,
+  type FlowEdgeRouteStyle,
+  type FlowLayoutDirection,
 } from '@abc-design/flow'
-import { ReactFlowProvider } from '@xyflow/react'
 import { ComponentDocPreview } from '../../../components/ComponentDocPreview'
 import { KnobSegmented, KnobSwitch } from '../../../components/PropKnobs'
 import { FlowStudioCanvas } from './FlowStudioCanvas'
@@ -25,6 +25,7 @@ export const FlowFullStudioDemoSection: React.FC = () => {
       pkg="@abc-design/flow"
       components={[
         'FlowCanvasSurface',
+        'FlowProvider',
         'FlowConnectionLine',
         'FlowContextMenu',
         'FlowViewportOverlay',
@@ -110,7 +111,7 @@ export const FlowFullStudioDemoSection: React.FC = () => {
         { prop: 'layoutFlowGraph / useFlowHistory / hasFlowCycle', type: 'Headless Utilities & Hook', description: '四向拓扑自动排版、Undo/Redo 历史栈、环路检测与上下游血缘追踪' },
       ]}
     >
-      <ReactFlowProvider>
+      <FlowProvider>
         <FlowStudioCanvas
           bgVariant={bgVariant}
           routeStyle={routeStyle}
@@ -121,7 +122,7 @@ export const FlowFullStudioDemoSection: React.FC = () => {
           showMiniMap={showMiniMap}
           setShowMiniMap={setShowMiniMap}
         />
-      </ReactFlowProvider>
+      </FlowProvider>
     </ComponentDocPreview>
   )
 }

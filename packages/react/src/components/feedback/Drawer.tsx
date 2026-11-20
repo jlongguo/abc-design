@@ -55,6 +55,8 @@ export interface DrawerNavigation {
 }
 
 export interface DrawerProps {
+  /** 允许透传自定义 data-* 属性（如局部暗/亮主题 data-abc-theme）至 Portal 根节点 */
+  [dataAttr: `data-${string}`]: string | number | boolean | undefined
   open?: boolean
   visible?: boolean
   onClose: () => void
@@ -151,7 +153,23 @@ export const Drawer: React.FC<DrawerProps> = ({
   role = 'dialog',
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
+  ...restProps
 }) => {
+  // 提取 data-* 属性透传至 Portal 根容器，确保局部深浅色子树（如独立暗色画布工作台）内的抽屉主题一致
+  const portalDataProps: Record<string, string | number | boolean | undefined> = {}
+  for (const [k, v] of Object.entries(restProps)) {
+    if (k.startsWith('data-')) {
+      portalDataProps[k] = v
+    }
+  }
+  const resolvedPortalTheme =
+    portalDataProps['data-abc-theme'] ?? portalDataProps['data-playground-theme']
+  const portalThemeClass =
+    resolvedPortalTheme === 'dark'
+      ? 'dark'
+      : resolvedPortalTheme === 'light'
+        ? 'light'
+        : undefined
   const globalCascadeMode = useAbcDrawerCascadeMode(cascadeMode)
   const resolvedCascadeMode = cascadeMode ?? globalCascadeMode
   const drawerId = useId()
@@ -306,12 +324,13 @@ export const Drawer: React.FC<DrawerProps> = ({
 
   return createPortal(
     <div
+      {...portalDataProps}
       role={role}
       aria-modal={role === 'dialog' ? 'true' : undefined}
       aria-labelledby={ariaLabelledBy ?? (title ? titleId : undefined)}
       aria-label={ariaLabel ?? (!title && !ariaLabelledBy ? '侧边抽屉面板' : undefined)}
       style={{ zIndex: 1020 + Math.max(0, stackIndex) * 10 }}
-      className="fixed inset-0 flex overflow-hidden pointer-events-none"
+      className={cn('fixed inset-0 flex overflow-hidden pointer-events-none', portalThemeClass)}
     >
       {/* 遮罩背景：仅最底层的抽屉（stackIndex === 0）负责暗化主视图；并排 adjacent 模式下子级抽屉绝不渲染黑色遮罩盖死底层抽屉 */}
       {stackIndex === 0 ? (

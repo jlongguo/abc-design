@@ -18,6 +18,7 @@ import {
 import { ArrowUpRight, Layers, Server } from 'lucide-react'
 import { ComponentDocPreview } from '../../components/ComponentDocPreview'
 import { KnobNumber, KnobSegmented, KnobSwitch } from '../../components/PropKnobs'
+import { BottomDockPanelDemoSection } from './BottomDockPanelDemoSection'
 
 type ClusterEnv = 'prod' | 'staging'
 type QuotaTier = 'standard' | 'enterprise'
@@ -391,6 +392,9 @@ export const MasterDetailWorkbenchPage: React.FC = () => {
             )}
           </ReasonedActionDrawer>
         </ComponentDocPreview>
+
+        {/* 卡片 03: BottomDockPanel DevTools 风格底部可拖拽停靠坞 */}
+        <BottomDockPanelDemoSection />
       </div>
     </PageContainer>
   )

@@ -53,6 +53,15 @@ export const FORMS_AND_DISPLAY_CATEGORIES: PlaygroundCategoryEntry[] = [
             keywords: 'quota byte duration mb gb tb unit 配额 容量 时长 单位换算 QuotaUnitInput',
             isNew: true,
           },
+          {
+            symbol: 'JsonCodeEditor',
+            zhName: 'IDE 级 JSON 源码与结构树一体化编辑器',
+            summary: '内置行号槽、错误行高亮、格式化/压缩、文件导入导出、实时 Split/Tree 视图与扩展 Diff 槽位',
+            pkg: '@abc-design/react',
+            anchorSymbol: 'JsonCodeEditor',
+            keywords: 'json code editor format minify tree diff JSON编辑器 代码编辑 格式化',
+            isNew: true,
+          },
         ],
       },
       {

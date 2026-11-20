@@ -67,6 +67,7 @@
     --abc-primary-hover: var(--abc-brand-700);
     --abc-primary-active: var(--abc-brand-800);
     --abc-primary-soft: var(--abc-brand-50);
+    --abc-primary-subtle: var(--abc-primary-soft);
     --abc-primary-fg: #ffffff;
     --abc-ring: color-mix(in srgb, var(--abc-brand-500) 22%, transparent);
 
@@ -147,6 +148,7 @@
       --abc-primary-hover: var(--abc-brand-400);
       --abc-primary-active: var(--abc-brand-600);
       --abc-primary-soft: color-mix(in srgb, var(--abc-brand-500) 16%, transparent);
+      --abc-primary-subtle: var(--abc-primary-soft);
       --abc-success-soft: rgba(16, 185, 129, 0.15);
       --abc-warning-soft: rgba(245, 158, 11, 0.15);
       --abc-danger-soft: rgba(244, 63, 94, 0.15);
@@ -186,6 +188,7 @@
     --abc-primary-hover: var(--abc-brand-400);
     --abc-primary-active: var(--abc-brand-600);
     --abc-primary-soft: color-mix(in srgb, var(--abc-brand-500) 16%, transparent);
+    --abc-primary-subtle: var(--abc-primary-soft);
     --abc-success-soft: rgba(16, 185, 129, 0.15);
     --abc-warning-soft: rgba(245, 158, 11, 0.15);
     --abc-danger-soft: rgba(244, 63, 94, 0.15);
@@ -224,6 +227,7 @@
     --abc-primary-hover: var(--abc-brand-700);
     --abc-primary-active: var(--abc-brand-800);
     --abc-primary-soft: var(--abc-brand-50);
+    --abc-primary-subtle: var(--abc-primary-soft);
     --abc-success-soft: #ecfdf5;
     --abc-warning-soft: #fffbeb;
     --abc-danger-soft: #fff1f2;

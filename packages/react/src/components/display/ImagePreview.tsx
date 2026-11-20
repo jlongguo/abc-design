@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import type { AbcMotionPreset, AbcSize } from '@abc-design/tokens'
 import { AlertCircle, Eye, Image as ImageIcon, RotateCw, ZoomIn, ZoomOut } from 'lucide-react'
 import { useAbcMotion, useAbcSize } from '../../hooks'
+import { getInheritedAbcTheme } from '../../hooks/useFloatingPosition'
 import { cn } from '../../utils/cn'
 import Dialog from '../feedback/Dialog'
 
@@ -56,8 +57,10 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
   const resolvedHeight = height ?? IMAGE_PREVIEW_SIZE_PX[resolvedSize]
   const [hasError, setHasError] = useState(false)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxTheme, setLightboxTheme] = useState<'light' | 'dark' | undefined>(undefined)
   const [scale, setScale] = useState(1)
   const [rotate, setRotate] = useState(0)
+  const thumbRef = useRef<HTMLDivElement>(null)
 
   const trimmed = typeof src === 'string' ? src.trim() : ''
   const isInlineSvg = isSvgSource(trimmed)
@@ -101,6 +104,7 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
   const openPreview = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (!zoomable) return
+    setLightboxTheme(getInheritedAbcTheme(thumbRef.current))
     setScale(1)
     setRotate(0)
     setLightboxOpen(true)
@@ -109,9 +113,11 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
   return (
     <>
       <div
+        ref={thumbRef}
         role={zoomable ? 'button' : undefined}
         tabIndex={zoomable ? 0 : undefined}
         data-motion={resolvedMotion}
+        data-abc-no-press-scale="true"
         title="点击预览大图 / 矢量图"
         aria-label={zoomable ? `预览 ${alt}` : undefined}
         onClick={openPreview}
@@ -127,7 +133,7 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
           minWidth: typeof resolvedWidth === 'number' ? resolvedWidth : undefined,
         }}
         className={cn(
-          'abc-motion-control group relative inline-flex shrink-0 items-center justify-center overflow-hidden border border-[var(--abc-border)] bg-[var(--abc-bg-surface)]',
+          'group relative inline-flex shrink-0 items-center justify-center overflow-hidden border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] transition-colors',
           rounded ? 'rounded-full' : 'rounded-[var(--abc-radius-md)]',
           zoomable && 'cursor-zoom-in hover:border-[var(--abc-primary)]',
           className
@@ -153,6 +159,8 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
       <Dialog
         open={lightboxOpen}
         onClose={() => setLightboxOpen(false)}
+        data-abc-theme={lightboxTheme}
+        data-playground-theme={lightboxTheme}
         title={alt}
         size="lg"
         motion={resolvedMotion}

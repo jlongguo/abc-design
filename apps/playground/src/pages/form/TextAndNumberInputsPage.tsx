@@ -20,6 +20,7 @@ import {
 import { Globe, KeyRound } from 'lucide-react'
 import { ComponentDocPreview } from '../../components/ComponentDocPreview'
 import { KnobNumber, KnobSegmented, KnobSwitch } from '../../components/PropKnobs'
+import { JsonCodeEditorDemoSection } from './JsonCodeEditorDemoSection'
 
 const SIZE_OPTIONS = [
   { label: 'xs', value: 'xs' as const },
@@ -452,6 +453,9 @@ export const TextAndNumberInputsPage: React.FC = () => {
             </div>
           </div>
         </ComponentDocPreview>
+
+        {/* 卡片 05: JsonCodeEditor IDE 级 JSON 源码与树视图编辑器 */}
+        <JsonCodeEditorDemoSection />
       </div>
     </PageContainer>
   )

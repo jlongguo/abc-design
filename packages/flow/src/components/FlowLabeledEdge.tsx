@@ -85,6 +85,10 @@ const EDGE_TONE_STYLES: Record<FlowEdgeTone, { stroke: string; labelClass: strin
   },
 }
 
+const CAN_USE_SVG_EDGE_TEXT =
+  typeof SVGElement !== 'undefined' &&
+  typeof (SVGElement.prototype as unknown as { getBBox?: unknown }).getBBox === 'function'
+
 export interface FlowLabeledEdgeProps extends EdgeProps<FlowLabeledEdgeType> {
   /** 选中态高亮线条颜色（默认 #4f46e5） */
   selectedStroke?: string
@@ -199,26 +203,40 @@ export const FlowLabeledEdge: React.FC<FlowLabeledEdgeProps> = ({
             transition: 'stroke 150ms ease, stroke-width 150ms ease',
           }}
         />
-        {data?.svgLabel && !data?.label && (
-          <EdgeText
-            x={labelX}
-            y={labelY}
-            label={data.svgLabel}
-            labelStyle={{
-              fill: 'var(--abc-fg-secondary, #334155)',
-              fontSize: 10,
-              fontWeight: 600,
-            }}
-            labelShowBg
-            labelBgPadding={[6, 3]}
-            labelBgBorderRadius={999}
-            labelBgStyle={{
-              fill: 'var(--abc-bg-surface, #ffffff)',
-              stroke: 'var(--abc-border, #cbd5e1)',
-              strokeWidth: 1,
-            }}
-          />
-        )}
+        {data?.svgLabel &&
+          !data?.label &&
+          (CAN_USE_SVG_EDGE_TEXT ? (
+            <EdgeText
+              x={labelX}
+              y={labelY}
+              label={data.svgLabel}
+              labelStyle={{
+                fill: 'var(--abc-fg-secondary, #334155)',
+                fontSize: 10,
+                fontWeight: 600,
+              }}
+              labelShowBg
+              labelBgPadding={[6, 3]}
+              labelBgBorderRadius={999}
+              labelBgStyle={{
+                fill: 'var(--abc-bg-surface, #ffffff)',
+                stroke: 'var(--abc-border, #cbd5e1)',
+                strokeWidth: 1,
+              }}
+            />
+          ) : (
+            <text
+              x={labelX}
+              y={labelY}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={10}
+              fontWeight={600}
+              fill="var(--abc-fg-secondary, #334155)"
+            >
+              {data.svgLabel}
+            </text>
+          ))}
       </g>
 
       {toolbarRenderer && (

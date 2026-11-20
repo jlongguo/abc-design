@@ -118,7 +118,7 @@ export const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenu
   ({ className, align = 'end', sideOffset = 4, children, style: propStyle, ...props }, ref) => {
     const ctx = useContext(DropdownMenuContext)
     const contentRef = useRef<HTMLDivElement | null>(null)
-    const { style: floatStyle, portalContainer } = useFloatingPosition({
+    const { style: floatStyle, portalContainer, portalTheme } = useFloatingPosition({
       open: Boolean(ctx?.open),
       triggerRef: ctx?.triggerRef as React.RefObject<HTMLElement | null>,
       floatingRef: contentRef,
@@ -157,9 +157,14 @@ export const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenu
         }}
         role="menu"
         data-slot="dropdown-menu-content"
+        data-abc-floating=""
+        data-abc-theme={portalTheme}
+        data-playground-theme={portalTheme}
         data-state="open"
         style={{ ...floatStyle, ...propStyle, pointerEvents: 'auto' }}
         className={cn(
+          portalTheme === 'dark' && 'dark',
+          portalTheme === 'light' && 'light',
           'z-[1400] min-w-[8rem] overflow-hidden rounded-xl border border-[var(--abc-border)] bg-[var(--abc-bg-elevated,var(--abc-bg-surface))] p-1.5 text-[var(--abc-fg)] shadow-xl backdrop-blur-md pointer-events-auto',
           className
         )}

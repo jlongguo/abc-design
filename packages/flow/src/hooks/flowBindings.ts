@@ -1,11 +1,20 @@
+import type { ConnectionMode, Position } from '@xyflow/react'
+
 /**
  * React Flow v12 核心运行态 Hook 与状态变更工具统一重导出门面 (flowBindings)
  * 消费端（如 Console 工作台）可 100% 通过 @abc-design/flow 消费全部 ReactFlow 状态/交互原语，无需零散直引底层包。
  */
+export type FlowConnectionModeType = ConnectionMode
+export type FlowPositionType = Position
+
 export {
   addEdge as addFlowEdge,
   applyEdgeChanges as applyFlowEdgeChanges,
   applyNodeChanges as applyFlowNodeChanges,
+  getBezierPath as getFlowBezierPath,
+  getSimpleBezierPath as getFlowSimpleBezierPath,
+  getSmoothStepPath as getFlowSmoothStepPath,
+  getStraightPath as getFlowStraightPath,
   reconnectEdge as reconnectFlowEdge,
   useConnection as useFlowConnection,
   useEdges as useFlowEdges,
@@ -30,7 +39,6 @@ export {
 export type {
   AriaLabelConfig as FlowAriaLabelConfig,
   Connection as FlowConnection,
-  ConnectionMode as FlowConnectionModeType,
   Edge as FlowEdge,
   EdgeChange as FlowEdgeChange,
   EdgeProps as FlowEdgeProps,
@@ -46,7 +54,6 @@ export type {
   OnConnectStart as FlowOnConnectStart,
   OnNodeDrag as FlowOnNodeDrag,
   OnReconnect as FlowOnReconnect,
-  Position as FlowPositionType,
   Viewport as FlowViewport,
   XYPosition as FlowXYPosition,
   ZIndexMode as FlowZIndexMode,

@@ -9,6 +9,12 @@ export interface SegmentedOption<T extends string | number> {
   icon?: React.ReactNode
   disabled?: boolean
   badge?: React.ReactNode
+  /** 可选按钮无障碍名称（当展示文案与屏幕阅读器/自动化测试名称不一致时使用） */
+  ariaLabel?: string
+  /** 可选按钮原生悬浮提示 */
+  title?: string
+  /** 可选按钮 data-testid 钩子 */
+  testId?: string
 }
 
 export interface SegmentedControlProps<T extends string | number>
@@ -78,6 +84,10 @@ export function SegmentedControl<T extends string | number>({
             key={String(option.value)}
             type="button"
             aria-pressed={selected}
+            aria-label={option.ariaLabel}
+            title={option.title}
+            data-testid={option.testId}
+            data-abc-no-press-scale="true"
             disabled={isDisabled}
             onClick={() => handleSelect?.(option.value)}
             className={cn(

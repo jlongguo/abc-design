@@ -28,6 +28,7 @@ import { KeyRound, Layers } from 'lucide-react'
 import { ComponentDocPreview } from '../../components/ComponentDocPreview'
 import { KnobSegmented, KnobSelect, KnobSwitch } from '../../components/PropKnobs'
 import { AuditAndConfirmOverlaysSection } from './AuditAndConfirmOverlaysSection'
+import { TemplateGalleryDemoSection } from './TemplateGalleryDemoSection'
 
 const DRAWER_RECORDS = [
   { id: 'ORG-101', name: '星河跨境云', quota: '12,000 QPS', region: '上海金融区', tier: 'Enterprise' },
@@ -470,6 +471,9 @@ export const DialogsDrawersAndAuditPage: React.FC = () => {
 
         {/* 卡片 04 & 05: ConfirmDialog 与强制审计/一次性密钥 */}
         <AuditAndConfirmOverlaysSection />
+
+        {/* 卡片 06: TemplateGalleryDrawer 拼音检索模板画廊抽屉 */}
+        <TemplateGalleryDemoSection />
       </div>
     </PageContainer>
   )
