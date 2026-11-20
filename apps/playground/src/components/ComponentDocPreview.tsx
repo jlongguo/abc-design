@@ -35,6 +35,7 @@ export interface ComponentDocPreviewProps {
     | '@abc-design/charts'
     | '@abc-design/core'
     | '@abc-design/markdown'
+    | '@abc-design/flow'
     | '@abc-design/tokens'
   /** 覆盖展示的导出组件/API 精确符号列表 */
   components?: string[]

@@ -67,5 +67,62 @@ export {
 
 export {
   FlowCanvasSurface,
+  type FlowBackgroundStyle,
   type FlowCanvasSurfaceProps,
+  type FlowInteractionMode,
 } from './components/FlowCanvasSurface'
+
+export {
+  FlowHandle,
+  type FlowHandleProps,
+  type FlowHandleSize,
+} from './components/FlowHandle'
+
+export {
+  FlowNodeResizer,
+  type FlowNodeResizerProps,
+} from './components/FlowNodeResizer'
+
+export {
+  FlowGroupNode,
+  type FlowGroupNodeData,
+  type FlowGroupNodeType,
+} from './components/FlowGroupNode'
+
+export {
+  FlowConnectionLine,
+  type FlowConnectionLineProps,
+} from './components/FlowConnectionLine'
+
+export {
+  FlowContextMenu,
+  type FlowContextMenuItem,
+  type FlowContextMenuProps,
+} from './components/FlowContextMenu'
+
+export {
+  FlowViewportOverlay,
+  type FlowViewportOverlayProps,
+} from './components/FlowViewportOverlay'
+
+export {
+  computeFlowHelperLines,
+  getFlowDownstream,
+  getFlowUpstream,
+  hasFlowCycle,
+  layoutFlowGraph,
+  parseFlowSnapshot,
+  serializeFlowSnapshot,
+  type FlowHelperLines,
+  type FlowLayoutDirection,
+  type FlowLineageResult,
+  type FlowSnapshotPayload,
+  type LayoutFlowGraphOptions,
+} from './utils/flowGraph'
+
+export {
+  useFlowHistory,
+  type FlowHistorySnapshot,
+  type UseFlowHistoryOptions,
+  type UseFlowHistoryReturn,
+} from './hooks/useFlowHistory'

@@ -1,6 +1,20 @@
 import React from 'react'
 import { Button, cn } from '@abc-design/react'
-import { LayoutGrid, Map as MapIcon, Maximize, Minus, Plus } from 'lucide-react'
+import {
+  BoxSelect,
+  Hand,
+  LayoutGrid,
+  Lock,
+  Magnet,
+  Map as MapIcon,
+  Maximize,
+  Minus,
+  Plus,
+  Redo2,
+  Undo2,
+  Unlock,
+} from 'lucide-react'
+import type { FlowInteractionMode } from './FlowCanvasSurface'
 
 export interface FlowViewportControlAction {
   /** 唯一标识 */
@@ -50,6 +64,13 @@ export interface FlowViewportControlsLabels {
   toggleMiniMap?: string
   showMiniMapTitle?: string
   hideMiniMapTitle?: string
+  panMode?: string
+  selectMode?: string
+  lockCanvas?: string
+  unlockCanvas?: string
+  snapToGrid?: string
+  undo?: string
+  redo?: string
 }
 
 export interface FlowViewportControlsProps {
@@ -69,7 +90,27 @@ export interface FlowViewportControlsProps {
   showMiniMap?: boolean
   /** 切换缩略图回调（提供时才渲染 MiniMap 开关） */
   onToggleMiniMap?: () => void
-  /** 附加扩展图标操作（如便签、批量延迟等由业务注入） */
+  /** 画布交互模式（平移 pan vs 框选 select） */
+  interactionMode?: FlowInteractionMode
+  /** 切换交互模式回调（提供时渲染平移/框选切换按钮） */
+  onInteractionModeChange?: (mode: FlowInteractionMode) => void
+  /** 画布是否允许编辑（默认 true） */
+  interactive?: boolean
+  /** 切换画布只读锁定状态回调 */
+  onToggleInteractive?: () => void
+  /** 是否启用网格吸附 */
+  snapToGrid?: boolean
+  /** 切换网格吸附回调 */
+  onToggleSnapToGrid?: () => void
+  /** 撤销回调（提供时渲染撤销按钮） */
+  onUndo?: () => void
+  /** 重做回调（提供时渲染重做按钮） */
+  onRedo?: () => void
+  /** 是否可撤销 */
+  canUndo?: boolean
+  /** 是否可重做 */
+  canRedo?: boolean
+  /** 附加扩展图标操作（如便签、导出 JSON 等由业务注入） */
   extraActions?: ReadonlyArray<FlowViewportControlAction>
   /** 右侧主行动按钮（如“添加步骤”） */
   primaryAction?: FlowViewportControlsPrimaryAction
@@ -82,8 +123,8 @@ export interface FlowViewportControlsProps {
 }
 
 /**
- * 画布左下角极简悬浮视口控制胶囊 (FlowViewportControls)
- * 仅保留高频视口操控（缩放、居中、整理、按需 MiniMap、可选扩展图标与主行动按钮），零业务耦合。
+ * 画布左下角悬浮视口与交互控制胶囊 (FlowViewportControls)
+ * 覆盖缩放、居中、拓扑自动排版、MiniMap、平移/框选模式切换、画布锁定、网格吸附、撤销/重做与业务扩展槽。
  */
 export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
   zoomPercent,
@@ -94,12 +135,24 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
   onAutoLayout,
   showMiniMap = false,
   onToggleMiniMap,
+  interactionMode = 'pan',
+  onInteractionModeChange,
+  interactive = true,
+  onToggleInteractive,
+  snapToGrid = false,
+  onToggleSnapToGrid,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
   extraActions,
   primaryAction,
   labels,
   className,
   testId = 'abc-flow-viewport-controls',
 }) => {
+  const hasModeGroup = Boolean(onInteractionModeChange || onToggleInteractive || onToggleSnapToGrid)
+  const hasHistoryGroup = Boolean(onUndo || onRedo)
   const hasMiddleGroup = Boolean(
     onFitView || onAutoLayout || onToggleMiniMap || (extraActions && extraActions.length > 0),
   )
@@ -111,7 +164,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
     <div
       data-testid={testId}
       className={cn(
-        'nodrag nopan flex items-center gap-1 rounded-xl border border-[var(--abc-border)] bg-[var(--abc-bg-surface)]/95 p-1 text-xs text-[var(--abc-fg)] shadow-[var(--abc-shadow-popover)] backdrop-blur',
+        'nodrag nopan flex flex-wrap items-center gap-1 rounded-xl border border-[var(--abc-border)] bg-[var(--abc-bg-surface)]/95 p-1 text-xs text-[var(--abc-fg)] shadow-[var(--abc-shadow-popover)] backdrop-blur',
         className,
       )}
     >
@@ -149,11 +202,112 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
         <Plus size={13} />
       </Button>
 
+      {hasModeGroup && (
+        <>
+          <span className="mx-0.5 h-4 w-px bg-[var(--abc-border)]" aria-hidden="true" />
+          {onInteractionModeChange && (
+            <>
+              <Button
+                type="button"
+                variant={interactionMode === 'pan' ? 'secondary' : 'ghost'}
+                size="icon-sm"
+                aria-pressed={interactionMode === 'pan'}
+                aria-label={labels?.panMode ?? '拖拽平移模式'}
+                title={labels?.panMode ?? '拖拽平移模式 (Hand)'}
+                onClick={() => onInteractionModeChange('pan')}
+                className={iconButtonClass}
+              >
+                <Hand size={13} />
+              </Button>
+              <Button
+                type="button"
+                variant={interactionMode === 'select' ? 'secondary' : 'ghost'}
+                size="icon-sm"
+                aria-pressed={interactionMode === 'select'}
+                aria-label={labels?.selectMode ?? '框选多节点模式'}
+                title={labels?.selectMode ?? '左键框选模式 (Select)'}
+                onClick={() => onInteractionModeChange('select')}
+                className={iconButtonClass}
+              >
+                <BoxSelect size={13} />
+              </Button>
+            </>
+          )}
+          {onToggleInteractive && (
+            <Button
+              type="button"
+              variant={!interactive ? 'secondary' : 'ghost'}
+              size="icon-sm"
+              aria-pressed={!interactive}
+              aria-label={
+                interactive
+                  ? (labels?.lockCanvas ?? '锁定画布禁止编辑')
+                  : (labels?.unlockCanvas ?? '解锁画布恢复编辑')
+              }
+              title={
+                interactive
+                  ? (labels?.lockCanvas ?? '锁定画布')
+                  : (labels?.unlockCanvas ?? '已锁定，点击解锁')
+              }
+              onClick={onToggleInteractive}
+              className={iconButtonClass}
+            >
+              {interactive ? <Unlock size={13} /> : <Lock size={13} />}
+            </Button>
+          )}
+          {onToggleSnapToGrid && (
+            <Button
+              type="button"
+              variant={snapToGrid ? 'secondary' : 'ghost'}
+              size="icon-sm"
+              aria-pressed={snapToGrid}
+              aria-label={labels?.snapToGrid ?? '开关网格磁吸对齐'}
+              title={labels?.snapToGrid ?? '网格磁吸对齐 (Snap to Grid)'}
+              onClick={onToggleSnapToGrid}
+              className={iconButtonClass}
+            >
+              <Magnet size={13} />
+            </Button>
+          )}
+        </>
+      )}
+
+      {hasHistoryGroup && (
+        <>
+          <span className="mx-0.5 h-4 w-px bg-[var(--abc-border)]" aria-hidden="true" />
+          {onUndo && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              disabled={!canUndo}
+              aria-label={labels?.undo ?? '撤销操作'}
+              title={labels?.undo ?? '撤销 (⌘Z)'}
+              onClick={onUndo}
+              className={iconButtonClass}
+            >
+              <Undo2 size={13} />
+            </Button>
+          )}
+          {onRedo && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              disabled={!canRedo}
+              aria-label={labels?.redo ?? '重做操作'}
+              title={labels?.redo ?? '重做 (⇧⌘Z)'}
+              onClick={onRedo}
+              className={iconButtonClass}
+            >
+              <Redo2 size={13} />
+            </Button>
+          )}
+        </>
+      )}
+
       {hasMiddleGroup && (
-        <span
-          className="mx-0.5 h-4 w-px bg-[var(--abc-border)]"
-          aria-hidden="true"
-        />
+        <span className="mx-0.5 h-4 w-px bg-[var(--abc-border)]" aria-hidden="true" />
       )}
 
       {onFitView && (
@@ -223,10 +377,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
 
       {primaryAction && (
         <>
-          <span
-            className="mx-0.5 h-4 w-px bg-[var(--abc-border)]"
-            aria-hidden="true"
-          />
+          <span className="mx-0.5 h-4 w-px bg-[var(--abc-border)]" aria-hidden="true" />
           <Button
             type="button"
             variant="primary"

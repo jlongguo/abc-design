@@ -1,16 +1,25 @@
 import React, { useMemo, useState } from 'react'
 import {
   FlowCanvasSurface,
+  FlowHandle,
   FlowLabeledEdge,
   FlowNodeCard,
   FlowViewportControls,
   type FlowEdgeRouteStyle,
+  type FlowInteractionMode,
   type FlowLabeledEdgeProps,
   type FlowLabeledEdgeType,
 } from '@abc-design/flow'
 import { Button, abcToast } from '@abc-design/react'
-import { Handle, Position, type EdgeTypes, type Node, type NodeProps, type NodeTypes } from '@xyflow/react'
-import { BookOpen, Globe, StickyNote } from 'lucide-react'
+import {
+  MarkerType,
+  Position,
+  type EdgeTypes,
+  type Node,
+  type NodeProps,
+  type NodeTypes,
+} from '@xyflow/react'
+import { BookOpen, Globe, StickyNote, Trash2 } from 'lucide-react'
 import { ComponentDocPreview } from '../../../components/ComponentDocPreview'
 import { KnobSegmented, KnobSwitch } from '../../../components/PropKnobs'
 
@@ -29,8 +38,8 @@ const DemoCardNode: React.FC<NodeProps<DemoFlowNode>> = ({ data, selected }) => 
     title={data.title}
     icon={data.tone === 'green' ? <Globe size={13} /> : <BookOpen size={13} />}
     selected={selected}
-    width={210}
-    inputHandle={<Handle type="target" position={Position.Left} className="!h-2.5 !w-2.5 !bg-slate-400" />}
+    width={204}
+    inputHandle={<FlowHandle type="target" position={Position.Left} tone="info" />}
     metaRows={[{ label: 'Target', value: data.meta }]}
     outputs={
       data.hasOutputs
@@ -39,13 +48,13 @@ const DemoCardNode: React.FC<NodeProps<DemoFlowNode>> = ({ data, selected }) => 
               id: 'success',
               label: 'Success',
               tone: 'success',
-              handle: <Handle id="success" type="source" position={Position.Right} className="!h-2.5 !w-2.5 !bg-emerald-500" />,
+              handle: <FlowHandle id="success" type="source" position={Position.Right} tone="success" />,
             },
             {
               id: 'else',
               label: 'Else',
               tone: 'danger',
-              handle: <Handle id="else" type="source" position={Position.Right} className="!h-2.5 !w-2.5 !bg-rose-500" />,
+              handle: <FlowHandle id="else" type="source" position={Position.Right} tone="danger" />,
             },
           ]
         : [
@@ -53,7 +62,7 @@ const DemoCardNode: React.FC<NodeProps<DemoFlowNode>> = ({ data, selected }) => 
               id: 'next',
               label: 'Next',
               tone: 'neutral',
-              handle: <Handle id="next" type="source" position={Position.Right} className="!h-2.5 !w-2.5 !bg-slate-400" />,
+              handle: <FlowHandle id="next" type="source" position={Position.Right} tone="neutral" />,
             },
           ]
     }
@@ -72,12 +81,29 @@ const DEMO_NODES: DemoFlowNode[] = [
 ]
 
 export const FlowCanvasAndEdgeDemoSection: React.FC = () => {
-  const [showDots, setShowDots] = useState(true)
-  const [showMiniMap, setShowMiniMap] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [zoomPercent, setZoomPercent] = useState(100)
+  // FlowLabeledEdge knobs
   const [routeStyle, setRouteStyle] = useState<FlowEdgeRouteStyle>('bezier')
-  const [animated, setAnimated] = useState(false)
+  const [markerMode, setMarkerMode] = useState<'arrowclosed' | 'arrow' | 'none'>('arrowclosed')
+  const [animated, setAnimated] = useState(true)
+  const [dashed, setDashed] = useState(false)
+
+  // FlowViewportControls knobs
+  const [zoomPercent, setZoomPercent] = useState(100)
+  const [showMiniMap, setShowMiniMap] = useState(false)
+  const [interactionMode, setInteractionMode] = useState<FlowInteractionMode>('pan')
+  const [interactive, setInteractive] = useState(true)
+  const [snapToGrid, setSnapToGrid] = useState(true)
+  const [canUndo, setCanUndo] = useState(true)
+  const [canRedo, setCanRedo] = useState(false)
+
+  const resolvedMarker =
+    markerMode === 'none'
+      ? undefined
+      : {
+          type: markerMode === 'arrow' ? MarkerType.Arrow : MarkerType.ArrowClosed,
+          width: 16,
+          height: 16,
+        }
 
   const demoEdges = useMemo<FlowLabeledEdgeType[]>(
     () => [
@@ -87,13 +113,22 @@ export const FlowCanvasAndEdgeDemoSection: React.FC = () => {
         source: 'kb',
         sourceHandle: 'success',
         target: 'reply',
+        markerEnd: resolvedMarker,
         data: {
           tone: 'success',
           label: 'Found',
           routeStyle,
           animated,
+          dashed,
           showActionTrigger: true,
           actionAriaLabel: '在命中分支插入节点',
+          renderToolbar: (edgeId) => (
+            <div className="flex items-center gap-1 rounded-lg border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-1.5 py-0.5 shadow-md">
+              <Button size="xs" variant="ghost" onClick={() => abcToast.info(`选中连线工具条：${edgeId}`)}>
+                <Trash2 size={11} /> 删除连线
+              </Button>
+            </div>
+          ),
           renderActionMenu: ({ close }) => (
             <div className="w-40 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg dark:border-slate-700 dark:bg-slate-900">
               <Button
@@ -118,6 +153,7 @@ export const FlowCanvasAndEdgeDemoSection: React.FC = () => {
         source: 'kb',
         sourceHandle: 'else',
         target: 'fallback',
+        markerEnd: resolvedMarker,
         data: {
           tone: 'warning',
           label: 'Else',
@@ -127,83 +163,68 @@ export const FlowCanvasAndEdgeDemoSection: React.FC = () => {
         },
       },
     ],
-    [animated, routeStyle],
+    [animated, dashed, resolvedMarker, routeStyle],
   )
 
   return (
     <div className="space-y-6">
       <ComponentDocPreview
-        title="FlowCanvasSurface 主题化 ReactFlow 画布舞台"
-        components={['FlowCanvasSurface']}
-        description="独立子包 @abc-design/flow 封装的零业务 ReactFlow 容器：点阵背景、四角 Panel 插槽、按需 MiniMap 与加载遮罩。"
-        controls={
-          <div className="flex flex-wrap items-center gap-4">
-            <KnobSwitch label="点阵背景" checked={showDots} onChange={setShowDots} />
-            <KnobSwitch label="MiniMap" checked={showMiniMap} onChange={setShowMiniMap} />
-            <KnobSwitch label="加载遮罩" checked={loading} onChange={setLoading} />
-          </div>
-        }
-        code={`import { FlowCanvasSurface, FlowLabeledEdge } from '@abc-design/flow'
-import '@abc-design/flow/styles.css'
-
-<FlowCanvasSurface
-  withProvider
-  nodes={nodes}
-  edges={edges}
-  edgeTypes={{ 'flow-labeled': FlowLabeledEdge }}
-  showDotsBackground
-  showMiniMap={showMiniMap}
-/>`}
-        apiRows={[
-          { prop: 'withProvider', type: 'boolean', defaultValue: 'false', description: '是否自动包裹 ReactFlowProvider（外部已包裹并调用 useReactFlow 时保持 false）' },
-          { prop: 'leftRailSlot / topCenterSlot / bottomLeftSlot', type: 'ReactNode', description: '对应 ReactFlow 四角悬浮 Panel 标准布局插槽' },
-          { prop: 'showDotsBackground / showMiniMap / loading', type: 'boolean', defaultValue: 'true / false / false', description: '点阵背景、按需缩略图与加载态遮罩开关' },
-        ]}
-      >
-        <div className="h-[300px] w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-          <FlowCanvasSurface
-            withProvider
-            nodes={DEMO_NODES}
-            edges={demoEdges}
-            nodeTypes={DEMO_NODE_TYPES}
-            edgeTypes={DEMO_EDGE_TYPES}
-            showDotsBackground={showDots}
-            showMiniMap={showMiniMap}
-            loading={loading}
-            fitView
-            fitViewOptions={{ padding: 0.25 }}
-          />
-        </div>
-      </ComponentDocPreview>
-
-      <ComponentDocPreview
-        title="FlowLabeledEdge 语义标签与中点菜单 ReactFlow 连线"
+        title="FlowLabeledEdge 五态曲线、箭头 Marker 与选中 EdgeToolbar 连线"
+        pkg="@abc-design/flow"
         components={['FlowLabeledEdge']}
-        description="支持正向贝塞尔与反向圆角正交避障路径、6 套语义色阶、流动动画徽章以及点击中点 [+] 弹出的自定义菜单插槽。"
+        description="完整支持 React Flow 五大路径算法（bezier / smoothstep / step / straight / simplebezier）、反向回环避障、Arrow/ArrowClosed 箭头、6 套语义色阶、流光动画、中点 [+] 菜单与选中态 EdgeToolbar。"
+        onResetKnobs={() => {
+          setRouteStyle('bezier')
+          setMarkerMode('arrowclosed')
+          setAnimated(true)
+          setDashed(false)
+        }}
         controls={
-          <div className="flex flex-wrap items-center gap-4">
-            <KnobSwitch label="流光动画" checked={animated} onChange={setAnimated} />
+          <>
             <KnobSegmented
-              label="连线形态"
+              label="routeStyle"
               value={routeStyle}
               options={[
-                { label: 'bezier', value: 'bezier' },
-                { label: 'smoothstep', value: 'smoothstep' },
+                { label: 'bezier', value: 'bezier' as const },
+                { label: 'smoothstep', value: 'smoothstep' as const },
+                { label: 'step', value: 'step' as const },
+                { label: 'straight', value: 'straight' as const },
+                { label: 'simplebezier', value: 'simplebezier' as const },
               ]}
               onChange={setRouteStyle}
             />
-          </div>
+            <KnobSegmented
+              label="markerEnd"
+              value={markerMode}
+              options={[
+                { label: 'ArrowClosed', value: 'arrowclosed' as const },
+                { label: 'Arrow', value: 'arrow' as const },
+                { label: '无箭头', value: 'none' as const },
+              ]}
+              onChange={setMarkerMode}
+            />
+            <KnobSwitch label="流光动画" checked={animated} onChange={setAnimated} />
+            <KnobSwitch label="虚线样式" checked={dashed} onChange={setDashed} />
+          </>
         }
         code={`import { FlowLabeledEdge, type FlowLabeledEdgeProps } from '@abc-design/flow'
+import { MarkerType } from '@xyflow/react'
 
-const CustomEdge = (props: FlowLabeledEdgeProps) => <FlowLabeledEdge {...props} />`}
+const edge = {
+  id: 'e-found',
+  type: 'flow-labeled',
+  source: 'kb',
+  target: 'reply',${markerMode !== 'none' ? `\n  markerEnd: { type: MarkerType.${markerMode === 'arrow' ? 'Arrow' : 'ArrowClosed'} },` : ''}
+  data: { tone: 'success', label: 'Found', routeStyle: '${routeStyle}', animated: ${animated}, dashed: ${dashed} },
+}`}
         apiRows={[
-          { prop: 'data.tone', type: "'default' | 'primary' | 'success' | 'warning' | 'danger' | 'muted'", defaultValue: "'default'", description: '连线与中点徽章的语义色阶' },
-          { prop: 'data.routeStyle', type: "'bezier' | 'smoothstep'", defaultValue: "'bezier'", description: '曲线形态；目标位于源左侧时自动切换圆角正交避障路径' },
-          { prop: 'data.label / showActionTrigger / renderActionMenu', type: 'string / boolean / renderProp', description: '中点短标签与可扩展的 [+] 菜单浮层渲染函数' },
+          { prop: 'data.routeStyle', type: "'bezier' | 'smoothstep' | 'step' | 'straight' | 'simplebezier'", defaultValue: "'bezier'", description: '覆盖 React Flow 全部五种曲线路径算法；反向回环可自动切圆角正交避障' },
+          { prop: 'data.tone / animated / dashed', type: 'FlowEdgeTone / boolean / boolean', defaultValue: "'default' / false / false", description: '6 套语义色阶、流光虚线动画与静态虚线控制' },
+          { prop: 'data.renderToolbar', type: '(edgeId: string) => ReactNode', description: '选中该连线时通过 React Flow EdgeToolbar 渲染浮动操作条' },
+          { prop: 'data.showActionTrigger / renderActionMenu', type: 'boolean / renderProp', description: '中点 [+] 按钮与可扩展菜单浮层渲染函数' },
         ]}
       >
-        <div className="h-[240px] w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+        <div className="h-[250px] w-full overflow-hidden rounded-xl border border-[var(--abc-border)]">
           <FlowCanvasSurface
             withProvider
             nodes={DEMO_NODES}
@@ -212,39 +233,78 @@ const CustomEdge = (props: FlowLabeledEdgeProps) => <FlowLabeledEdge {...props} 
             edgeTypes={DEMO_EDGE_TYPES}
             showDotsBackground
             fitView
-            fitViewOptions={{ padding: 0.25 }}
+            fitViewOptions={{ padding: 0.24 }}
           />
         </div>
       </ComponentDocPreview>
 
       <ComponentDocPreview
-        title="FlowViewportControls 画布左下角极简悬浮视口控制胶囊"
+        title="FlowViewportControls 画布左下角全功能悬浮控制胶囊"
+        pkg="@abc-design/flow"
         components={['FlowViewportControls']}
-        description="轻量胶囊式视口操控条：内置缩放 - / % / +、自适应居中、一键排版、按需 MiniMap 开关、业务扩展图标槽与主行动按钮。"
+        description="覆盖缩放 -/%/+、平移/框选模式切换、编辑锁、网格磁吸开关、Undo/Redo 撤销重做、自适应居中、拓扑自动排版、MiniMap 开关、业务扩展槽与主行动按钮。"
+        onResetKnobs={() => {
+          setZoomPercent(100)
+          setShowMiniMap(false)
+          setInteractionMode('pan')
+          setInteractive(true)
+          setSnapToGrid(true)
+          setCanUndo(true)
+          setCanRedo(false)
+        }}
+        controls={
+          <>
+            <KnobSwitch label="可撤销 (canUndo)" checked={canUndo} onChange={setCanUndo} />
+            <KnobSwitch label="可重做 (canRedo)" checked={canRedo} onChange={setCanRedo} />
+            <KnobSwitch label="允许编辑 (interactive)" checked={interactive} onChange={setInteractive} />
+            <KnobSwitch label="网格磁吸 (snapToGrid)" checked={snapToGrid} onChange={setSnapToGrid} />
+          </>
+        }
         code={`import { FlowViewportControls } from '@abc-design/flow'
 
 <FlowViewportControls
-  zoomPercent={zoomPercent}
-  showMiniMap={showMiniMap}
-  onZoomOut={() => setZoomPercent((z) => Math.max(40, z - 10))}
-  onZoomReset={() => setZoomPercent(100)}
-  onZoomIn={() => setZoomPercent((z) => Math.min(200, z + 10))}
-  onFitView={handleFitView}
-  onAutoLayout={handleAutoLayout}
+  zoomPercent={${zoomPercent}}
+  interactionMode="${interactionMode}"
+  onInteractionModeChange={setInteractionMode}
+  interactive={${interactive}}
+  onToggleInteractive={() => setInteractive((v) => !v)}
+  snapToGrid={${snapToGrid}}
+  onToggleSnapToGrid={() => setSnapToGrid((v) => !v)}
+  onUndo={handleUndo}
+  onRedo={handleRedo}
+  canUndo={${canUndo}}
+  canRedo={${canRedo}}
+  onZoomOut={zoomOut}
+  onZoomReset={zoomReset}
+  onZoomIn={zoomIn}
+  onFitView={fitView}
+  onAutoLayout={autoLayout}
+  showMiniMap={${showMiniMap}}
   onToggleMiniMap={() => setShowMiniMap((v) => !v)}
   primaryAction={{ label: '添加步骤', onClick: handleAddStep }}
 />`}
         apiRows={[
-          { prop: 'zoomPercent', type: 'number', required: true, description: '当前视口缩放百分比（如 100）' },
-          { prop: 'onZoomOut / onZoomReset / onZoomIn', type: '() => void', required: true, description: '缩放与 100% 重置回调' },
-          { prop: 'onFitView / onAutoLayout / onToggleMiniMap', type: '() => void', description: '按需开启居中、整理与 MiniMap 开关按钮' },
-          { prop: 'extraActions / primaryAction', type: 'FlowViewportControlAction[] / PrimaryAction', description: '零耦合扩展图标项与右侧主行动按钮' },
+          { prop: 'zoomPercent / onZoomOut / onZoomReset / onZoomIn', type: 'number / () => void', required: true, description: '视口缩放百分比显示与缩放回调' },
+          { prop: 'interactionMode / onInteractionModeChange', type: "'pan' | 'select' / (m) => void", description: '手形拖拽平移与左键框选模式切换' },
+          { prop: 'interactive / onToggleInteractive / snapToGrid / onToggleSnapToGrid', type: 'boolean / () => void', description: '画布只读编辑锁与网格磁吸对齐开关' },
+          { prop: 'onUndo / onRedo / canUndo / canRedo', type: '() => void / boolean', description: '对接 useFlowHistory 的撤销与重做按钮组' },
+          { prop: 'onFitView / onAutoLayout / onToggleMiniMap / extraActions / primaryAction', type: 'Callbacks / Actions', description: '居中、自动排版、缩略图开关及自定义扩展按钮槽' },
         ]}
       >
-        <div className="flex flex-wrap items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-6 dark:border-slate-700 dark:bg-slate-900/50">
+        <div className="flex flex-wrap items-center justify-center rounded-xl border border-dashed border-[var(--abc-border)] bg-[var(--abc-bg-muted)]/50 p-6">
           <FlowViewportControls
             zoomPercent={zoomPercent}
             showMiniMap={showMiniMap}
+            interactionMode={interactionMode}
+            onInteractionModeChange={setInteractionMode}
+            interactive={interactive}
+            onToggleInteractive={() => setInteractive((v) => !v)}
+            snapToGrid={snapToGrid}
+            onToggleSnapToGrid={() => setSnapToGrid((v) => !v)}
+            onUndo={() => abcToast.info('已触发 Undo 撤销')}
+            onRedo={() => abcToast.info('已触发 Redo 重做')}
+            canUndo={canUndo}
+            canRedo={canRedo}
             onZoomOut={() => setZoomPercent((z) => Math.max(40, z - 10))}
             onZoomReset={() => setZoomPercent(100)}
             onZoomIn={() => setZoomPercent((z) => Math.min(200, z + 10))}

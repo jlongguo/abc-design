@@ -3,23 +3,31 @@ import { Button, cn } from '@abc-design/react'
 import {
   BaseEdge,
   EdgeLabelRenderer,
+  EdgeText,
+  EdgeToolbar,
   type Edge,
   type EdgeProps,
   getBezierPath,
+  getSimpleBezierPath,
   getSmoothStepPath,
+  getStraightPath,
 } from '@xyflow/react'
 import { Plus } from 'lucide-react'
 
 export type FlowEdgeTone = 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'muted'
-export type FlowEdgeRouteStyle = 'bezier' | 'smoothstep'
+export type FlowEdgeRouteStyle = 'bezier' | 'smoothstep' | 'step' | 'straight' | 'simplebezier'
 
 export interface FlowLabeledEdgeData extends Record<string, unknown> {
   /** 连线语义色阶 */
   tone?: FlowEdgeTone
-  /** 路径曲线风格（反向/回环时自动切换圆角正交避障路径） */
+  /** 路径曲线风格：支持 ReactFlow 全部 5 种边算法（bezier / smoothstep / step / straight / simplebezier） */
   routeStyle?: FlowEdgeRouteStyle
-  /** 连线中点短标签（如 Found / Else / Next） */
+  /** 反向回环时是否自动切圆角正交避障路径（默认 true；显式选 straight/step 时尊重用户选择） */
+  autoAvoidBackward?: boolean
+  /** 连线中点短标签（HTML 徽章，如 Found / Else / Next） */
   label?: string
+  /** 原生 SVG EdgeText 短标签（零 HTML DOM 叠加，适合轻量大图） */
+  svgLabel?: string
   /** 是否虚线绘制 */
   dashed?: boolean
   /** 是否启用流动虚线动画 */
@@ -38,6 +46,8 @@ export interface FlowLabeledEdgeData extends Record<string, unknown> {
   onActionClick?: (edgeId: string) => void
   /** 中点按钮点击后弹出的自定义浮层菜单渲染函数 */
   renderActionMenu?: (helpers: { close: () => void }) => React.ReactNode
+  /** 选中该连线时通过 ReactFlow EdgeToolbar 渲染的浮动快捷工具条 */
+  renderToolbar?: (edgeId: string) => React.ReactNode
 }
 
 export type FlowLabeledEdgeType = Edge<FlowLabeledEdgeData, 'flow-labeled'>
@@ -80,12 +90,14 @@ export interface FlowLabeledEdgeProps extends EdgeProps<FlowLabeledEdgeType> {
   selectedStroke?: string
   /** 覆盖中点菜单渲染（优先于 data.renderActionMenu） */
   renderActionMenu?: (helpers: { close: () => void }) => React.ReactNode
+  /** 覆盖选中态 EdgeToolbar 渲染（优先于 data.renderToolbar） */
+  renderToolbar?: (edgeId: string) => React.ReactNode
 }
 
 /**
  * 通用语义标签连线 (FlowLabeledEdge)
- * - 正向连接采用流畅贝塞尔曲线，反向回环（目标位于源左侧）自动切换圆角正交路径防穿透节点卡片；
- * - 支持 6 套语义色阶、流动动画、中点语义徽章与可扩展的 [+] 菜单插槽。
+ * - 完整覆盖 ReactFlow 5 种曲线路径算法（bezier / smoothstep / step / straight / simplebezier）；
+ * - 支持 6 套语义色阶、起止箭头 Marker、流光动画、中点 [+] 菜单插槽与选中态原生 EdgeToolbar。
  */
 export const FlowLabeledEdge: React.FC<FlowLabeledEdgeProps> = ({
   id,
@@ -97,37 +109,67 @@ export const FlowLabeledEdge: React.FC<FlowLabeledEdgeProps> = ({
   targetPosition,
   data,
   selected,
+  markerStart,
   markerEnd,
   selectedStroke = '#4f46e5',
   renderActionMenu: renderActionMenuProp,
+  renderToolbar: renderToolbarProp,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const tone: FlowEdgeTone = data?.tone ?? 'default'
   const routeStyle: FlowEdgeRouteStyle = data?.routeStyle ?? 'bezier'
+  const autoAvoidBackward = data?.autoAvoidBackward ?? true
   const isBackward = targetX < sourceX + 24
-  const useSmoothStep = isBackward || routeStyle === 'smoothstep'
 
-  const [edgePath, labelX, labelY] = useSmoothStep
-    ? getSmoothStepPath({
-        sourceX,
-        sourceY,
-        sourcePosition,
-        targetX,
-        targetY,
-        targetPosition,
-        borderRadius: 16,
-        offset: isBackward ? 34 : 20,
-      })
-    : getBezierPath({
-        sourceX,
-        sourceY,
-        sourcePosition,
-        targetX,
-        targetY,
-        targetPosition,
-        curvature: 0.35,
-      })
+  let edgePath: string
+  let labelX: number
+  let labelY: number
+
+  if (routeStyle === 'straight') {
+    ;[edgePath, labelX, labelY] = getStraightPath({ sourceX, sourceY, targetX, targetY })
+  } else if (routeStyle === 'step') {
+    ;[edgePath, labelX, labelY] = getSmoothStepPath({
+      sourceX,
+      sourceY,
+      sourcePosition,
+      targetX,
+      targetY,
+      targetPosition,
+      borderRadius: 0,
+      offset: isBackward ? 34 : 20,
+    })
+  } else if (routeStyle === 'simplebezier') {
+    ;[edgePath, labelX, labelY] = getSimpleBezierPath({
+      sourceX,
+      sourceY,
+      sourcePosition,
+      targetX,
+      targetY,
+      targetPosition,
+    })
+  } else if (routeStyle === 'smoothstep' || (autoAvoidBackward && isBackward)) {
+    ;[edgePath, labelX, labelY] = getSmoothStepPath({
+      sourceX,
+      sourceY,
+      sourcePosition,
+      targetX,
+      targetY,
+      targetPosition,
+      borderRadius: 16,
+      offset: isBackward ? 34 : 20,
+    })
+  } else {
+    ;[edgePath, labelX, labelY] = getBezierPath({
+      sourceX,
+      sourceY,
+      sourcePosition,
+      targetX,
+      targetY,
+      targetPosition,
+      curvature: 0.35,
+    })
+  }
 
   const visual = EDGE_TONE_STYLES[tone] ?? EDGE_TONE_STYLES.default
   const strokeWidth = selected
@@ -135,16 +177,18 @@ export const FlowLabeledEdge: React.FC<FlowLabeledEdgeProps> = ({
     : (data?.strokeWidth ?? (tone === 'muted' ? 1.25 : 1.7))
 
   const menuRenderer = renderActionMenuProp ?? data?.renderActionMenu
+  const toolbarRenderer = renderToolbarProp ?? data?.renderToolbar
   const hasActionButton = Boolean(
     data?.showActionTrigger && (menuRenderer || data?.onActionClick),
   )
 
   return (
     <>
-      <g data-testid={data?.testId}>
+      <g data-testid={data?.testId} data-route-style={routeStyle}>
         <BaseEdge
           id={id}
           path={edgePath}
+          markerStart={markerStart}
           markerEnd={markerEnd}
           className={data?.animated ? 'abc-flow-edge-animated' : undefined}
           style={{
@@ -155,7 +199,46 @@ export const FlowLabeledEdge: React.FC<FlowLabeledEdgeProps> = ({
             transition: 'stroke 150ms ease, stroke-width 150ms ease',
           }}
         />
+        {data?.svgLabel && !data?.label && (
+          <EdgeText
+            x={labelX}
+            y={labelY}
+            label={data.svgLabel}
+            labelStyle={{
+              fill: 'var(--abc-fg-secondary, #334155)',
+              fontSize: 10,
+              fontWeight: 600,
+            }}
+            labelShowBg
+            labelBgPadding={[6, 3]}
+            labelBgBorderRadius={999}
+            labelBgStyle={{
+              fill: 'var(--abc-bg-surface, #ffffff)',
+              stroke: 'var(--abc-border, #cbd5e1)',
+              strokeWidth: 1,
+            }}
+          />
+        )}
       </g>
+
+      {toolbarRenderer && (
+        <EdgeToolbar
+          edgeId={id}
+          x={labelX}
+          y={labelY - 26}
+          isVisible={Boolean(selected)}
+          alignX="center"
+          alignY="bottom"
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            onMouseDown={(event) => event.stopPropagation()}
+            className="nodrag nopan"
+          >
+            {toolbarRenderer(id)}
+          </div>
+        </EdgeToolbar>
+      )}
 
       {(data?.label || hasActionButton) && (
         <EdgeLabelRenderer>
@@ -184,6 +267,7 @@ export const FlowLabeledEdge: React.FC<FlowLabeledEdgeProps> = ({
                   type="button"
                   variant="outline"
                   size="icon-sm"
+                  pressScale={false}
                   aria-label={data?.actionAriaLabel ?? '连线操作'}
                   title={data?.actionAriaLabel ?? '连线操作'}
                   onClick={(event) => {

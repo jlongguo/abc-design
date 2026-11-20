@@ -1,10 +1,22 @@
 import { AbcMotionPreset } from '@abc-design/tokens';
+import { Connection } from '@xyflow/react';
+import { ConnectionLineComponentProps } from '@xyflow/react';
 import { ControlSize } from '@abc-design/react';
 import { default as default_2 } from 'react';
 import { Edge } from '@xyflow/react';
 import { EdgeProps } from '@xyflow/react';
+import { HandleProps } from '@xyflow/react';
+import { MiniMapProps } from '@xyflow/react';
 import { Node as Node_2 } from '@xyflow/react';
+import { NodeProps } from '@xyflow/react';
+import { NodeResizerProps } from '@xyflow/react';
 import { ReactFlowProps } from '@xyflow/react';
+import { Viewport } from '@xyflow/react';
+
+/**
+ * 计算拖拽节点相对于画布其余节点的磁吸对齐参考线（左缘 / 中线 / 右缘、上缘 / 中线 / 下缘）
+ */
+export declare function computeFlowHelperLines<N extends Node_2 = Node_2>(draggingNode: N, allNodes: ReadonlyArray<N>, threshold?: number): FlowHelperLines;
 
 /** 从模板字符串中提取所有 {{variable}} 占位符列表 */
 export declare function extractTemplateVariables(text: string): TemplateVariableToken[];
@@ -91,12 +103,14 @@ export declare const FLOW_PORT_TONE_STYLES: Record<FlowPortTone, {
  */
 export declare const FLOW_TONE_STYLES: Record<FlowTone, FlowToneStyleTokens>;
 
+export declare type FlowBackgroundStyle = 'dots' | 'lines' | 'cross' | 'none';
+
 /**
- * ABC Design 主题化 ReactFlow 画布容器 (FlowCanvasSurface)
- * 统一封装浅色/暗色点阵背景、四角 Panel 布局槽、按需 MiniMap、隐藏默认水印与加载遮罩，
- * 屏蔽重复的 ReactFlow 样板配置，保持 100% 业务无关。
+ * ABC Design 主题化 ReactFlow 全能画布舞台容器 (FlowCanvasSurface)
+ * 集成多态网格背景（dots/lines/cross）、平移/框选双模式、画布编辑锁、磁吸网格与辅助参考线、
+ * 语义着色 MiniMap、自定义拖拽连线、四角 Panel 插槽与加载遮罩，保持 100% 业务无关。
  */
-export declare function FlowCanvasSurface<NodeType extends Node_2 = Node_2, EdgeType extends Edge = Edge>({ withProvider, containerClassName, testId, containerRef, onDragOver, onDrop, showDotsBackground, backgroundGap, backgroundDotSize, backgroundColor, leftRailSlot, topCenterSlot, topRightSlot, bottomLeftSlot, bottomRightSlot, showMiniMap, miniMapClassName, loading, loadingText, children, overlaySlot, className, proOptions, ...reactFlowProps }: FlowCanvasSurfaceProps<NodeType, EdgeType>): default_2.JSX.Element;
+export declare function FlowCanvasSurface<NodeType extends Node_2 = Node_2, EdgeType extends Edge = Edge>({ withProvider, containerClassName, testId, containerRef, onDragOver, onDrop, backgroundVariant, showDotsBackground, backgroundGap, backgroundDotSize, backgroundColor, interactionMode, interactive, helperLines, leftRailSlot, topCenterSlot, topRightSlot, bottomLeftSlot, bottomRightSlot, showMiniMap, miniMapClassName, miniMapProps, loading, loadingText, children, overlaySlot, className, proOptions, connectionLineComponent, nodesDraggable, nodesConnectable, elementsSelectable, panOnDrag, selectionOnDrag, selectionMode, ...reactFlowProps }: FlowCanvasSurfaceProps<NodeType, EdgeType>): default_2.JSX.Element;
 
 export declare interface FlowCanvasSurfaceProps<NodeType extends Node_2 = Node_2, EdgeType extends Edge = Edge> extends Omit<ReactFlowProps<NodeType, EdgeType>, 'children'> {
     /** 是否内置包裹 ReactFlowProvider（外部已包 Provider 且调用 useReactFlow 时保持 false） */
@@ -111,14 +125,25 @@ export declare interface FlowCanvasSurfaceProps<NodeType extends Node_2 = Node_2
     onDragOver?: default_2.DragEventHandler<HTMLDivElement>;
     /** 外层舞台拖放事件 */
     onDrop?: default_2.DragEventHandler<HTMLDivElement>;
-    /** 背景点阵样式开关（默认 true） */
+    /** 背景网格形态：dots（点阵）/ lines（网格线）/ cross（十字）/ none（无背景），优先于 showDotsBackground */
+    backgroundVariant?: FlowBackgroundStyle;
+    /** 背景点阵样式开关（默认 true，向后兼容） */
     showDotsBackground?: boolean;
-    /** 点阵间距（默认 18） */
+    /** 网格间距（默认 18） */
     backgroundGap?: number;
-    /** 点阵圆点半径（默认 1.25） */
+    /** 点阵圆点半径或线条尺寸（默认 1.25） */
     backgroundDotSize?: number;
-    /** 点阵颜色（默认柔和浅灰，支持传入 CSS 变量） */
+    /** 背景网格颜色（默认柔和浅灰，支持传入 CSS 变量） */
     backgroundColor?: string;
+    /** 交互模式：pan（拖拽平移，默认）或 select（左键框选多节点，中/右键平移） */
+    interactionMode?: FlowInteractionMode;
+    /** 是否允许编辑交互（设为 false 时锁定节点拖拽、连线与选中） */
+    interactive?: boolean;
+    /** 磁吸对齐辅助线世界坐标（非空时通过 ViewportPortal 自动绘制） */
+    helperLines?: {
+        horizontal?: number;
+        vertical?: number;
+    };
     /** 左上角悬浮插槽（如 FloatingIconRail） */
     leftRailSlot?: default_2.ReactNode;
     /** 顶部居中悬浮插槽（如环境摘要胶囊） */
@@ -133,32 +158,165 @@ export declare interface FlowCanvasSurfaceProps<NodeType extends Node_2 = Node_2
     showMiniMap?: boolean;
     /** MiniMap 附加类名 */
     miniMapClassName?: string;
+    /** 透传给 MiniMap 的扩展配置 */
+    miniMapProps?: Partial<MiniMapProps<NodeType>>;
     /** 画布加载态遮罩 */
     loading?: boolean;
     /** 加载态提示文案 */
     loadingText?: string;
-    /** 画布内自定义子元素（额外 Panel / SVG defs 等） */
+    /** 画布内自定义子元素（额外 Panel / SVG defs / ViewportOverlay 等） */
     children?: default_2.ReactNode;
-    /** 舞台外层浮层插槽（如画中画小窗） */
+    /** 舞台外层浮层插槽（如右键上下文菜单 FlowContextMenu 或画中画小窗） */
     overlaySlot?: default_2.ReactNode;
 }
 
-export declare type FlowEdgeRouteStyle = 'bezier' | 'smoothstep';
+/**
+ * 主题化 ReactFlow 拖拽连线预览组件 (FlowConnectionLine)
+ * 支持全部 5 种 ConnectionLineType 路径曲线，并根据 ReactFlow connectionStatus 实时反馈合法/非法连线颜色与终点光环。
+ */
+export declare const FlowConnectionLine: default_2.FC<FlowConnectionLineProps>;
+
+export declare interface FlowConnectionLineProps extends ConnectionLineComponentProps {
+    /** 默认连接拖拽线颜色（默认 --abc-primary） */
+    defaultStroke?: string;
+    /** 命中有效目标端口时的颜色（默认 emerald） */
+    validStroke?: string;
+    /** 命中非法目标端口时的颜色（默认 rose） */
+    invalidStroke?: string;
+}
+
+/**
+ * ReactFlow 画布 / 节点 / 连线右键上下文菜单 (FlowContextMenu)
+ * 支持边界防裁切定位、快捷键提示、分组分隔线、危险操作高亮以及外部点击与 Esc 自动关闭。
+ */
+export declare const FlowContextMenu: default_2.FC<FlowContextMenuProps>;
+
+export declare interface FlowContextMenuItem {
+    key: string;
+    label: string;
+    icon?: default_2.ReactNode;
+    shortcut?: string;
+    danger?: boolean;
+    disabled?: boolean;
+    dividerBefore?: boolean;
+    onClick: () => void;
+}
+
+export declare interface FlowContextMenuProps {
+    /** 是否打开 */
+    open: boolean;
+    /** 相对于画布容器左上角的 X 坐标（像素） */
+    x: number;
+    /** 相对于画布容器左上角的 Y 坐标（像素） */
+    y: number;
+    /** 菜单标题（如“画布操作 / 节点操作 / 连线操作”） */
+    title?: string;
+    /** 菜单项列表 */
+    items: ReadonlyArray<FlowContextMenuItem>;
+    /** 关闭菜单回调 */
+    onClose: () => void;
+    /** 容器宽高（用于自动防溢出贴边翻转，可选） */
+    containerBounds?: {
+        width: number;
+        height: number;
+    };
+    className?: string;
+}
+
+export declare type FlowEdgeRouteStyle = 'bezier' | 'smoothstep' | 'step' | 'straight' | 'simplebezier';
 
 export declare type FlowEdgeTone = 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'muted';
 
 /**
+ * ReactFlow 原生子流程分组容器节点 (FlowGroupNode)
+ * 集成 FlowSectionFrame + FlowNodeResizer 拖拽调尺寸 + ReactFlow NodeToolbar 顶部悬浮微操作条，
+ * 原生支持 parentId / extent="parent" / expandParent 子流程嵌套交互。
+ */
+export declare const FlowGroupNode: default_2.FC<NodeProps<FlowGroupNodeType>>;
+
+export declare interface FlowGroupNodeData extends Record<string, unknown> {
+    /** 分组标题 */
+    title?: default_2.ReactNode;
+    /** 分组说明文案 */
+    description?: default_2.ReactNode;
+    /** 语义色调（默认 'blue'） */
+    tone?: FlowTone;
+    /** 虚线边框开关（默认 true） */
+    dashed?: boolean;
+    /** 选中时是否显示拖拽缩放器（默认 true） */
+    resizable?: boolean;
+    /** 最小宽高约束 */
+    minWidth?: number;
+    minHeight?: number;
+    /** 右上角徽标（如子节点数量） */
+    badge?: default_2.ReactNode;
+    /** 切换色调回调（提供时在 NodeToolbar 渲染切色按钮） */
+    onCycleTone?: (nodeId: string, nextTone: FlowTone) => void;
+    /** 在分组内快捷新建子节点回调 */
+    onAddChild?: (nodeId: string) => void;
+    /** 删除分组回调 */
+    onDelete?: (nodeId: string) => void;
+}
+
+export declare type FlowGroupNodeType = Node_2<FlowGroupNodeData, 'flow-group'>;
+
+/**
+ * 主题化语义 ReactFlow 连接点 (FlowHandle)
+ * 集成 5 套端口语义色、亮暗描边隔离、悬停放大提示以及基于 ReactFlow useNodeConnections 的最大连接数约束。
+ * 当脱离 ReactFlow Node 上下文独立预览渲染时自动安全降级，避免触发 ReactFlow 无 nodeId 异常。
+ */
+export declare const FlowHandle: default_2.FC<FlowHandleProps>;
+
+export declare interface FlowHandleProps extends Omit<HandleProps, 'isConnectable'> {
+    /** 语义色调（默认 'neutral'） */
+    tone?: FlowPortTone;
+    /** 连接点视觉尺寸（默认 'sm' = 10px，'md' = 12px） */
+    size?: FlowHandleSize;
+    /** 最大允许连接数（借助 ReactFlow useNodeConnections 自动计数并限制超限连线） */
+    connectionLimit?: number;
+    /** 显式指定节点 ID（在 ReactFlow 自定义节点内无需传入，自动通过 useNodeId 读取） */
+    nodeId?: string;
+    /** 是否允许发起/接收连线（默认 true，与 connectionLimit 共同计算最终可连性） */
+    isConnectable?: boolean;
+    /** 可选悬停提示文案 */
+    title?: string;
+    /** 自定义类名 */
+    className?: string;
+    style?: default_2.CSSProperties;
+}
+
+export declare type FlowHandleSize = 'sm' | 'md';
+
+export declare interface FlowHelperLines {
+    horizontal?: number;
+    vertical?: number;
+    snapPosition?: {
+        x: number;
+        y: number;
+    };
+}
+
+export declare interface FlowHistorySnapshot<N extends Node_2 = Node_2, E extends Edge = Edge> {
+    nodes: N[];
+    edges: E[];
+}
+
+export declare type FlowInteractionMode = 'pan' | 'select';
+
+/**
  * 通用语义标签连线 (FlowLabeledEdge)
- * - 正向连接采用流畅贝塞尔曲线，反向回环（目标位于源左侧）自动切换圆角正交路径防穿透节点卡片；
- * - 支持 6 套语义色阶、流动动画、中点语义徽章与可扩展的 [+] 菜单插槽。
+ * - 完整覆盖 ReactFlow 5 种曲线路径算法（bezier / smoothstep / step / straight / simplebezier）；
+ * - 支持 6 套语义色阶、起止箭头 Marker、流光动画、中点 [+] 菜单插槽与选中态原生 EdgeToolbar。
  */
 export declare const FlowLabeledEdge: default_2.FC<FlowLabeledEdgeProps>;
 
 export declare interface FlowLabeledEdgeData extends Record<string, unknown> {
     /** 连线语义色阶 */
     tone?: FlowEdgeTone;
-    /** 路径曲线风格（反向/回环时自动切换圆角正交避障路径） */
+    /** 路径曲线风格：支持 ReactFlow 全部 5 种边算法（bezier / smoothstep / step / straight / simplebezier） */
     routeStyle?: FlowEdgeRouteStyle;
+    /** 反向回环时是否自动切圆角正交避障路径（默认 true；显式选 straight/step 时尊重用户选择） */
+    autoAvoidBackward?: boolean;
     /** 连线中点短标签（如 Found / Else / Next） */
     label?: string;
     /** 是否虚线绘制 */
@@ -181,6 +339,8 @@ export declare interface FlowLabeledEdgeData extends Record<string, unknown> {
     renderActionMenu?: (helpers: {
         close: () => void;
     }) => default_2.ReactNode;
+    /** 选中该连线时通过 ReactFlow EdgeToolbar 渲染的浮动快捷工具条 */
+    renderToolbar?: (edgeId: string) => default_2.ReactNode;
 }
 
 export declare interface FlowLabeledEdgeProps extends EdgeProps<FlowLabeledEdgeType> {
@@ -190,9 +350,18 @@ export declare interface FlowLabeledEdgeProps extends EdgeProps<FlowLabeledEdgeT
     renderActionMenu?: (helpers: {
         close: () => void;
     }) => default_2.ReactNode;
+    /** 覆盖选中态 EdgeToolbar 渲染（优先于 data.renderToolbar） */
+    renderToolbar?: (edgeId: string) => default_2.ReactNode;
 }
 
 export declare type FlowLabeledEdgeType = Edge<FlowLabeledEdgeData, 'flow-labeled'>;
+
+export declare type FlowLayoutDirection = 'LR' | 'TB' | 'RL' | 'BT';
+
+export declare interface FlowLineageResult {
+    nodeIds: Set<string>;
+    edgeIds: Set<string>;
+}
 
 /**
  * Flow 画布通用柔和浅色语义节点卡片 (FlowNodeCard)
@@ -295,6 +464,17 @@ export declare interface FlowNodeOutputPort {
     disabled?: boolean;
     /** 出口行附加类名 */
     className?: string;
+}
+
+/**
+ * 主题化 ReactFlow 节点拖拽调尺寸器 (FlowNodeResizer)
+ * 封装 @xyflow/react 的 NodeResizer，对齐 ABC Design 语义边框线与圆角控制手柄，适配亮暗主题。
+ */
+export declare const FlowNodeResizer: default_2.FC<FlowNodeResizerProps>;
+
+export declare interface FlowNodeResizerProps extends NodeResizerProps {
+    /** 语义色调（未传时使用主题主色 --abc-primary） */
+    tone?: FlowTone;
 }
 
 /** FlowNodeCard 运行状态枚举 */
@@ -401,6 +581,14 @@ export declare interface FlowSectionFrameProps extends Omit<default_2.HTMLAttrib
     bodyClassName?: string;
 }
 
+export declare interface FlowSnapshotPayload<N extends Node_2 = Node_2, E extends Edge = Edge> {
+    version: 1;
+    exportedAt: string;
+    nodes: N[];
+    edges: E[];
+    viewport?: Viewport;
+}
+
 /**
  * Flow 画布通用原语视觉令牌与纯函数辅助工具
  * 严格零业务耦合，统一消费 @abc-design/tokens CSS 变量并兼顾亮暗双主题可读性。
@@ -443,8 +631,8 @@ export declare interface FlowViewportControlAction {
 }
 
 /**
- * 画布左下角极简悬浮视口控制胶囊 (FlowViewportControls)
- * 仅保留高频视口操控（缩放、居中、整理、按需 MiniMap、可选扩展图标与主行动按钮），零业务耦合。
+ * 画布左下角悬浮视口与交互控制胶囊 (FlowViewportControls)
+ * 覆盖缩放、居中、拓扑自动排版、MiniMap、平移/框选模式切换、画布锁定、网格吸附、撤销/重做与业务扩展槽。
  */
 export declare const FlowViewportControls: default_2.FC<FlowViewportControlsProps>;
 
@@ -462,6 +650,13 @@ export declare interface FlowViewportControlsLabels {
     toggleMiniMap?: string;
     showMiniMapTitle?: string;
     hideMiniMapTitle?: string;
+    panMode?: string;
+    selectMode?: string;
+    lockCanvas?: string;
+    unlockCanvas?: string;
+    snapToGrid?: string;
+    undo?: string;
+    redo?: string;
 }
 
 export declare interface FlowViewportControlsPrimaryAction {
@@ -496,7 +691,27 @@ export declare interface FlowViewportControlsProps {
     showMiniMap?: boolean;
     /** 切换缩略图回调（提供时才渲染 MiniMap 开关） */
     onToggleMiniMap?: () => void;
-    /** 附加扩展图标操作（如便签、批量延迟等由业务注入） */
+    /** 画布交互模式（平移 pan vs 框选 select） */
+    interactionMode?: FlowInteractionMode;
+    /** 切换交互模式回调（提供时渲染平移/框选切换按钮） */
+    onInteractionModeChange?: (mode: FlowInteractionMode) => void;
+    /** 画布是否允许编辑（默认 true） */
+    interactive?: boolean;
+    /** 切换画布只读锁定状态回调 */
+    onToggleInteractive?: () => void;
+    /** 是否启用网格吸附 */
+    snapToGrid?: boolean;
+    /** 切换网格吸附回调 */
+    onToggleSnapToGrid?: () => void;
+    /** 撤销回调（提供时渲染撤销按钮） */
+    onUndo?: () => void;
+    /** 重做回调（提供时渲染重做按钮） */
+    onRedo?: () => void;
+    /** 是否可撤销 */
+    canUndo?: boolean;
+    /** 是否可重做 */
+    canRedo?: boolean;
+    /** 附加扩展图标操作（如便签、导出 JSON 等由业务注入） */
     extraActions?: ReadonlyArray<FlowViewportControlAction>;
     /** 右侧主行动按钮（如“添加步骤”） */
     primaryAction?: FlowViewportControlsPrimaryAction;
@@ -508,14 +723,74 @@ export declare interface FlowViewportControlsProps {
     testId?: string;
 }
 
+/**
+ * 画布世界坐标系浮层容器 (FlowViewportOverlay)
+ * 封装 ReactFlow ViewportPortal，支持磁吸对齐辅助线（Helper Lines）、原点标记与随画布缩放同步的世界坐标标注层。
+ */
+export declare const FlowViewportOverlay: default_2.FC<FlowViewportOverlayProps>;
+
+export declare interface FlowViewportOverlayProps {
+    /** 磁吸水平对齐参考线世界 Y 坐标（画布坐标系） */
+    horizontalLine?: number;
+    /** 磁吸垂直对齐参考线世界 X 坐标（画布坐标系） */
+    verticalLine?: number;
+    /** 是否显示画布世界坐标原点 (0, 0) 参考徽标 */
+    showOriginBadge?: boolean;
+    /** 随画布平移缩放同步移动的自定义世界坐标系覆盖元素 */
+    children?: default_2.ReactNode;
+    className?: string;
+}
+
+/** 递归查找指定节点的全部下游后继节点与关联连线（基于 ReactFlow getOutgoers / getConnectedEdges） */
+export declare function getFlowDownstream<N extends Node_2 = Node_2, E extends Edge = Edge>(nodeId: string, nodes: N[], edges: E[]): FlowLineageResult;
+
+/** 递归查找指定节点的全部上游祖先节点与关联连线（基于 ReactFlow getIncomers / getConnectedEdges） */
+export declare function getFlowUpstream<N extends Node_2 = Node_2, E extends Edge = Edge>(nodeId: string, nodes: N[], edges: E[]): FlowLineageResult;
+
+/**
+ * 环路检测辅助函数（配合 ReactFlow isValidConnection 阻止形成循环依赖）
+ * 返回 true 表示加入候选连线后将形成环路或自环。
+ */
+export declare function hasFlowCycle<E extends Edge = Edge>(edges: ReadonlyArray<E>, candidate: Pick<Connection, 'source' | 'target'>): boolean;
+
 /** 在指定选区（start..end）处插入变量表达式并返回新文本与新光标位置 */
 export declare function insertTemplateVariableAt(text: string, expression: string, selectionStart: number | null | undefined, selectionEnd: number | null | undefined, replaceAll?: boolean): {
     nextValue: string;
     nextCaret: number;
 };
 
+/**
+ * 零外部依赖分层拓扑自动排版引擎 (layoutFlowGraph)
+ * - 基于 Kahn 拓扑分层 + 环路安全兜底，支持 LR / TB / RL / BT 四向排布；
+ * - 自动保持 parentId 子流分组容器的父子相对坐标，不破坏子流程嵌套结构。
+ */
+export declare function layoutFlowGraph<N extends Node_2 = Node_2, E extends Edge = Edge>(nodes: ReadonlyArray<N>, edges: ReadonlyArray<E>, options?: LayoutFlowGraphOptions): N[];
+
+export declare interface LayoutFlowGraphOptions {
+    /** 排版方向：LR（从左到右）、TB（从上到下）、RL、BT，默认 'LR' */
+    direction?: FlowLayoutDirection;
+    /** 层级间距（像素，默认 96） */
+    rankSep?: number;
+    /** 同层节点间距（像素，默认 48） */
+    nodeSep?: number;
+    /** 默认节点估算宽度（节点未测量时使用，默认 230） */
+    defaultNodeWidth?: number;
+    /** 默认节点估算高度（节点未测量时使用，默认 116） */
+    defaultNodeHeight?: number;
+    /** 起始坐标偏移 X（默认 32） */
+    originX?: number;
+    /** 起始坐标偏移 Y（默认 32） */
+    originY?: number;
+}
+
+/** 反序列化并基础校验 ReactFlow 图谱快照 JSON */
+export declare function parseFlowSnapshot<N extends Node_2 = Node_2, E extends Edge = Edge>(rawJson: string): FlowSnapshotPayload<N, E>;
+
 /** 从模板字符串中按偏移精确移除指定 {{variable}} 片段，并清理多余相邻空白 */
 export declare function removeTemplateVariableToken(text: string, token: Pick<TemplateVariableToken, 'start' | 'end'>): string;
+
+/** 序列化 ReactFlow 图谱快照为格式化 JSON */
+export declare function serializeFlowSnapshot<N extends Node_2 = Node_2, E extends Edge = Edge>(nodes: N[], edges: E[], viewport?: Viewport): string;
 
 /**
  * 通用模板变量输入器 (TemplateVariableInput)
@@ -631,6 +906,37 @@ export declare interface TemplateVariableToken {
     end: number;
     /** 出现序号（便于同一变量多次出现时精确区分 key 与定向移除） */
     occurrenceIndex: number;
+}
+
+/**
+ * ReactFlow 撤销 / 重做快照历史 Hook (useFlowHistory)
+ * 在执行新增节点、删除、自动排版或连线重连前调用 takeSnapshot(nodes, edges)，即可随时无损回退或重做。
+ */
+export declare function useFlowHistory<N extends Node_2 = Node_2, E extends Edge = Edge>(options?: UseFlowHistoryOptions, shortcutHandlers?: {
+    onUndo?: () => void;
+    onRedo?: () => void;
+}): UseFlowHistoryReturn<N, E>;
+
+export declare interface UseFlowHistoryOptions {
+    /** 最大保留历史步数（默认 40） */
+    maxSteps?: number;
+    /** 是否自动监听全局 ⌘Z / Ctrl+Z 与 ⇧⌘Z / Ctrl+Y 撤销重做快捷键（默认 false，避免多画布冲突） */
+    enableKeyboardShortcuts?: boolean;
+}
+
+export declare interface UseFlowHistoryReturn<N extends Node_2 = Node_2, E extends Edge = Edge> {
+    /** 推入一条变更前的快照（供后续撤销） */
+    takeSnapshot: (nodes: N[], edges: E[]) => void;
+    /** 撤销到上一快照，需传入当前最新状态以压入重做栈 */
+    undo: (currentNodes: N[], currentEdges: E[]) => FlowHistorySnapshot<N, E> | null;
+    /** 重做下一快照，需传入当前最新状态以压入撤销栈 */
+    redo: (currentNodes: N[], currentEdges: E[]) => FlowHistorySnapshot<N, E> | null;
+    /** 清空撤销/重做栈 */
+    clear: () => void;
+    canUndo: boolean;
+    canRedo: boolean;
+    pastCount: number;
+    futureCount: number;
 }
 
 export { }
