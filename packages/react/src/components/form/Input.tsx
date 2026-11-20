@@ -311,6 +311,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
 Input.displayName = 'Input'
 
 export interface InputNumberProps {
+  id?: string
   value?: number | null
   defaultValue?: number
   onChange?: (val: number | null) => void
@@ -322,6 +323,12 @@ export interface InputNumberProps {
   disabled?: boolean
   placeholder?: string
   invalid?: boolean
+  /** 单位后缀标识（如 ms / px / s） */
+  suffix?: React.ReactNode
+  'aria-label'?: string
+  'aria-labelledby'?: string
+  'data-testid'?: string
+  'data-draft-field'?: string
   /** 开启内容驱动动态宽度：在 minWidth 与 maxWidth 区间内随数字位数自动伸缩，避免窄框遮挡 */
   autoWidth?: boolean
   /** 最小宽度（支持像素数字或 CSS 长度值，autoWidth 开启时默认按尺寸档位提供安全下限） */
@@ -345,8 +352,30 @@ function toCssLength(val?: number | string): string | undefined {
   return typeof val === 'number' ? `${val}px` : val
 }
 
-/** 步进数值输入框（等宽数字对齐，内置隐藏浏览器原生微调按钮与可选内容自适应宽度） */
+/** 精确提取小数位数（兼容 1e-7 / 2.5e-4 等科学计数法，防止步进浮点漂移） */
+function getDecimalDigits(num: number): number {
+  if (!Number.isFinite(num)) return 0
+  const str = String(num).toLowerCase()
+  const expIdx = str.indexOf('e')
+  if (expIdx !== -1) {
+    const mantissa = str.slice(0, expIdx)
+    const exp = Number(str.slice(expIdx + 1))
+    const mantissaDecimals = mantissa.includes('.') ? mantissa.split('.')[1]!.length : 0
+    return Math.max(0, mantissaDecimals - exp)
+  }
+  const dotIdx = str.indexOf('.')
+  return dotIdx === -1 ? 0 : str.length - dotIdx - 1
+}
+
+/** 仅在 +/- 步进计算时修正 IEEE 754 浮点误差，绝不截断用户直接键入的高精度小数 */
+function roundStepArithmetic(val: number, base: number, step: number): number {
+  const digits = Math.min(12, Math.max(getDecimalDigits(base), getDecimalDigits(step)))
+  return digits > 0 ? Number(val.toFixed(digits)) : val
+}
+
+/** 步进数值输入框（等宽数字对齐，内置隐藏浏览器原生微调按钮、聚焦态防抢先钳制编辑缓冲、可选单位后缀与内容自适应宽度） */
 export const InputNumber: React.FC<InputNumberProps> = ({
+  id: externalId,
   value,
   defaultValue,
   onChange,
@@ -358,6 +387,11 @@ export const InputNumber: React.FC<InputNumberProps> = ({
   disabled = false,
   placeholder,
   invalid = false,
+  suffix,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
+  'data-testid': dataTestId,
+  'data-draft-field': dataDraftField,
   autoWidth = false,
   minWidth,
   maxWidth,
@@ -366,27 +400,71 @@ export const InputNumber: React.FC<InputNumberProps> = ({
 }) => {
   const resolvedSize = useAbcSize(size, 'sm')
   const resolvedMotion = useAbcMotion(motion)
-  const inputId = useId()
+  const generatedId = useId()
+  const inputId = externalId ?? generatedId
   const [internal, setInternal] = useState<number | null>(defaultValue ?? null)
   const current = value !== undefined ? value : internal
+  const [isFocused, setIsFocused] = useState(false)
+  const isFocusedRef = useRef(false)
+  const [draftText, setDraftText] = useState<string>(
+    current !== null && current !== undefined ? String(current) : ''
+  )
 
-  const commit = (next: number | null) => {
+  const clampValue = (next: number | null): number | null => {
+    if (next === null || !Number.isFinite(next)) return null
     let resolved = next
-    if (resolved !== null && Number.isFinite(resolved)) {
-      if (min !== undefined) resolved = Math.max(min, resolved)
-      if (max !== undefined) resolved = Math.min(max, resolved)
-    } else {
-      resolved = null
-    }
+    if (min !== undefined) resolved = Math.max(min, resolved)
+    if (max !== undefined) resolved = Math.min(max, resolved)
+    return resolved
+  }
+
+  const commitImmediate = (next: number | null) => {
+    const resolved = next !== null && Number.isFinite(next) ? next : null
     if (value === undefined) setInternal(resolved)
     onChange?.(resolved)
   }
 
+  const commitClamped = (next: number | null) => {
+    const resolved = clampValue(next)
+    if (value === undefined) setInternal(resolved)
+    onChange?.(resolved)
+    return resolved
+  }
+
+  const handleStep = (delta: number) => {
+    const draftNum =
+      isFocusedRef.current && draftText.trim() !== '' && Number.isFinite(Number(draftText))
+        ? Number(draftText)
+        : (current ?? 0)
+    const stepped = roundStepArithmetic(draftNum + delta, draftNum, step)
+    const resolved = commitClamped(stepped)
+    setDraftText(resolved === null ? '' : String(resolved))
+  }
+
+  const finalizeDraft = () => {
+    const trimmed = draftText.trim()
+    if (trimmed === '') {
+      if (current !== null) {
+        commitImmediate(null)
+      }
+      setDraftText(current !== null && current !== undefined ? String(current) : '')
+      return
+    }
+    const parsed = Number(trimmed)
+    if (Number.isFinite(parsed)) {
+      const resolved = commitClamped(parsed)
+      setDraftText(resolved === null ? '' : String(resolved))
+    } else {
+      setDraftText(current !== null && current !== undefined ? String(current) : '')
+    }
+  }
+
+  const displayedValue = isFocused ? draftText : (current ?? '')
   const isCompact = resolvedSize === 'xs'
-  const stepperBtnWidth = isCompact ? 'w-6' : 'w-7'
+  const stepperBtnWidth = isCompact ? 'w-5' : 'w-7'
   const displayCharLength = Math.max(
     2,
-    String(current !== null && current !== undefined ? current : (placeholder ?? '')).length
+    String(displayedValue !== '' ? displayedValue : (placeholder ?? '')).length
   )
 
   const resolvedMinInlineSize = toCssLength(
@@ -410,6 +488,7 @@ export const InputNumber: React.FC<InputNumberProps> = ({
   return (
     <div
       data-slot="input-number"
+      data-testid={dataTestId}
       data-motion={resolvedMotion}
       data-auto-width={autoWidth ? 'true' : undefined}
       style={Object.keys(containerStyle).length > 0 ? containerStyle : undefined}
@@ -425,9 +504,10 @@ export const InputNumber: React.FC<InputNumberProps> = ({
     >
       <button
         type="button"
+        data-abc-no-press-scale="true"
         aria-label="减少数值"
         disabled={disabled || (min !== undefined && (current ?? 0) <= min)}
-        onClick={() => commit((current ?? 0) - step)}
+        onClick={() => handleStep(-step)}
         className={cn(
           'flex h-full shrink-0 items-center justify-center border-r border-[var(--abc-border)] text-[var(--abc-fg-muted)] transition-colors duration-[var(--abc-motion-fast,140ms)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)] disabled:opacity-40 cursor-pointer',
           stepperBtnWidth
@@ -438,28 +518,73 @@ export const InputNumber: React.FC<InputNumberProps> = ({
       <input
         id={inputId}
         type="number"
-        value={current ?? ''}
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
+        data-draft-field={dataDraftField}
+        value={displayedValue}
         min={min}
         max={max}
         step={step}
         disabled={disabled}
         placeholder={placeholder}
         style={inputStyle}
+        onFocus={() => {
+          isFocusedRef.current = true
+          setIsFocused(true)
+          setDraftText(current !== null && current !== undefined ? String(current) : '')
+        }}
+        onBlur={() => {
+          isFocusedRef.current = false
+          setIsFocused(false)
+          finalizeDraft()
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            finalizeDraft()
+          }
+        }}
         onChange={(e) => {
           const raw = e.target.value
-          commit(raw === '' ? null : Number(raw))
+          if (!isFocusedRef.current) {
+            // 非聚焦态合成变更（兼容自动化测试直接 fireEvent.change）立即钳制提交，且保留高精度小数
+            const resolved = commitClamped(raw === '' ? null : Number(raw))
+            setDraftText(resolved === null ? '' : String(resolved))
+            return
+          }
+          setDraftText(raw)
+          if (raw === '') {
+            // 正在输入 '-' 或 '37.' 期间浏览器返回空串且标记 badInput，等待用户继续输入而不触发父级回弹
+            if (!e.target.validity?.badInput && current !== null) {
+              commitImmediate(null)
+            }
+            return
+          }
+          const parsed = Number(raw)
+          if (!Number.isFinite(parsed)) return
+          const inRange =
+            (min === undefined || parsed >= min) && (max === undefined || parsed <= max)
+          // 仅在合法区间内实时同步，避免用户输入多位数（如 min=320 时键入 "1" 准备输 "1440"）被中途强行改写
+          if (inRange) {
+            commitImmediate(parsed)
+          }
         }}
         className={cn(
           'h-full min-w-0 flex-1 bg-transparent text-center font-mono tabular-nums focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
           autoWidth ? 'w-auto' : 'w-full',
-          isCompact ? 'px-1.5' : 'px-2.5'
+          isCompact ? 'px-1' : 'px-2.5'
         )}
       />
+      {suffix && (
+        <span className="shrink-0 select-none pr-1.5 font-mono text-[10px] text-[var(--abc-fg-muted)]">
+          {suffix}
+        </span>
+      )}
       <button
         type="button"
+        data-abc-no-press-scale="true"
         aria-label="增加数值"
         disabled={disabled || (max !== undefined && (current ?? 0) >= max)}
-        onClick={() => commit((current ?? 0) + step)}
+        onClick={() => handleStep(step)}
         className={cn(
           'flex h-full shrink-0 items-center justify-center border-l border-[var(--abc-border)] text-[var(--abc-fg-muted)] transition-colors duration-[var(--abc-motion-fast,140ms)] enabled:hover:bg-[var(--abc-bg-subtle)] enabled:hover:text-[var(--abc-fg)] disabled:opacity-40 cursor-pointer',
           stepperBtnWidth

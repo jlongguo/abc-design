@@ -8,9 +8,12 @@ export interface ActionCardProps {
   title: React.ReactNode
   description?: React.ReactNode
   icon?: React.ReactNode
+  iconClassName?: string
   tags?: string[]
   /** 独立右上角次要动作插槽（z-10 独立捕获点击，不触发整卡主跳转） */
   extra?: React.ReactNode
+  /** 卡片主体附加内容区（如状态徽章或紧凑元数据行） */
+  children?: React.ReactNode
   href?: string
   target?: string
   /** 是否处于选中激活状态（用于预设档位/导航菜单卡片高亮） */
@@ -31,8 +34,10 @@ export const ActionCard: React.FC<ActionCardProps> = ({
   title,
   description,
   icon,
+  iconClassName,
   tags,
   extra,
+  children,
   href,
   target,
   selected = false,
@@ -50,12 +55,26 @@ export const ActionCard: React.FC<ActionCardProps> = ({
   const triggerClass =
     'text-left font-semibold text-[var(--abc-fg)] after:absolute after:inset-0 after:content-[""] focus:outline-none focus-visible:after:rounded-[var(--abc-radius-lg)] focus-visible:after:ring-2 focus-visible:after:ring-[var(--abc-ring)]'
 
+  const INTERACTIVE_TARGET_SELECTOR =
+    'a, button, input, select, textarea, [role="button"], [role="link"], [role="menuitem"], [role="switch"], [role="checkbox"], [data-action-card-stop]'
+
+  const handleArticleClick = (e: React.MouseEvent<HTMLElement>) => {
+    if (!isInteractive || !onClick) return
+    const targetEl = e.target as HTMLElement | null
+    // 仅隔离真实交互元素（链接/按钮/输入/开关及显式阻断标记），避免 extra 中纯装饰性图标（如展开箭头）吞掉整卡点击
+    if (targetEl?.closest(INTERACTIVE_TARGET_SELECTOR)) return
+    onClick()
+  }
+
   return (
     <article
+      data-slot="action-card"
+      data-abc-no-press-scale="true"
       data-motion={resolvedMotion}
       data-size={resolvedSize}
       data-selected={selected ? 'true' : undefined}
       data-testid={dataTestId}
+      onClick={handleArticleClick}
       className={cn(
         '@container relative flex flex-col justify-between rounded-[var(--abc-radius-lg)] border bg-[var(--abc-bg-surface)] text-[var(--abc-fg)] shadow-[var(--abc-shadow-card)]',
         selected
@@ -75,7 +94,8 @@ export const ActionCard: React.FC<ActionCardProps> = ({
               <span
                 className={cn(
                   'inline-flex shrink-0 items-center justify-center rounded-[var(--abc-radius-md)] bg-[var(--abc-primary-soft)] text-[var(--abc-primary)]',
-                  ICON_BOX_SIZE[resolvedSize]
+                  ICON_BOX_SIZE[resolvedSize],
+                  iconClassName
                 )}
               >
                 {icon}
@@ -111,14 +131,22 @@ export const ActionCard: React.FC<ActionCardProps> = ({
             </h3>
           </div>
 
-          {extra && <div className="relative z-10 flex shrink-0 items-center gap-1">{extra}</div>}
+          {extra && (
+            <div
+              data-slot="action-card-extra"
+              className="pointer-events-none relative z-10 flex shrink-0 items-center gap-1 [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_input]:pointer-events-auto [&_select]:pointer-events-auto [&_textarea]:pointer-events-auto [&_[role='button']]:pointer-events-auto [&_[role='link']]:pointer-events-auto [&_[role='menuitem']]:pointer-events-auto [&_[role='switch']]:pointer-events-auto [&_[role='checkbox']]:pointer-events-auto [&_[data-action-card-stop]]:pointer-events-auto"
+            >
+              {extra}
+            </div>
+          )}
         </div>
 
         {description && (
-          <p className={cn('mt-2 line-clamp-2 leading-relaxed text-[var(--abc-fg-muted)]', DESC_TEXT[resolvedSize])}>
+          <div className={cn('mt-2 line-clamp-2 leading-relaxed text-[var(--abc-fg-muted)]', DESC_TEXT[resolvedSize])}>
             {description}
-          </p>
+          </div>
         )}
+        {children && <div className="mt-2">{children}</div>}
       </div>
 
       {tags && tags.length > 0 && (

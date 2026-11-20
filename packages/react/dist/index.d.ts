@@ -504,9 +504,12 @@ export declare interface ActionCardProps {
     title: default_2.ReactNode;
     description?: default_2.ReactNode;
     icon?: default_2.ReactNode;
+    iconClassName?: string;
     tags?: string[];
     /** 独立右上角次要动作插槽（z-10 独立捕获点击，不触发整卡主跳转） */
     extra?: default_2.ReactNode;
+    /** 卡片主体附加内容区（如状态徽章或紧凑元数据行） */
+    children?: default_2.ReactNode;
     href?: string;
     target?: string;
     /** 是否处于选中激活状态（用于预设档位/导航菜单卡片高亮） */
@@ -573,7 +576,7 @@ export declare type ActiveFilterSource = 'chart' | 'toolbar' | 'table' | 'tree' 
  */
 export declare const Alert: default_2.FC<AlertProps>;
 
-export declare interface AlertProps {
+export declare interface AlertProps extends Omit<default_2.HTMLAttributes<HTMLDivElement>, 'title'> {
     tone?: AlertTone;
     title?: default_2.ReactNode;
     description?: default_2.ReactNode;
@@ -1305,7 +1308,10 @@ export declare interface CollapsibleCardProps {
     size?: AbcSize;
     motion?: AbcMotionPreset;
     className?: string;
+    headerClassName?: string;
     bodyClassName?: string;
+    'data-testid'?: string;
+    toggleTestId?: string;
     children: default_2.ReactNode;
 }
 
@@ -2666,9 +2672,17 @@ export declare interface IconProps {
 
 /**
  * 统一图形缩略图与灯箱预览组件
- * 原生兼容常规图片 URL 与内联 SVG 源码字符串，并在 src 变更时自动复位加载异常状态
+ * 原生兼容常规图片 URL 与内联 SVG 源码字符串，支持受控/非受控灯箱、缩放/旋转/复位/下载与主题自动继承
  */
 export declare const ImagePreview: default_2.FC<ImagePreviewProps>;
+
+export declare interface ImagePreviewLabels {
+    zoomOut?: string;
+    zoomIn?: string;
+    rotate?: string;
+    reset?: string;
+    resetAriaLabel?: string;
+}
 
 export declare interface ImagePreviewProps {
     /** 支持远程图片直链、DataURL 或原始内联 <svg>...</svg> 代码 */
@@ -2684,6 +2698,30 @@ export declare interface ImagePreviewProps {
     className?: string;
     /** 是否允许点击打开灯箱放大旋转查看（默认开启） */
     zoomable?: boolean;
+    /** 受控灯箱打开状态 */
+    open?: boolean;
+    /** 灯箱打开/关闭状态变更回调 */
+    onOpenChange?: (open: boolean) => void;
+    /** 仅渲染受控灯箱模式（用于外部自定义缩略图或视口帧容器触发大图检视） */
+    lightboxOnly?: boolean;
+    /** 灯箱标题（默认使用 alt） */
+    lightboxTitle?: default_2.ReactNode;
+    /** 灯箱弹窗宽度规格（默认 lg；全景截图可使用 2xl/3xl） */
+    lightboxSize?: DialogSize;
+    /** 是否在灯箱底部工具栏展示下载原图按钮 */
+    downloadable?: boolean;
+    /** 下载文件名（默认 image.png） */
+    downloadFileName?: string;
+    /** 下载按钮文案（默认「下载原图」） */
+    downloadLabel?: default_2.ReactNode;
+    /** 显式指定灯箱主题（不传时自动从挂载点祖先树继承亮暗主题） */
+    theme?: 'light' | 'dark';
+    /** 灯箱底部说明文案 */
+    footerHint?: default_2.ReactNode;
+    /** 当灯箱已开启且 src 动态更新（如实时截图帧流）时保留当前缩放与旋转视角 */
+    preserveTransformOnSrcChange?: boolean;
+    /** 灯箱工具栏多语言按钮文案 */
+    labels?: ImagePreviewLabels;
 }
 
 /**
@@ -2736,10 +2774,11 @@ export declare const Input: default_2.ForwardRefExoticComponent<InputProps & def
 /** 输入框基础样式（紧凑高度，与次要/主按钮对齐） */
 export declare const inputClass = "w-full h-8.5 rounded-[var(--abc-radius-md,0.5rem)] border border-[var(--abc-border)] bg-[var(--abc-bg-surface)] px-3 py-1.5 text-xs text-[var(--abc-fg)] placeholder:text-[var(--abc-fg-placeholder)] hover:border-[var(--abc-border-strong)] focus:border-[var(--abc-primary)] focus:ring-2 focus:ring-[var(--abc-ring)] focus:outline-none transition-all disabled:bg-[var(--abc-bg-muted)] disabled:text-[var(--abc-fg-muted)] disabled:cursor-not-allowed";
 
-/** 步进数值输入框（等宽数字对齐，内置隐藏浏览器原生微调按钮与可选内容自适应宽度） */
+/** 步进数值输入框（等宽数字对齐，内置隐藏浏览器原生微调按钮、聚焦态防抢先钳制编辑缓冲、可选单位后缀与内容自适应宽度） */
 export declare const InputNumber: default_2.FC<InputNumberProps>;
 
 export declare interface InputNumberProps {
+    id?: string;
     value?: number | null;
     defaultValue?: number;
     onChange?: (val: number | null) => void;
@@ -2751,6 +2790,12 @@ export declare interface InputNumberProps {
     disabled?: boolean;
     placeholder?: string;
     invalid?: boolean;
+    /** 单位后缀标识（如 ms / px / s） */
+    suffix?: default_2.ReactNode;
+    'aria-label'?: string;
+    'aria-labelledby'?: string;
+    'data-testid'?: string;
+    'data-draft-field'?: string;
     /** 开启内容驱动动态宽度：在 minWidth 与 maxWidth 区间内随数字位数自动伸缩，避免窄框遮挡 */
     autoWidth?: boolean;
     /** 最小宽度（支持像素数字或 CSS 长度值，autoWidth 开启时默认按尺寸档位提供安全下限） */
@@ -3469,6 +3514,8 @@ export declare interface PaginationProps extends Partial<PaginationCursorMeta> {
     /** 页码状态文案（兼容别名） */
     pageStatusText?: default_2.ReactNode;
     rowsPerPageLabel?: string;
+    /** 自定义每页条数下拉选项文案格式化器；未传时根据 rowsPerPageLabel 语种自动渲染“10 条/页”或“10 / page” */
+    formatPageSizeOption?: (size: number) => string;
     prevLabel?: default_2.ReactNode;
     nextLabel?: default_2.ReactNode;
     showQuickJumper?: boolean;
@@ -5697,7 +5744,7 @@ export declare interface SortableItemRenderMeta {
  * 2. 单指针捕获 + 布局中点计算落点 + CSS ::before/::after 缝隙落点指示线（拖拽中不抖动重排 DOM，松手一次性提交）；
  * 3. 完整支持键盘 Space 抓取 / 方向键移动 / Esc 取消回滚及单条 sr-only role="status" 礼貌播报。
  */
-export declare function SortableList<T>({ items, rowKey, onReorder, getItemLabel, selectedKey, onSelect, renderItem, renderActions, showMoveButtons, showIndexBadge, disabled, emptyNode, labels: customLabels, className, itemClassName, ...rest }: SortableListProps<T>): React_2.JSX.Element;
+export declare function SortableList<T>({ items, rowKey, onReorder, getItemLabel, selectedKey, onSelect, renderItem, renderActions, showMoveButtons, showIndexBadge, disabled, emptyNode, labels: customLabels, className, itemClassName, handleClassName, bodyClassName, ...rest }: SortableListProps<T>): React_2.JSX.Element;
 
 export declare namespace SortableList {
     var displayName: string;
@@ -5753,6 +5800,10 @@ export declare interface SortableListProps<T> extends Omit<React_2.HTMLAttribute
     labels?: SortableListLabels;
     /** 单条卡片附加类名 */
     itemClassName?: string;
+    /** 拖拽手柄附加类名 */
+    handleClassName?: string;
+    /** 条目正文容器附加类名 */
+    bodyClassName?: string;
 }
 
 export declare interface SortableMoveMeta {

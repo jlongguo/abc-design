@@ -2,12 +2,17 @@ import React from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import {
+  ActionCard,
+  Alert,
   BottomDockPanel,
+  Button,
+  CollapsibleCard,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   ImagePreview,
+  InputNumber,
   JsonCodeEditor,
   ProLogViewer,
   SegmentedControl,
@@ -369,5 +374,225 @@ describe('Workbench 通用组件套件测试 (JsonCodeEditor / BottomDockPanel /
     const lightbox = document.querySelector('dialog[data-abc-theme="dark"]')
     expect(lightbox).toBeTruthy()
     expect(lightbox?.className).toContain('dark')
+  })
+
+  it('ImagePreview lightboxOnly 模式支持受控开关、缩放/旋转/重置/下载与暗色主题继承', () => {
+    const onOpenChange = vi.fn()
+    render(
+      <div data-abc-theme="dark">
+        <ImagePreview
+          lightboxOnly
+          open
+          onOpenChange={onOpenChange}
+          src="data:image/png;base64,iVBORw0KGgo="
+          alt="全景截图"
+          lightboxTitle="全景截图预览"
+          lightboxSize="3xl"
+          downloadable
+          downloadFileName="viewport.png"
+          downloadLabel="下载原图"
+        />
+      </div>
+    )
+
+    const lightbox = document.querySelector('dialog[data-abc-theme="dark"]')
+    expect(lightbox).toBeTruthy()
+    expect(screen.getByText('全景截图预览')).toBeTruthy()
+    expect(screen.getByText('100%')).toBeTruthy()
+
+    const resetBtn = screen.getByRole('button', { name: '重置视图' })
+    expect(resetBtn).toHaveProperty('disabled', true)
+
+    fireEvent.click(screen.getByRole('button', { name: '放大' }))
+    expect(screen.getByText('120%')).toBeTruthy()
+    expect(resetBtn).toHaveProperty('disabled', false)
+
+    fireEvent.click(screen.getByRole('button', { name: '旋转' }))
+    fireEvent.click(resetBtn)
+    expect(screen.getByText('100%')).toBeTruthy()
+    expect(resetBtn).toHaveProperty('disabled', true)
+
+    const dlLink = screen.getByRole('link', { name: '下载原图' })
+    expect(dlLink.getAttribute('download')).toBe('viewport.png')
+  })
+
+  it('ActionCard / Alert / CollapsibleCard / InputNumber 透传语义属性并隔离次要交互', () => {
+    const onCardClick = vi.fn()
+    const onExtraClick = vi.fn()
+    const onNumChange = vi.fn()
+
+    render(
+      <div>
+        <ActionCard
+          data-testid="card-root"
+          title="代理模块"
+          onClick={onCardClick}
+          extra={
+            <Button type="button" size="xs" onClick={onExtraClick}>
+              展开
+            </Button>
+          }
+        >
+          <span>US Residential</span>
+        </ActionCard>
+        <Alert data-testid="status-alert" role="status" tone="info" title="编排提示">
+          已同步至运行中心
+        </Alert>
+        <CollapsibleCard title="高级选项" defaultOpen={false} toggleTestId="adv-toggle">
+          <span>内部参数</span>
+        </CollapsibleCard>
+        <InputNumber
+          aria-label="等待时长"
+          data-draft-field="milliseconds"
+          value={500}
+          step={100}
+          min={0}
+          suffix="ms"
+          onChange={onNumChange}
+        />
+      </div>
+    )
+
+    // 直接点击 article（jsdom 测试场景）应触发一次 onCardClick
+    fireEvent.click(screen.getByTestId('card-root'))
+    expect(onCardClick).toHaveBeenCalledTimes(1)
+
+    // 点击 title 按钮仍只触发一次，不重复冒泡
+    fireEvent.click(screen.getByRole('button', { name: '代理模块' }))
+    expect(onCardClick).toHaveBeenCalledTimes(2)
+
+    // 点击 extra 按钮不应触发整卡点击
+    fireEvent.click(screen.getByRole('button', { name: '展开' }))
+    expect(onExtraClick).toHaveBeenCalledTimes(1)
+    expect(onCardClick).toHaveBeenCalledTimes(2)
+
+    // Alert 支持 data-testid 与自定义 role
+    const alert = screen.getByTestId('status-alert')
+    expect(alert.getAttribute('role')).toBe('status')
+
+    // CollapsibleCard 支持 toggleTestId
+    const toggle = screen.getByTestId('adv-toggle')
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(toggle)
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+
+    // InputNumber 支持 aria-label / data-draft-field / suffix 与步进
+    const numInput = screen.getByLabelText('等待时长')
+    expect(numInput.getAttribute('data-draft-field')).toBe('milliseconds')
+    expect(screen.getByText('ms')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '增加数值' }))
+    expect(onNumChange).toHaveBeenCalledWith(600)
+  })
+
+  it('InputNumber 聚焦逐字输入时不提前截断或强制回弹 min，失焦时再归位且保留高精小数', () => {
+    function ControlledWidthHarness() {
+      const [width, setWidth] = React.useState(1280)
+      const [lat, setLat] = React.useState(37.7749)
+      return (
+        <div>
+          <InputNumber
+            aria-label="视口宽度"
+            min={320}
+            max={3840}
+            step={10}
+            suffix="px"
+            value={width}
+            onChange={(v) => setWidth(Math.max(320, Math.min(3840, v ?? 1280)))}
+          />
+          <InputNumber
+            aria-label="地理纬度"
+            min={-90}
+            max={90}
+            step={0.0001}
+            value={lat}
+            onChange={(v) => setLat(v ?? 0)}
+          />
+        </div>
+      )
+    }
+
+    render(<ControlledWidthHarness />)
+    const widthInput = screen.getByLabelText('视口宽度') as HTMLInputElement
+    fireEvent.focus(widthInput)
+
+    // 清空后聚焦态不应被父级 fallback 立即强制回弹为 1280
+    fireEvent.change(widthInput, { target: { value: '' } })
+    expect(widthInput.value).toBe('')
+
+    // 输入首字符 "1"（小于 min=320）不应在输入中被强行改写为 "320"
+    fireEvent.change(widthInput, { target: { value: '1' } })
+    expect(widthInput.value).toBe('1')
+
+    // 继续输入 "1440" 后应正常落入合法区间并同步状态
+    fireEvent.change(widthInput, { target: { value: '1440' } })
+    expect(widthInput.value).toBe('1440')
+
+    // 输入越界值 "99" 后失焦，才应钳制归位为 min=320
+    fireEvent.change(widthInput, { target: { value: '99' } })
+    expect(widthInput.value).toBe('99')
+    fireEvent.blur(widthInput)
+    expect(widthInput.value).toBe('320')
+
+    // 直接键入比 step(0.0001) 更高精度的小数不应被 toFixed(4) 截断
+    const latInput = screen.getByLabelText('地理纬度') as HTMLInputElement
+    fireEvent.focus(latInput)
+    fireEvent.change(latInput, { target: { value: '37.774929' } })
+    fireEvent.blur(latInput)
+    expect(latInput.value).toBe('37.774929')
+  })
+
+  it('ActionCard extra 区域仅隔离交互元素，点击非交互装饰图标仍可触发整卡点击', () => {
+    const onCardClick = vi.fn()
+    render(
+      <ActionCard
+        data-testid="env-card"
+        title="IP 代理"
+        onClick={onCardClick}
+        extra={<span data-testid="decorative-chevron">▼</span>}
+      />
+    )
+    fireEvent.click(screen.getByTestId('decorative-chevron'))
+    expect(onCardClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('ImagePreview 支持 preserveTransformOnSrcChange 实时帧缩放保持与自定义多语言工具栏文案', () => {
+    const { rerender } = render(
+      <ImagePreview
+        lightboxOnly
+        open
+        preserveTransformOnSrcChange
+        src="data:image/png;base64,FRAME_1"
+        alt="Live frame"
+        labels={{
+          zoomOut: 'Zoom out',
+          zoomIn: 'Zoom in',
+          rotate: 'Rotate',
+          reset: 'Reset',
+          resetAriaLabel: 'Reset view',
+        }}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }))
+    expect(screen.getByText('120%')).toBeTruthy()
+
+    // 实时流推送新帧 src 变更时，保留用户当前缩放比例不重置回 100%
+    rerender(
+      <ImagePreview
+        lightboxOnly
+        open
+        preserveTransformOnSrcChange
+        src="data:image/png;base64,FRAME_2"
+        alt="Live frame"
+        labels={{
+          zoomOut: 'Zoom out',
+          zoomIn: 'Zoom in',
+          rotate: 'Rotate',
+          reset: 'Reset',
+          resetAriaLabel: 'Reset view',
+        }}
+      />
+    )
+    expect(screen.getByText('120%')).toBeTruthy()
   })
 })

@@ -17,7 +17,7 @@ import { cn } from '../../utils/cn'
 
 export type AlertTone = 'info' | 'success' | 'warning' | 'danger'
 
-export interface AlertProps {
+export interface AlertProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> {
   tone?: AlertTone
   title?: React.ReactNode
   description?: React.ReactNode
@@ -71,7 +71,9 @@ export const Alert: React.FC<AlertProps> = ({
   action,
   size,
   motion,
+  role = 'alert',
   className,
+  ...rest
 }) => {
   const [closed, setClosed] = useState(false)
   const resolvedSize = useAbcSize(size, 'sm')
@@ -83,7 +85,8 @@ export const Alert: React.FC<AlertProps> = ({
 
   return (
     <div
-      role="alert"
+      role={role}
+      data-slot="alert"
       data-motion={resolvedMotion}
       className={cn(
         'abc-motion-surface flex items-start gap-2.5 rounded-[var(--abc-radius-md)] border',
@@ -92,6 +95,7 @@ export const Alert: React.FC<AlertProps> = ({
         cfg.box,
         className
       )}
+      {...rest}
     >
       {showIcon && <span className="mt-0.5 shrink-0">{cfg.icon}</span>}
       <div className="min-w-0 flex-1 space-y-0.5">
@@ -102,6 +106,7 @@ export const Alert: React.FC<AlertProps> = ({
       {closable && (
         <button
           type="button"
+          data-abc-no-press-scale="true"
           aria-label="关闭提示"
           onClick={() => {
             setClosed(true)

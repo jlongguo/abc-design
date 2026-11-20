@@ -69,6 +69,8 @@ export function SortableList<T>({
   labels: customLabels,
   className,
   itemClassName,
+  handleClassName,
+  bodyClassName,
   ...rest
 }: SortableListProps<T>) {
   const resolvedMotion = useAbcMotion()
@@ -460,6 +462,7 @@ export function SortableList<T>({
                 <button
                   type="button"
                   data-slot="sortable-handle"
+                  data-abc-no-press-scale="true"
                   ref={(node) => {
                     if (node) handleElsRef.current.set(keyStr, node)
                     else handleElsRef.current.delete(keyStr)
@@ -486,7 +489,8 @@ export function SortableList<T>({
                     !disabled && items.length > 1
                       ? 'cursor-grab hover:bg-[var(--abc-bg-muted)] hover:text-[var(--abc-fg)] hover:opacity-100 focus-visible:bg-[var(--abc-bg-muted)] focus-visible:text-[var(--abc-fg)] focus-visible:opacity-100'
                       : 'cursor-not-allowed opacity-35',
-                    isGrabbed && 'bg-[var(--abc-primary)] text-[var(--abc-primary-fg)] opacity-100'
+                    isGrabbed && 'bg-[var(--abc-primary)] text-[var(--abc-primary-fg)] opacity-100',
+                    handleClassName
                   )}
                 >
                   <GripVertical className="h-3.5 w-3.5" aria-hidden="true" />
@@ -505,7 +509,10 @@ export function SortableList<T>({
                   type="button"
                   data-slot="sortable-item-body"
                   onClick={() => onSelect(item, index)}
-                  className="min-w-0 flex-1 text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)] rounded-[var(--abc-radius-xs)] py-0.5"
+                  className={cn(
+                    'min-w-0 flex-1 text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--abc-ring)] rounded-[var(--abc-radius-xs)] py-0.5',
+                    bodyClassName
+                  )}
                 >
                   {renderItem(item, meta)}
                   {showKeyHint && (
@@ -518,7 +525,7 @@ export function SortableList<T>({
                   )}
                 </button>
               ) : (
-                <div data-slot="sortable-item-body" className="min-w-0 flex-1 py-0.5">
+                <div data-slot="sortable-item-body" className={cn('min-w-0 flex-1 py-0.5', bodyClassName)}>
                   {renderItem(item, meta)}
                   {showKeyHint && (
                     <span
@@ -535,6 +542,7 @@ export function SortableList<T>({
               {(renderActions || showMoveButtons) && (
                 <div
                   data-slot="sortable-item-actions"
+                  data-abc-no-press-scale="true"
                   onClick={(e) => e.stopPropagation()}
                   className="flex shrink-0 items-center gap-1.5"
                 >

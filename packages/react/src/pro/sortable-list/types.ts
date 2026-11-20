@@ -68,6 +68,10 @@ export interface SortableListProps<T>
   labels?: SortableListLabels
   /** 单条卡片附加类名 */
   itemClassName?: string
+  /** 拖拽手柄附加类名 */
+  handleClassName?: string
+  /** 条目正文容器附加类名 */
+  bodyClassName?: string
 }
 
 export interface SortableSplitEditorLabels extends SortableListLabels {

@@ -165,4 +165,81 @@ describe('ProTable 操作列随宽度自适应缩略（最小仅展示三个点�
     expect(screen.getByRole('button', { name: '冻结' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '更多操作' })).toBeNull()
   })
+
+  it('3. ProAdaptiveActionCell 面对每次重渲染重建的 JSX 按钮与 1px 亚像素抖动不触发无限更新循环', () => {
+    const onPreview = vi.fn()
+    const onDownload = vi.fn()
+    // mock 单按钮宽 44px：总宽 44+4+44=92 > 80，单按钮+省略号 44+4+28=76 <= 80
+    currentContainerWidth = 80
+
+    const { rerender } = render(
+      <ProTable
+        rowKey="id"
+        hidePagination
+        columnSettingsEnabled={false}
+        dataSource={[
+          { id: 'art_1', name: 'screenshot.png' },
+          { id: 'art_2', name: 'bundle.json.gz' },
+        ]}
+        columns={[
+          { key: 'name', title: '产物', dataIndex: 'name' },
+          {
+            key: 'action',
+            title: '操作',
+            align: 'right',
+            render: (row) => (
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="default" onClick={() => onPreview(row.id)}>
+                  Preview
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => onDownload(row.id)}>
+                  Download
+                </Button>
+              </div>
+            ),
+          },
+        ]}
+      />
+    )
+
+    // 模拟 table-layout:auto 导致的 1px 亚像素抖动与隐藏/显示交替，不应抛出 Maximum update depth exceeded
+    for (let i = 0; i < 6; i++) {
+      triggerWidthChange(i % 2 === 0 ? 79 : 80)
+    }
+    triggerWidthChange(0)
+    triggerWidthChange(80)
+
+    rerender(
+      <ProTable
+        rowKey="id"
+        hidePagination
+        columnSettingsEnabled={false}
+        dataSource={[
+          { id: 'art_1', name: 'screenshot.png' },
+          { id: 'art_2', name: 'bundle.json.gz' },
+        ]}
+        columns={[
+          { key: 'name', title: '产物', dataIndex: 'name' },
+          {
+            key: 'action',
+            title: '操作',
+            align: 'right',
+            render: (row) => (
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="default" onClick={() => onPreview(row.id)}>
+                  Preview
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => onDownload(row.id)}>
+                  Download
+                </Button>
+              </div>
+            ),
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getAllByRole('button', { name: 'Preview' })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: '更多操作' })).toHaveLength(2)
+  })
 })

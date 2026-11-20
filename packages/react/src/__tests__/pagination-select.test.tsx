@@ -65,4 +65,31 @@ describe('Pagination 分页组件选择框组件化测试 (Reproduction-First)',
 
     expect(handleSizeChange).toHaveBeenCalledWith(50)
   })
+
+  it('3. 英文语境下传入 rowsPerPageLabel="Rows per page" 自动渲染 "10 / page" 与英文快捷跳转', async () => {
+    const handleSizeChange = vi.fn()
+
+    render(
+      <Pagination
+        total={100}
+        pageSize={10}
+        current={1}
+        rowsPerPageLabel="Rows per page"
+        prevLabel="Previous"
+        nextLabel="Next"
+        pageSizeOptions={[10, 25, 50]}
+        onSizeChange={handleSizeChange}
+      />
+    )
+
+    const trigger = screen.getByRole('combobox', { name: 'Rows per page' })
+    expect(within(trigger).getByText('10 / page')).toBeInTheDocument()
+    expect(screen.getByText('Go to')).toBeInTheDocument()
+    expect(screen.queryByText('跳至')).toBeNull()
+
+    fireEvent.click(trigger)
+    const listbox = await screen.findByRole('listbox')
+    fireEvent.click(within(listbox).getByText('25 / page'))
+    expect(handleSizeChange).toHaveBeenCalledWith(25)
+  })
 })

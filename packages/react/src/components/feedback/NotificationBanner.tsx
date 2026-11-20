@@ -183,6 +183,7 @@ export const NotificationBanner = React.forwardRef<HTMLDivElement, NotificationB
             {onDismiss && (
               <button
                 type="button"
+                data-abc-no-press-scale="true"
                 aria-label={dismissLabel}
                 onClick={onDismiss}
                 className="inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded text-current opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current"

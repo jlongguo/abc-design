@@ -278,7 +278,7 @@ export declare type FlowBackgroundStyle = 'dots' | 'lines' | 'cross' | 'none';
  * 集成多态网格背景（dots/lines/cross）、平移/框选双模式、画布编辑锁、磁吸网格与辅助参考线、
  * 语义着色 MiniMap、自定义拖拽连线、四角 Panel 插槽与加载遮罩，保持 100% 业务无关。
  */
-export declare function FlowCanvasSurface<NodeType extends FlowNode = FlowNode, EdgeType extends FlowEdge = FlowEdge>({ withProvider, containerClassName, testId, containerRef, onDragOver, onDrop, backgroundVariant, showDotsBackground, backgroundGap, backgroundDotSize, backgroundColor, secondaryBackground, interactionMode, gesturePreset, locale, interactive, helperLines, leftRailSlot, topCenterSlot, topRightSlot, bottomLeftSlot, bottomCenterSlot, bottomRightSlot, showMiniMap, enhancedMiniMap, miniMapClassName, miniMapProps, loading, loadingText, children, overlaySlot, className, proOptions, connectionLineComponent, nodesDraggable, nodesConnectable, elementsSelectable, panOnDrag, panOnScroll, panOnScrollMode, zoomOnPinch, selectionOnDrag, selectionMode, autoPanOnNodeDrag, autoPanOnConnect, ariaLabelConfig, ...reactFlowProps }: FlowCanvasSurfaceProps<NodeType, EdgeType>): default_2.JSX.Element;
+export declare function FlowCanvasSurface<NodeType extends FlowNode = FlowNode, EdgeType extends FlowEdge = FlowEdge>({ withProvider, containerClassName, testId, containerRef, onDragOver, onDrop, backgroundVariant, showDotsBackground, backgroundGap, backgroundDotSize, backgroundColor, secondaryBackground, interactionMode, gesturePreset, locale, interactive, helperLines, leftRailSlot, topCenterSlot, topRightSlot, bottomLeftSlot, bottomCenterSlot, bottomRightSlot, showMiniMap, enhancedMiniMap, miniMapClassName, miniMapProps, loading, loadingText, children, overlaySlot, className, proOptions, connectionLineComponent, nodesDraggable, nodesConnectable, elementsSelectable, edgesReconnectable, reconnectRadius, panOnDrag, panActivationKeyCode, panOnScroll, panOnScrollMode, zoomOnPinch, selectionOnDrag, selectionMode, selectionKeyCode, autoPanOnNodeDrag, autoPanOnConnect, ariaLabelConfig, ...reactFlowProps }: FlowCanvasSurfaceProps<NodeType, EdgeType>): default_2.JSX.Element;
 
 export declare interface FlowCanvasSurfaceProps<NodeType extends FlowNode = FlowNode, EdgeType extends FlowEdge = FlowEdge> extends Omit<ReactFlowProps<NodeType, EdgeType>, 'children'> {
     /** 是否内置包裹 ReactFlowProvider（外部已包 Provider 且调用 useReactFlow 时保持 false） */
@@ -525,23 +525,41 @@ export declare interface FlowGroupNodeData extends Record<string, unknown> {
     title?: default_2.ReactNode;
     /** 分组说明文案 */
     description?: default_2.ReactNode;
+    /** 自定义标题前置图标（默认 FolderKanban） */
+    icon?: default_2.ReactNode;
     /** 语义色调（默认 'blue'） */
     tone?: FlowTone;
     /** 虚线边框开关（默认 true） */
     dashed?: boolean;
     /** 选中时是否显示拖拽缩放器（默认 true） */
     resizable?: boolean;
+    /** 是否允许编辑交互（默认 true；false 时隐藏缩放器并禁用编辑操作） */
+    interactive?: boolean;
+    /** 是否处于折叠态（折叠时隐藏缩放器并使用紧凑最小高度） */
+    collapsed?: boolean;
     /** 最小宽高约束 */
     minWidth?: number;
     minHeight?: number;
     /** 右上角徽标（如子节点数量） */
     badge?: default_2.ReactNode;
+    /** 右上角自定义操作区（如折叠/展开或快捷新增按钮） */
+    headerExtra?: default_2.ReactNode;
+    /** 分组容器内部可选自定义正文内容（如便签表单） */
+    bodyContent?: default_2.ReactNode;
+    /** 自定义 data-testid（挂载到内部 FlowSectionFrame 便于精准定位） */
+    testId?: string;
+    /** 附加或自定义顶部悬浮工具条操作项 */
+    toolbarItems?: ReadonlyArray<FlowNodeToolbarItem>;
     /** 切换色调回调（提供时在 NodeToolbar 渲染切色按钮） */
     onCycleTone?: (nodeId: string, nextTone: FlowTone) => void;
     /** 在分组内快捷新建子节点回调 */
     onAddChild?: (nodeId: string) => void;
     /** 删除分组回调 */
     onDelete?: (nodeId: string) => void;
+    /** 拖拽调整尺寸结束回调（用于外部持久化容器宽高与坐标） */
+    onResizeEnd?: FlowNodeResizerProps['onResizeEnd'];
+    /** 双击分组容器回调（如双击便签进入编辑态） */
+    onDoubleClick?: default_2.MouseEventHandler<HTMLDivElement>;
 }
 
 export declare type FlowGroupNodeType = FlowNode<FlowGroupNodeData, 'flow-group'>;
@@ -654,6 +672,8 @@ export declare interface FlowLabeledEdgeData extends Record<string, unknown> {
 export declare interface FlowLabeledEdgeProps extends FlowEdgeProps<FlowLabeledEdgeType> {
     /** 选中态高亮线条颜色（默认 #4f46e5） */
     selectedStroke?: string;
+    /** 连线点击热区宽度（默认 24px，便于精准点击选中与右键呼出菜单） */
+    interactionWidth?: number;
     /** 覆盖中点菜单渲染（优先于 data.renderActionMenu） */
     renderActionMenu?: (helpers: {
         close: () => void;
@@ -730,8 +750,16 @@ export declare interface FlowNodeCardProps extends Omit<default_2.HTMLAttributes
     error?: boolean;
     /** 统一状态枚举（与 running/error 布尔属性兼容） */
     status?: FlowNodeStatus;
-    /** 卡片宽度（数字按 px 处理，默认 256） */
+    /** 卡片宽度（数字按 px 处理，默认 256；fillContainer=true 时默认 '100%'） */
     width?: number | string;
+    /** 卡片高度（数字按 px 处理；fillContainer=true 时默认 '100%'） */
+    height?: number | string;
+    /** 最小宽度约束（配合 FlowNodeResizer 使用） */
+    minWidth?: number | string;
+    /** 最小高度约束（配合 FlowNodeResizer 使用） */
+    minHeight?: number | string;
+    /** 是否撑满外层 ReactFlow 节点容器宽高以配合 FlowNodeResizer 自由拖拽调尺寸 */
+    fillContainer?: boolean;
     /** 微交互动效预设 */
     motion?: AbcMotionPreset;
     /** 卡头附加类名 */

@@ -100,8 +100,16 @@ export interface FlowNodeCardProps
   error?: boolean
   /** 统一状态枚举（与 running/error 布尔属性兼容） */
   status?: FlowNodeStatus
-  /** 卡片宽度（数字按 px 处理，默认 256） */
+  /** 卡片宽度（数字按 px 处理，默认 256；fillContainer=true 时默认 '100%'） */
   width?: number | string
+  /** 卡片高度（数字按 px 处理；fillContainer=true 时默认 '100%'） */
+  height?: number | string
+  /** 最小宽度约束（配合 FlowNodeResizer 使用） */
+  minWidth?: number | string
+  /** 最小高度约束（配合 FlowNodeResizer 使用） */
+  minHeight?: number | string
+  /** 是否撑满外层 ReactFlow 节点容器宽高以配合 FlowNodeResizer 自由拖拽调尺寸 */
+  fillContainer?: boolean
   /** 微交互动效预设 */
   motion?: AbcMotionPreset
   /** 卡头附加类名 */
@@ -139,7 +147,11 @@ export const FlowNodeCard = React.forwardRef<HTMLDivElement, FlowNodeCardProps>(
       running = false,
       error = false,
       status,
-      width = 256,
+      width,
+      height,
+      minWidth,
+      minHeight,
+      fillContainer = false,
       motion,
       className,
       headerClassName,
@@ -181,7 +193,12 @@ export const FlowNodeCard = React.forwardRef<HTMLDivElement, FlowNodeCardProps>(
             ? toneTokens.selectedRing
             : undefined
 
-    const resolvedWidth = typeof width === 'number' ? `${width}px` : width
+    const effectiveWidth = width !== undefined ? width : fillContainer ? '100%' : 256
+    const effectiveHeight = height !== undefined ? height : fillContainer ? '100%' : undefined
+    const resolvedWidth = typeof effectiveWidth === 'number' ? `${effectiveWidth}px` : effectiveWidth
+    const resolvedHeight = typeof effectiveHeight === 'number' ? `${effectiveHeight}px` : effectiveHeight
+    const resolvedMinWidth = typeof minWidth === 'number' ? `${minWidth}px` : minWidth
+    const resolvedMinHeight = typeof minHeight === 'number' ? `${minHeight}px` : minHeight
 
     return (
       <div
@@ -190,9 +207,16 @@ export const FlowNodeCard = React.forwardRef<HTMLDivElement, FlowNodeCardProps>(
         data-status={resolvedStatus}
         data-selected={selected ? 'true' : 'false'}
         data-motion={resolvedMotion}
-        style={{ width: resolvedWidth, ...style }}
+        style={{
+          width: resolvedWidth,
+          height: resolvedHeight,
+          minWidth: resolvedMinWidth,
+          minHeight: resolvedMinHeight,
+          ...style,
+        }}
         className={cn(
           'relative overflow-visible rounded-[14px] border p-1 shadow-[var(--abc-shadow-card)] transition-[border-color,box-shadow,transform] duration-[var(--abc-motion-fast,140ms)] ease-out',
+          fillContainer && 'flex flex-col',
           toneTokens.cardShell,
           statusRingClass,
           selected && 'shadow-md',
@@ -286,6 +310,7 @@ export const FlowNodeCard = React.forwardRef<HTMLDivElement, FlowNodeCardProps>(
           <div
             className={cn(
               'overflow-visible rounded-[10px] border border-[var(--abc-border)]/70 bg-[var(--abc-bg-surface)] px-2.5 py-2 text-[var(--abc-fg)]',
+              fillContainer && 'flex min-h-0 flex-1 flex-col justify-between',
               bodyClassName
             )}
           >

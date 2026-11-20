@@ -283,6 +283,7 @@ export const CopyButton: React.FC<CopyButtonProps> = ({
     <button
       type="button"
       data-slot="copy-button"
+      data-abc-no-press-scale="true"
       aria-label={copied ? copiedLabel : defaultLabel}
       title={copied ? copiedLabel : defaultLabel}
       onClick={handleCopy}

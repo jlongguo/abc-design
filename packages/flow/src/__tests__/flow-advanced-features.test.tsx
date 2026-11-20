@@ -6,12 +6,17 @@ import {
   FlowCanvasSurface,
   FlowCornerResizer,
   FlowFloatingEdge,
+  FlowGroupNode,
   FlowInteractiveZone,
+  FlowLabeledEdge,
   FlowMiniMapNode,
+  FlowNodeCard,
   FlowProvider,
   FlowQuickConnectMenu,
+  FlowViewportControls,
   alignFlowNodes,
   computeFlowExportViewport,
+  computeFlowHelperLines,
   computeProximityEdge,
   duplicateFlowSubgraph,
   exportFlowToSvgDataUrl,
@@ -209,5 +214,118 @@ describe('@abc-design/flow 高阶 React Flow 能力与无头算法套件', () =>
     expect(zone).toHaveAttribute('data-abc-no-press-scale')
     expect(document.querySelector('[data-slot="flow-floating-edge"]')).toBeInTheDocument()
     expect(document.querySelector('[data-slot="flow-minimap-node"]')).toBeInTheDocument()
+  })
+
+  it('7. FlowNodeCard fillContainer、FlowGroupNode 扩展槽位、FlowLabeledEdge 非阻塞标签与 FlowViewportControls 激活态', () => {
+    const onPrimary = vi.fn()
+    render(
+      <FlowProvider>
+        <div style={{ width: 640, height: 360 }}>
+          <FlowNodeCard
+            data-testid="resizable-card"
+            title="可缩放卡片"
+            fillContainer
+            minWidth={200}
+            minHeight={108}
+            outputs={[{ id: 'out', label: '下一步', tone: 'success' }]}
+          />
+          <FlowCanvasSurface
+            nodes={[
+              {
+                id: 'grp-1',
+                type: 'flow-group',
+                position: { x: 20, y: 20 },
+                style: { width: 320, height: 180 },
+                selected: true,
+                data: {
+                  title: '条件分支组',
+                  testId: 'custom-group-frame',
+                  badge: '2 步',
+                  headerExtra: <span data-testid="group-header-extra">收起</span>,
+                  bodyContent: <div data-testid="group-body-content">内嵌内容</div>,
+                },
+              },
+            ]}
+            edges={[
+              {
+                id: 'e-1',
+                source: 'grp-1',
+                target: 'grp-1',
+                type: 'flow-labeled',
+                selected: true,
+                data: {
+                  label: '命中',
+                  tone: 'success',
+                  renderToolbar: () => <button type="button">切换线型</button>,
+                },
+              },
+            ]}
+            nodeTypes={{ 'flow-group': FlowGroupNode }}
+            edgeTypes={{ 'flow-labeled': FlowLabeledEdge }}
+            interactionMode="select"
+            bottomLeftSlot={
+              <FlowViewportControls
+                zoomPercent={100}
+                onZoomOut={vi.fn()}
+                onZoomReset={vi.fn()}
+                onZoomIn={vi.fn()}
+                interactionMode="select"
+                onInteractionModeChange={vi.fn()}
+                primaryAction={{ label: '添加步骤', onClick: onPrimary }}
+              />
+            }
+          />
+        </div>
+      </FlowProvider>,
+    )
+
+    const card = screen.getByTestId('resizable-card')
+    expect(card.style.width).toBe('100%')
+    expect(card.style.height).toBe('100%')
+    expect(card.className).toContain('flex-col')
+
+    expect(screen.getByTestId('custom-group-frame')).toBeInTheDocument()
+    expect(screen.getByTestId('group-header-extra')).toBeInTheDocument()
+    expect(screen.getByTestId('group-body-content')).toBeInTheDocument()
+
+    // 框选模式下主按钮无 pressScale 且框选按钮处于显眼激活高亮态
+    const controls = screen.getByTestId('abc-flow-viewport-controls')
+    const selectBtn = controls.querySelector('button[aria-label="框选多节点模式"]')
+    expect(selectBtn?.getAttribute('aria-pressed')).toBe('true')
+    expect(selectBtn?.className).toContain('abc-primary-soft')
+    const primaryBtn = screen.getByRole('button', { name: '添加步骤' })
+    expect(primaryBtn.className).not.toContain('abc-motion-control')
+  })
+
+  it('8. computeFlowHelperLines 为嵌套子流节点自动将参考线坐标换算至世界坐标系', () => {
+    const parent: FlowNode = {
+      id: 'grp-1',
+      type: 'flow-group',
+      position: { x: 400, y: 200 },
+      width: 520,
+      height: 260,
+      data: {},
+    }
+    const childA: FlowNode = {
+      id: 'c-1',
+      parentId: 'grp-1',
+      position: { x: 24, y: 72 },
+      width: 200,
+      height: 100,
+      data: {},
+    }
+    const childB: FlowNode = {
+      id: 'c-2',
+      parentId: 'grp-1',
+      position: { x: 260, y: 74 },
+      width: 200,
+      height: 100,
+      data: {},
+    }
+
+    const guides = computeFlowHelperLines(childB, [parent, childA, childB], 6)
+    // 局部顶边 y=72 叠加父容器 y=200 后，世界参考线坐标应为 272（而非局部坐标 72）
+    expect(guides.horizontal).toBe(272)
+    expect(guides.snapPosition).toEqual({ x: 260, y: 72 })
   })
 })

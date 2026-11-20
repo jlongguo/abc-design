@@ -64,6 +64,8 @@ export interface PaginationProps extends Partial<PaginationCursorMeta> {
   /** 页码状态文案（兼容别名） */
   pageStatusText?: React.ReactNode
   rowsPerPageLabel?: string
+  /** 自定义每页条数下拉选项文案格式化器；未传时根据 rowsPerPageLabel 语种自动渲染“10 条/页”或“10 / page” */
+  formatPageSizeOption?: (size: number) => string
   prevLabel?: React.ReactNode
   nextLabel?: React.ReactNode
   showQuickJumper?: boolean
@@ -142,6 +144,7 @@ export const Pagination: React.FC<PaginationProps> = ({
   summaryText,
   pageStatusText,
   rowsPerPageLabel = '每页条数',
+  formatPageSizeOption,
   prevLabel = '上一页',
   nextLabel = '下一页',
   showQuickJumper = true,
@@ -188,12 +191,18 @@ export const Pagination: React.FC<PaginationProps> = ({
     onLimitChange?.(nextSize)
   }
 
+  const isZhLocale = /[\u4e00-\u9fff]/.test(rowsPerPageLabel)
+
   const selectOptions: SelectOption[] = useMemo(() => {
     return (resolvedSizeOptions || []).map((opt) => ({
-      label: `${opt} 条/页`,
+      label: formatPageSizeOption
+        ? formatPageSizeOption(opt)
+        : isZhLocale
+          ? `${opt} 条/页`
+          : `${opt} / page`,
       value: opt,
     }))
-  }, [resolvedSizeOptions])
+  }, [formatPageSizeOption, isZhLocale, resolvedSizeOptions])
 
   const prevAria = typeof prevLabel === 'string' ? prevLabel : '上一页'
   const nextAria = typeof nextLabel === 'string' ? nextLabel : '下一页'
@@ -448,11 +457,11 @@ export const Pagination: React.FC<PaginationProps> = ({
             data-testid="pagination-quick-jumper"
             className="ml-1 flex items-center gap-1.5 text-[var(--abc-fg-muted)]"
           >
-            <span>跳至</span>
+            <span>{isZhLocale ? '跳至' : 'Go to'}</span>
             <input
               type="text"
               inputMode="numeric"
-              aria-label="快速跳转页码"
+              aria-label={isZhLocale ? '快速跳转页码' : 'Jump to page'}
               data-testid="pagination-quick-jumper-input"
               value={jumperVal}
               onChange={(e) => {
@@ -471,7 +480,7 @@ export const Pagination: React.FC<PaginationProps> = ({
                 sizeCls.input
               )}
             />
-            <span>页</span>
+            {isZhLocale ? <span>页</span> : null}
           </div>
         )}
       </div>

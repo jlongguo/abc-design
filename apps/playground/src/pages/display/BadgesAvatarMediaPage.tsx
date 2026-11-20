@@ -312,7 +312,10 @@ import { Bell, ShieldCheck } from 'lucide-react'
             { prop: 'ImagePreview.src', type: 'string | null', description: '支持 HTTP URL、DataURL 或原始内联 <svg>...</svg> 字符串' },
             { prop: 'ImagePreview.width / height', type: 'number | string', description: '显式覆盖缩略图宽高像素' },
             { prop: 'ImagePreview.rounded / fit', type: "boolean / 'cover' | 'contain'", defaultValue: "false / 'contain'", description: '圆形裁剪与图片填充裁切策略' },
-            { prop: 'ImagePreview.zoomable', type: 'boolean', defaultValue: 'true', description: '点击是否弹出支持缩放和 90° 旋转的灯箱模态框' },
+            { prop: 'ImagePreview.zoomable', type: 'boolean', defaultValue: 'true', description: '点击是否弹出支持缩放、90° 旋转、视图重置与下载的灯箱模态框' },
+            { prop: 'ImagePreview.open / onOpenChange / lightboxOnly', type: 'boolean / fn / boolean', defaultValue: 'false', description: '受控灯箱显隐与纯灯箱模式（供自定义视口帧或按钮触发大图预览）' },
+            { prop: 'ImagePreview.downloadable / downloadFileName', type: 'boolean / string', defaultValue: "false / 'image.png'", description: '在灯箱工具栏展示原图下载按钮并自定义文件名' },
+            { prop: 'ImagePreview.preserveTransformOnSrcChange / labels', type: 'boolean / ImagePreviewLabels', defaultValue: 'false / 中文默认', description: '实时帧更新时保持缩放与旋转视角，以及多语言灯箱工具栏文案覆盖' },
           ]}
         >
           <div className="flex flex-wrap items-center gap-8">
@@ -340,6 +343,8 @@ import { Bell, ShieldCheck } from 'lucide-react'
                   rounded={previewRounded}
                   fit={previewFit}
                   zoomable={zoomable}
+                  downloadable
+                  downloadFileName="banner-preview.svg"
                 />
                 <span className="text-[11px] text-[var(--abc-fg-muted)]">
                   DataURL ({previewFit})

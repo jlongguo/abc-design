@@ -59,8 +59,6 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     forwardedRef
   ) => {
     const isLegacyChildrenMode = optionsProp === undefined && children !== undefined
-    const resolvedPlaceholder =
-      placeholder !== undefined ? placeholder : isLegacyChildrenMode ? '' : '请选择'
 
     const resolvedSize = useAbcSize(size === 'ghost' ? 'sm' : size, 'sm')
     const resolvedMotion = useAbcMotion(motion)
@@ -87,6 +85,18 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       }
       return parseSelectChildren(children)
     }, [optionsProp, children])
+
+    // 识别显式提供的空值选项（如 <option value="">全部</option> 或 <option value="" disabled>请选择…</option>），
+    // 避免受控 value="" 时触发器空白。
+    const emptyValueOption = useMemo(() => options.find((opt) => opt.value === ''), [options])
+    const resolvedPlaceholder =
+      placeholder !== undefined
+        ? placeholder
+        : isLegacyChildrenMode
+          ? emptyValueOption?.disabled
+            ? emptyValueOption.textLabel
+            : ''
+          : '请选择'
 
     const isControlled = value !== undefined
     const [uncontrolledValue, setUncontrolledValue] = useState<any>(() => {
@@ -226,8 +236,11 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         if (selected !== undefined && selected !== null && selected !== '') return [selected]
         return []
       }
+      if (selected === '' && emptyValueOption && !emptyValueOption.disabled) {
+        return ['']
+      }
       return selected !== undefined && selected !== null && selected !== '' ? [selected] : []
-    }, [multiple, selected])
+    }, [multiple, selected, emptyValueOption])
 
     const selectedItems = useMemo(() => {
       return selectedArray.map((val) => {
@@ -450,7 +463,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             }}
             className="peer pointer-events-none absolute inset-0 h-full w-full appearance-none opacity-0"
           >
-            {resolvedPlaceholder && (
+            {resolvedPlaceholder && !emptyValueOption && (
               <option value="" disabled>
                 {resolvedPlaceholder}
               </option>
@@ -557,7 +570,10 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           </div>
 
           <div className="flex shrink-0 items-center gap-1 text-[var(--abc-fg-muted)]">
-            {isClearable && selectedItems.length > 0 && !disabled && (
+            {isClearable &&
+              selectedItems.length > 0 &&
+              !(selectedItems.length === 1 && String(selectedItems[0]?.value) === '') &&
+              !disabled && (
               <button
                 type="button"
                 data-testid="select-clear"

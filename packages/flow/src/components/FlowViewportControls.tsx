@@ -178,6 +178,8 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
 
   const iconButtonClass =
     'h-7 w-7 text-[var(--abc-fg-secondary)] hover:bg-[var(--abc-bg-subtle)] hover:text-[var(--abc-fg)]'
+  const activeIconButtonClass =
+    'h-7 w-7 border border-[var(--abc-primary)] bg-[var(--abc-primary-soft)] text-[var(--abc-primary)] hover:bg-[var(--abc-primary-soft)] hover:text-[var(--abc-primary)]'
 
   return (
     <div
@@ -240,7 +242,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
                 aria-label={labels?.panMode ?? '拖拽平移模式'}
                 title={labels?.panMode ?? '拖拽平移模式 (Hand)'}
                 onClick={() => onInteractionModeChange('pan')}
-                className={iconButtonClass}
+                className={interactionMode === 'pan' ? activeIconButtonClass : iconButtonClass}
               >
                 <Hand size={13} />
               </Button>
@@ -253,7 +255,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
                 aria-label={labels?.selectMode ?? '框选多节点模式'}
                 title={labels?.selectMode ?? '左键框选模式 (Select)'}
                 onClick={() => onInteractionModeChange('select')}
-                className={iconButtonClass}
+                className={interactionMode === 'select' ? activeIconButtonClass : iconButtonClass}
               >
                 <BoxSelect size={13} />
               </Button>
@@ -277,7 +279,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
                   : (labels?.unlockCanvas ?? '已锁定，点击解锁')
               }
               onClick={onToggleInteractive}
-              className={iconButtonClass}
+              className={!interactive ? activeIconButtonClass : iconButtonClass}
             >
               {interactive ? <Unlock size={13} /> : <Lock size={13} />}
             </Button>
@@ -292,7 +294,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
               aria-label={labels?.snapToGrid ?? '开关网格磁吸对齐'}
               title={labels?.snapToGrid ?? '网格磁吸对齐 (Snap to Grid)'}
               onClick={onToggleSnapToGrid}
-              className={iconButtonClass}
+              className={snapToGrid ? activeIconButtonClass : iconButtonClass}
             >
               <Magnet size={13} />
             </Button>
@@ -311,7 +313,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
                   : (labels?.gesturePreset ?? '切换至 Figma 触控板平移手势')
               }
               onClick={onToggleGesturePreset}
-              className={iconButtonClass}
+              className={gesturePreset === 'figma' ? activeIconButtonClass : iconButtonClass}
             >
               <MousePointerClick size={13} />
             </Button>
@@ -404,7 +406,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
               : (labels?.showMiniMapTitle ?? '显示缩略图')
           }
           onClick={onToggleMiniMap}
-          className={iconButtonClass}
+          className={showMiniMap ? activeIconButtonClass : iconButtonClass}
         >
           <MapIcon size={13} />
         </Button>
@@ -438,7 +440,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
           aria-label={action.label}
           title={action.title ?? action.label}
           onClick={action.onClick}
-          className={iconButtonClass}
+          className={action.active ? activeIconButtonClass : iconButtonClass}
         >
           {action.icon}
         </Button>
@@ -451,6 +453,7 @@ export const FlowViewportControls: React.FC<FlowViewportControlsProps> = ({
             type="button"
             variant="primary"
             size="xs"
+            pressScale={false}
             disabled={primaryAction.disabled}
             data-testid={primaryAction.testId}
             aria-label={primaryAction.ariaLabel ?? primaryAction.label}

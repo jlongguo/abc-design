@@ -2,6 +2,7 @@ import React from 'react'
 import {
   FlowHandle,
   FlowNodeCard,
+  FlowNodeResizer,
   FlowNodeToolbar,
   type FlowContextMenuItem,
   type FlowEdgeRouteStyle,
@@ -77,7 +78,14 @@ export const PALETTE_TEMPLATES: readonly PaletteTemplate[] = [
 ]
 
 export const StudioCardNode: React.FC<NodeProps<StudioCardNodeType>> = ({ id, data, selected }) => (
-  <div className={data.dimmed ? 'opacity-40 transition-opacity' : 'transition-opacity'}>
+  <div
+    className={
+      data.dimmed
+        ? 'relative h-full w-full opacity-40 transition-opacity'
+        : 'relative h-full w-full transition-opacity'
+    }
+  >
+    <FlowNodeResizer tone={data.tone} isVisible={Boolean(selected)} minWidth={184} minHeight={96} />
     <NodeToolbar isVisible={Boolean(selected)} position={Position.Top} offset={8}>
       <FlowNodeToolbar
         size="xs"
@@ -110,7 +118,8 @@ export const StudioCardNode: React.FC<NodeProps<StudioCardNodeType>> = ({ id, da
       title={data.title}
       icon={KIND_ICON[data.kind]}
       selected={selected || data.highlighted}
-      width={208}
+      fillContainer
+      minWidth={184}
       inputHandle={<FlowHandle type="target" position={Position.Left} tone="info" />}
       metaRows={[{ label: 'Config', value: data.meta, mono: true }]}
       outputs={
@@ -148,6 +157,7 @@ export function buildInitialNodes(): StudioAnyNode[] {
       id: 'n-trigger',
       type: 'studio-card',
       position: { x: 40, y: 120 },
+      style: { width: 208 },
       data: { title: '用户提问触发', tone: 'blue', meta: '{{event.query}}', kind: 'trigger' },
     },
     {
@@ -168,6 +178,7 @@ export function buildInitialNodes(): StudioAnyNode[] {
       parentId: 'g-rag',
       extent: 'parent',
       position: { x: 24, y: 76 },
+      style: { width: 208 },
       data: { title: '知识库置信判断', tone: 'amber', meta: 'threshold >= 0.8', kind: 'branch' },
     },
     {
@@ -176,12 +187,14 @@ export function buildInitialNodes(): StudioAnyNode[] {
       parentId: 'g-rag',
       extent: 'parent',
       position: { x: 284, y: 54 },
+      style: { width: 208 },
       data: { title: '上下文合成回复', tone: 'green', meta: '{{kb.chunks}}', kind: 'llm' },
     },
     {
       id: 'n-notify',
       type: 'studio-card',
       position: { x: 880, y: 120 },
+      style: { width: 208 },
       data: { title: '审计回执入库', tone: 'rose', meta: 'POST /audit', kind: 'http' },
     },
   ]

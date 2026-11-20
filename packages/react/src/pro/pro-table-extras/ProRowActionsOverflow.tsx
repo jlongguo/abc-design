@@ -141,6 +141,8 @@ export const ProRowActionsOverflow: React.FC<{
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const widthsCacheRef = useRef<{ sig: string; widths: number[] } | null>(null)
+  const lastWidthRef = useRef<number | null>(null)
+  const remeasureGuardRef = useRef<{ sig: string; attempts: number }>({ sig: '', attempts: 0 })
   const [measured, setMeasured] = useState<{ sig: string; count: number } | null>(null)
 
   const actionSig = actions
@@ -152,19 +154,33 @@ export const ProRowActionsOverflow: React.FC<{
     actions.length <= effectiveFallbackMax
       ? actions.length
       : Math.max(1, effectiveFallbackMax - 1)
+  const needsRemeasure = measured === null
 
   useLayoutEffect(() => {
     if (!autoFit || actions.length === 0) {
       widthsCacheRef.current = null
+      lastWidthRef.current = null
       return
+    }
+    if (remeasureGuardRef.current.sig !== actionSig) {
+      remeasureGuardRef.current = { sig: actionSig, attempts: 0 }
+      lastWidthRef.current = null
     }
     const containerEl = containerRef.current
     if (!containerEl) return
 
-    const syncLayout = () => {
+    const syncLayout = (fromResizeObserver: boolean) => {
       const availableWidth = containerEl.clientWidth
+      if (
+        fromResizeObserver &&
+        lastWidthRef.current !== null &&
+        Math.abs(availableWidth - lastWidthRef.current) <= 1
+      ) {
+        return
+      }
+      lastWidthRef.current = availableWidth
+
       if (availableWidth <= 0) {
-        widthsCacheRef.current = null
         setMeasured((prev) =>
           prev?.sig === actionSig && prev.count === defaultInlineCount
             ? prev
@@ -181,8 +197,11 @@ export const ProRowActionsOverflow: React.FC<{
           containerEl.querySelectorAll<HTMLElement>('[data-action-item]')
         )
         if (nodes.length < actions.length) {
-          // 从隐藏容器恢复可见时触发单次完整测量渲染
-          setMeasured(null)
+          // 从隐藏容器恢复可见时触发最多 2 次完整测量渲染，彻底杜绝布局抖动死循环
+          if (remeasureGuardRef.current.attempts < 2) {
+            remeasureGuardRef.current.attempts += 1
+            setMeasured(null)
+          }
           return
         }
         const rawWidths = nodes.map((el) => el.offsetWidth)
@@ -198,12 +217,12 @@ export const ProRowActionsOverflow: React.FC<{
       )
     }
 
-    syncLayout()
+    syncLayout(false)
     if (typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(() => syncLayout())
+    const observer = new ResizeObserver(() => syncLayout(true))
     observer.observe(containerEl)
     return () => observer.disconnect()
-  }, [autoFit, actionSig, actions.length, maxInline, defaultInlineCount])
+  }, [autoFit, actionSig, actions.length, maxInline, defaultInlineCount, needsRemeasure])
 
   if (actions.length === 0) return <span className="text-[var(--abc-fg-placeholder)]">-</span>
 
@@ -278,8 +297,11 @@ export const ProAdaptiveActionCell: React.FC<{
   moreLabel?: string
 }> = ({ children, align = 'right', maxInline, moreLabel = '更多操作' }) => {
   const elements = unwrapActionElements(children)
+  const hasElements = elements !== null
   const containerRef = useRef<HTMLDivElement>(null)
   const widthsCacheRef = useRef<{ sig: string; widths: number[] } | null>(null)
+  const lastWidthRef = useRef<number | null>(null)
+  const remeasureGuardRef = useRef<{ sig: string; attempts: number }>({ sig: '', attempts: 0 })
   const [measured, setMeasured] = useState<{ sig: string; count: number } | null>(null)
 
   const elementCount = elements?.length ?? 0
@@ -299,19 +321,33 @@ export const ProAdaptiveActionCell: React.FC<{
     maxInline !== undefined && elementCount > maxInline
       ? Math.max(1, maxInline - 1)
       : elementCount
+  const needsRemeasure = measured === null
 
   useLayoutEffect(() => {
-    if (!elements || elementCount === 0) {
+    if (!hasElements || elementCount === 0) {
       widthsCacheRef.current = null
+      lastWidthRef.current = null
       return
+    }
+    if (remeasureGuardRef.current.sig !== actionSig) {
+      remeasureGuardRef.current = { sig: actionSig, attempts: 0 }
+      lastWidthRef.current = null
     }
     const containerEl = containerRef.current
     if (!containerEl) return
 
-    const syncLayout = () => {
+    const syncLayout = (fromResizeObserver: boolean) => {
       const availableWidth = containerEl.clientWidth
+      if (
+        fromResizeObserver &&
+        lastWidthRef.current !== null &&
+        Math.abs(availableWidth - lastWidthRef.current) <= 1
+      ) {
+        return
+      }
+      lastWidthRef.current = availableWidth
+
       if (availableWidth <= 0) {
-        widthsCacheRef.current = null
         setMeasured((prev) =>
           prev?.sig === actionSig && prev.count === jsdomFallbackCount
             ? prev
@@ -328,7 +364,11 @@ export const ProAdaptiveActionCell: React.FC<{
           containerEl.querySelectorAll<HTMLElement>('[data-action-item]')
         )
         if (nodes.length < elementCount) {
-          setMeasured(null)
+          // 仅在隐藏容器恢复可见时触发最多 2 次重测，防止 table-layout:auto 单元格收缩导致 REACT_INVARIANT_185
+          if (remeasureGuardRef.current.attempts < 2) {
+            remeasureGuardRef.current.attempts += 1
+            setMeasured(null)
+          }
           return
         }
         const rawWidths = nodes.map((el) => el.offsetWidth)
@@ -344,12 +384,12 @@ export const ProAdaptiveActionCell: React.FC<{
       )
     }
 
-    syncLayout()
+    syncLayout(false)
     if (typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(() => syncLayout())
+    const observer = new ResizeObserver(() => syncLayout(true))
     observer.observe(containerEl)
     return () => observer.disconnect()
-  }, [actionSig, elementCount, elements, jsdomFallbackCount, maxInline])
+  }, [actionSig, elementCount, hasElements, jsdomFallbackCount, maxInline, needsRemeasure])
 
   if (elements === null) {
     return <>{children}</>

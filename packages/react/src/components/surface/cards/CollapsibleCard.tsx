@@ -17,7 +17,10 @@ export interface CollapsibleCardProps {
   size?: AbcSize
   motion?: AbcMotionPreset
   className?: string
+  headerClassName?: string
   bodyClassName?: string
+  'data-testid'?: string
+  toggleTestId?: string
   children: React.ReactNode
 }
 
@@ -43,7 +46,10 @@ export const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
   size,
   motion,
   className,
+  headerClassName,
   bodyClassName,
+  'data-testid': dataTestId,
+  toggleTestId,
   children,
 }) => {
   const resolvedSize = useAbcSize(size, 'md')
@@ -57,6 +63,8 @@ export const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
 
   return (
     <section
+      data-slot="collapsible-card"
+      data-testid={dataTestId}
       data-motion={resolvedMotion}
       data-size={resolvedSize}
       className={cn(
@@ -64,9 +72,11 @@ export const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
         className
       )}
     >
-      <div className={cn('flex items-center justify-between gap-3', HEADER_BTN_PAD[resolvedSize])}>
+      <div className={cn('flex items-center justify-between gap-3', HEADER_BTN_PAD[resolvedSize], headerClassName)}>
         <button
           type="button"
+          data-testid={toggleTestId}
+          data-abc-no-press-scale="true"
           aria-expanded={isOpen}
           aria-controls={panelId}
           onClick={() => setIsOpen(!isOpen)}

@@ -241,4 +241,26 @@ describe('Select / RadixSelect / Cascader / FileUpload 回归用例', () => {
     expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange.mock.calls[0]?.[0]).toEqual(['apac', 'SG'])
   })
+
+  it('Select 在传统 <option> 模式下正确回显 value="" 占位项与“全部”选项，杜绝空白触发器', () => {
+    const { container } = render(
+      <div>
+        <Select aria-label="Preset Selector" value="" onChange={() => {}}>
+          <option value="" disabled>
+            Custom Workflow Draft
+          </option>
+          <option value="preset-1">Preset 1</option>
+        </Select>
+        <Select aria-label="Status Filter" value="" onChange={() => {}}>
+          <option value="">All Statuses</option>
+          <option value="running">Running</option>
+        </Select>
+      </div>
+    )
+
+    const outputs = container.querySelectorAll('output[aria-hidden="true"]')
+    expect(outputs).toHaveLength(2)
+    expect(outputs[0]).toHaveTextContent('Custom Workflow Draft')
+    expect(outputs[1]).toHaveTextContent('All Statuses')
+  })
 })

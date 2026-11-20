@@ -302,4 +302,29 @@ describe('@abc-design/flow 全量 React Flow 能力集成测试', () => {
     expect(n2Source).toHaveAttribute('data-connection-count', '0')
     expect(n2Source).toHaveAttribute('data-limit-reached', 'false')
   })
+
+  it('7. 选中父分组节点时，连接其子节点的边 zIndex 自动让位于分组调尺寸手柄（未选中时保持原样）', async () => {
+    const { resolveFlowEdgesForSelectedGroups } = await import('../components/FlowCanvasSurface')
+    const baseNodes: Node[] = [
+      { id: 'grp-1', type: 'flow-group', position: { x: 0, y: 0 }, data: {} },
+      { id: 'child-1', parentId: 'grp-1', position: { x: 24, y: 68 }, data: {} },
+      { id: 'target-1', position: { x: 420, y: 120 }, data: {} },
+    ]
+    const edges: Edge[] = [
+      { id: 'e-child-exit', source: 'child-1', target: 'target-1' },
+      { id: 'e-selected', source: 'child-1', target: 'target-1', selected: true },
+      { id: 'e-explicit', source: 'child-1', target: 'target-1', zIndex: 5 },
+      { id: 'e-unrelated', source: 'target-1', target: 'target-1' },
+    ]
+
+    // 未选中父分组时保持原引用与 undefined zIndex，确保连线正常绘制在分组背景之上
+    expect(resolveFlowEdgesForSelectedGroups(baseNodes, edges)).toBe(edges)
+
+    const withSelectedGroup = baseNodes.map((n) => (n.id === 'grp-1' ? { ...n, selected: true } : n))
+    const resolved = resolveFlowEdgesForSelectedGroups(withSelectedGroup, edges)!
+    expect(resolved.find((e) => e.id === 'e-child-exit')?.zIndex).toBe(-1)
+    expect(resolved.find((e) => e.id === 'e-selected')?.zIndex).toBeUndefined()
+    expect(resolved.find((e) => e.id === 'e-explicit')?.zIndex).toBe(5)
+    expect(resolved.find((e) => e.id === 'e-unrelated')?.zIndex).toBeUndefined()
+  })
 })

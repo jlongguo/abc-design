@@ -98,7 +98,7 @@ export const FlowSectionFrame = React.forwardRef<HTMLDivElement, FlowSectionFram
           dashed ? 'border-dashed' : 'border-solid',
           toneTokens.sectionFrame,
           selected && 'ring-2 ring-[var(--abc-primary)] border-[var(--abc-primary)]',
-          isCentered ? 'items-center justify-center p-5 text-center' : 'p-4 text-left',
+          isCentered ? 'items-center justify-center p-5 text-center' : 'px-3.5 py-3 text-left',
           className
         )}
         {...rest}
@@ -108,7 +108,10 @@ export const FlowSectionFrame = React.forwardRef<HTMLDivElement, FlowSectionFram
             className={cn(
               isCentered
                 ? 'flex max-w-[260px] flex-col items-center gap-1.5'
-                : 'flex w-full items-start justify-between gap-2',
+                : cn(
+                    'flex w-full justify-between gap-2',
+                    description !== undefined ? 'items-start' : 'items-center',
+                  ),
               headerClassName
             )}
           >
@@ -121,7 +124,7 @@ export const FlowSectionFrame = React.forwardRef<HTMLDivElement, FlowSectionFram
               {(icon || title !== undefined || badge) && (
                 <div
                   className={cn(
-                    'flex items-center gap-1.5',
+                    'flex min-w-0 items-center gap-1.5',
                     isCentered ? 'justify-center' : 'justify-start'
                   )}
                 >
@@ -132,9 +135,12 @@ export const FlowSectionFrame = React.forwardRef<HTMLDivElement, FlowSectionFram
                   )}
                   {title !== undefined && (
                     <div
+                      title={typeof title === 'string' ? title : undefined}
                       className={cn(
                         'font-medium leading-snug',
-                        isCentered ? 'text-[15px]' : 'text-xs font-semibold',
+                        isCentered
+                          ? 'text-[15px]'
+                          : 'min-w-0 truncate whitespace-nowrap text-xs font-semibold',
                         toneTokens.sectionTitle
                       )}
                     >

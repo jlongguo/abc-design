@@ -116,7 +116,11 @@
     --xy-background-color: transparent;
     --xy-minimap-background-color: var(--abc-bg-surface, #ffffff);
     --xy-minimap-mask-background-color: rgba(241, 245, 249, 0.65);
+    --xy-minimap-mask-stroke-color: var(--abc-primary, #4f46e5);
+    --xy-minimap-mask-stroke-width: 1.5;
     --xy-minimap-node-background-color: #cbd5e1;
+    --xy-selection-background-color: rgba(79, 70, 229, 0.09);
+    --xy-selection-border: 1.5px dashed rgba(79, 70, 229, 0.85);
   }
 
   /* 系统偏好暗黑回退（未显式锁定 light 时） */
@@ -220,7 +224,11 @@
 
       --xy-minimap-background-color: var(--abc-bg-surface, #0f172a);
       --xy-minimap-mask-background-color: rgba(2, 6, 23, 0.65);
+      --xy-minimap-mask-stroke-color: var(--abc-primary, #818cf8);
+      --xy-minimap-mask-stroke-width: 1.5;
       --xy-minimap-node-background-color: #475569;
+      --xy-selection-background-color: rgba(129, 140, 248, 0.14);
+      --xy-selection-border: 1.5px dashed rgba(129, 140, 248, 0.85);
     }
   }
 
@@ -324,8 +332,38 @@
 
     --xy-minimap-background-color: var(--abc-bg-surface, #0f172a);
     --xy-minimap-mask-background-color: rgba(2, 6, 23, 0.65);
+    --xy-minimap-mask-stroke-color: var(--abc-primary, #818cf8);
+    --xy-minimap-mask-stroke-width: 1.5;
     --xy-minimap-node-background-color: #475569;
+    --xy-selection-background-color: rgba(129, 140, 248, 0.14);
+    --xy-selection-border: 1.5px dashed rgba(129, 140, 248, 0.85);
   }
+}
+
+/* 框选模式十字准星与清晰选框圆角 */
+.react-flow__pane.selection {
+  cursor: crosshair;
+}
+
+.react-flow__selection,
+.react-flow__nodesselection-rect {
+  border-radius: 6px;
+}
+
+/* 可重连边端点抓手悬停高亮，提供明确拖拽重连反馈 */
+.react-flow__edgeupdater {
+  cursor: grab;
+  transition: fill 140ms ease, stroke 140ms ease, r 140ms ease;
+}
+
+.react-flow__edgeupdater:hover {
+  fill: var(--abc-primary, #4f46e5);
+  stroke: var(--abc-bg-surface, #ffffff);
+  stroke-width: 2px;
+}
+
+.react-flow__edgeupdater:active {
+  cursor: grabbing;
 }
 
 /* ABC Design Flow 动态流光连线动画 */

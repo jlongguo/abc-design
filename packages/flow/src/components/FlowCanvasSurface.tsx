@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { cn } from '@abc-design/react'
 import {
   Background,
@@ -9,6 +9,7 @@ import {
   ReactFlow,
   ReactFlowProvider,
   SelectionMode,
+  type ColorMode,
   type Edge,
   type MiniMapProps,
   type Node,
@@ -124,6 +125,144 @@ function resolveBackgroundVariant(
 }
 
 /**
+ * 当拥有嵌套子节点（parentId）的分组父节点处于选中态时，ReactFlow 默认会将连向其子节点的边抬升至 parentZ + 1 (1001)，
+ * 使 24px 宽的隐形边交互热区覆盖在父分组节点 (z=1000) 之上，拦截四边四角 FlowNodeResizer 手柄的拖拽事件。
+ * 仅在宿主父节点被选中且该边本身未被选中/未显式指定 zIndex 时将边 zIndex 微调为 -1（最终生效 z = parentZ），
+ * 借助 DOM 中 NodeRenderer 位于 EdgeRenderer 之后的层叠顺序，确保分组缩放手柄永不被边热区截胡，
+ * 同时保持未选中态连线位于分组背景之上且子节点 (parentZ + 1) 仍高于父分组。
+ */
+export function resolveFlowEdgesForSelectedGroups<
+  NodeType extends Node = Node,
+  EdgeType extends Edge = Edge,
+>(
+  nodes: ReadonlyArray<NodeType> | undefined,
+  edges: ReadonlyArray<EdgeType> | undefined,
+): EdgeType[] | undefined {
+  if (!edges || edges.length === 0 || !nodes || nodes.length === 0) {
+    return edges as EdgeType[] | undefined
+  }
+  const selectedNodeIds = new Set<string>()
+  const childToParent = new Map<string, string>()
+  for (const node of nodes) {
+    if (node.parentId) {
+      childToParent.set(node.id, node.parentId)
+    }
+    if (node.selected) {
+      selectedNodeIds.add(node.id)
+    }
+  }
+  if (selectedNodeIds.size === 0 || childToParent.size === 0) {
+    return edges as EdgeType[]
+  }
+  let changed = false
+  const next = edges.map((edge) => {
+    if (edge.selected || typeof edge.zIndex === 'number') {
+      return edge
+    }
+    const srcParent = childToParent.get(edge.source)
+    const tgtParent = childToParent.get(edge.target)
+    const touchesSelectedParent =
+      (srcParent !== undefined && selectedNodeIds.has(srcParent)) ||
+      (tgtParent !== undefined && selectedNodeIds.has(tgtParent))
+    if (!touchesSelectedParent) {
+      return edge
+    }
+    changed = true
+    return { ...edge, zIndex: -1 }
+  })
+  return changed ? next : (edges as EdgeType[])
+}
+
+function detectElementFlowColorMode(el: HTMLElement | null): 'light' | 'dark' {
+  if (typeof document === 'undefined') return 'light'
+  const readThemeOn = (node: Element | null): 'light' | 'dark' | null => {
+    if (!node) return null
+    const pg = node.getAttribute('data-playground-theme')
+    if (pg === 'dark' || pg === 'light') return pg
+    const abc = node.getAttribute('data-abc-theme')
+    if (abc === 'dark' || abc === 'light') return abc
+    if (node.classList.contains('dark')) return 'dark'
+    if (node.classList.contains('light')) return 'light'
+    return null
+  }
+  const nearest = el?.closest('[data-playground-theme], [data-abc-theme], .dark, .light') ?? null
+  const fromNearest = readThemeOn(nearest)
+  if (fromNearest) return fromNearest
+  const fromRoot = readThemeOn(document.documentElement)
+  if (fromRoot) return fromRoot
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
+  return 'light'
+}
+
+/**
+ * 解析 ReactFlow 根节点 colorMode，防止 @xyflow/react 默认注入 `.react-flow.light`
+ * 覆盖外部暗色主题（含全局暗色与局部 `[data-playground-theme="dark"]` 子树）的 `--abc-bg-surface` 与 `--abc-flow-*` 变量。
+ */
+function useResolvedFlowColorMode(
+  explicitColorMode: ColorMode | undefined,
+  internalRef: React.RefObject<HTMLDivElement | null>,
+): ColorMode {
+  const [detected, setDetected] = useState<'light' | 'dark'>(() => detectElementFlowColorMode(null))
+
+  useEffect(() => {
+    if (explicitColorMode !== undefined) return
+    const sync = () => {
+      setDetected(detectElementFlowColorMode(internalRef.current))
+    }
+    sync()
+    if (typeof document === 'undefined') return
+
+    const observedTargets = new Set<Element>([document.documentElement])
+    const nearest =
+      internalRef.current?.closest('[data-playground-theme], [data-abc-theme], .dark, .light') ??
+      null
+    if (nearest) observedTargets.add(nearest)
+
+    let observer: MutationObserver | null = null
+    if (typeof MutationObserver !== 'undefined') {
+      observer = new MutationObserver(sync)
+      observedTargets.forEach((target) => {
+        observer?.observe(target, {
+          attributes: true,
+          attributeFilter: ['data-abc-theme', 'data-abc-theme-mode', 'data-playground-theme', 'class'],
+        })
+      })
+    }
+    const media = typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-color-scheme: dark)')
+      : null
+    media?.addEventListener?.('change', sync)
+    window.addEventListener?.('abc:color-scheme-change', sync)
+    window.addEventListener?.('bp:color-scheme-change', sync)
+
+    return () => {
+      observer?.disconnect()
+      media?.removeEventListener?.('change', sync)
+      window.removeEventListener?.('abc:color-scheme-change', sync)
+      window.removeEventListener?.('bp:color-scheme-change', sync)
+    }
+  }, [explicitColorMode, internalRef])
+
+  return explicitColorMode ?? detected
+}
+
+function assignMergedRef<T>(
+  externalRef: React.Ref<T> | undefined,
+  internalRef: React.MutableRefObject<T | null>,
+) {
+  return (node: T | null) => {
+    internalRef.current = node
+    if (typeof externalRef === 'function') {
+      externalRef(node)
+    } else if (externalRef && typeof externalRef === 'object') {
+      ;(externalRef as React.MutableRefObject<T | null>).current = node
+    }
+  }
+}
+
+/**
  * ABC Design 主题化 ReactFlow 全能画布舞台容器 (FlowCanvasSurface)
  * 集成多态网格背景（dots/lines/cross）、平移/框选双模式、画布编辑锁、磁吸网格与辅助参考线、
  * 语义着色 MiniMap、自定义拖拽连线、四角 Panel 插槽与加载遮罩，保持 100% 业务无关。
@@ -169,12 +308,16 @@ export function FlowCanvasSurface<
   nodesDraggable,
   nodesConnectable,
   elementsSelectable,
+  edgesReconnectable,
+  reconnectRadius,
   panOnDrag,
+  panActivationKeyCode,
   panOnScroll,
   panOnScrollMode,
   zoomOnPinch,
   selectionOnDrag,
   selectionMode,
+  selectionKeyCode,
   autoPanOnNodeDrag,
   autoPanOnConnect,
   ariaLabelConfig,
@@ -199,9 +342,21 @@ export function FlowCanvasSurface<
     return node.type === 'flow-group' ? 'rgba(99, 102, 241, 0.22)' : '#94a3b8'
   }
 
+  const internalContainerRef = useRef<HTMLDivElement | null>(null)
+  const mergedContainerRef = React.useMemo(
+    () => assignMergedRef(containerRef, internalContainerRef),
+    [containerRef],
+  )
+  const resolvedColorMode = useResolvedFlowColorMode(reactFlowProps.colorMode, internalContainerRef)
+
+  const resolvedEdges = React.useMemo(
+    () => resolveFlowEdgesForSelectedGroups(reactFlowProps.nodes, reactFlowProps.edges),
+    [reactFlowProps.edges, reactFlowProps.nodes],
+  )
+
   const inner = (
     <div
-      ref={containerRef}
+      ref={mergedContainerRef}
       data-testid={testId}
       data-interaction-mode={interactionMode}
       data-interactive={interactive ? 'true' : 'false'}
@@ -218,7 +373,11 @@ export function FlowCanvasSurface<
         nodesDraggable={nodesDraggable ?? interactive}
         nodesConnectable={nodesConnectable ?? interactive}
         elementsSelectable={elementsSelectable ?? interactive}
-        panOnDrag={panOnDrag ?? (isSelectMode ? [1, 2] : true)}
+        edgesReconnectable={edgesReconnectable ?? interactive}
+        reconnectRadius={reconnectRadius ?? 20}
+        // 框选模式下仅中键拖拽平移（配合空格拖拽），避免右键被 d3-zoom 拦截导致画布右键菜单失效
+        panOnDrag={panOnDrag ?? (isSelectMode ? [1] : true)}
+        panActivationKeyCode={panActivationKeyCode ?? 'Space'}
         panOnScroll={panOnScroll ?? isFigmaGesture}
         panOnScrollMode={panOnScrollMode ?? (isFigmaGesture ? PanOnScrollMode.Free : undefined)}
         zoomOnPinch={zoomOnPinch ?? true}
@@ -226,6 +385,7 @@ export function FlowCanvasSurface<
         autoPanOnConnect={autoPanOnConnect ?? true}
         selectionOnDrag={selectionOnDrag ?? (isSelectMode && interactive)}
         selectionMode={selectionMode ?? SelectionMode.Partial}
+        selectionKeyCode={selectionKeyCode ?? 'Shift'}
         ariaLabelConfig={mergedAriaLabels}
         className={cn(
           loading
@@ -234,6 +394,8 @@ export function FlowCanvasSurface<
           className,
         )}
         {...reactFlowProps}
+        colorMode={resolvedColorMode}
+        edges={resolvedEdges}
       >
         {resolvedBgVariant && (
           <Background
@@ -303,15 +465,23 @@ export function FlowCanvasSurface<
             pannable
             zoomable
             nodeStrokeWidth={2}
+            maskStrokeColor="var(--abc-primary, #4f46e5)"
+            maskStrokeWidth={1.5}
             nodeColor={miniMapProps?.nodeColor ?? defaultMiniMapNodeColor}
             nodeComponent={
               miniMapProps?.nodeComponent ?? (enhancedMiniMap ? FlowMiniMapNode : undefined)
             }
+            {...miniMapProps}
+            style={{
+              width: 184,
+              height: 124,
+              ...miniMapProps?.style,
+            }}
             className={cn(
               '!rounded-xl !border !border-[var(--abc-border)] !bg-[var(--abc-bg-surface)]/95 !shadow-md',
               miniMapClassName,
+              miniMapProps?.className,
             )}
-            {...miniMapProps}
           />
         )}
 

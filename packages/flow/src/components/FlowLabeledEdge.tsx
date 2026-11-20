@@ -92,6 +92,8 @@ const CAN_USE_SVG_EDGE_TEXT =
 export interface FlowLabeledEdgeProps extends EdgeProps<FlowLabeledEdgeType> {
   /** 选中态高亮线条颜色（默认 #4f46e5） */
   selectedStroke?: string
+  /** 连线点击热区宽度（默认 24px，便于精准点击选中与右键呼出菜单） */
+  interactionWidth?: number
   /** 覆盖中点菜单渲染（优先于 data.renderActionMenu） */
   renderActionMenu?: (helpers: { close: () => void }) => React.ReactNode
   /** 覆盖选中态 EdgeToolbar 渲染（优先于 data.renderToolbar） */
@@ -116,6 +118,7 @@ export const FlowLabeledEdge: React.FC<FlowLabeledEdgeProps> = ({
   markerStart,
   markerEnd,
   selectedStroke = '#4f46e5',
+  interactionWidth = 24,
   renderActionMenu: renderActionMenuProp,
   renderToolbar: renderToolbarProp,
 }) => {
@@ -194,6 +197,7 @@ export const FlowLabeledEdge: React.FC<FlowLabeledEdgeProps> = ({
           path={edgePath}
           markerStart={markerStart}
           markerEnd={markerEnd}
+          interactionWidth={interactionWidth}
           className={data?.animated ? 'abc-flow-edge-animated' : undefined}
           style={{
             stroke: selected ? selectedStroke : visual.stroke,
@@ -249,9 +253,10 @@ export const FlowLabeledEdge: React.FC<FlowLabeledEdgeProps> = ({
           alignY="bottom"
         >
           <div
+            data-testid="flow-edge-toolbar"
             onClick={(event) => event.stopPropagation()}
             onMouseDown={(event) => event.stopPropagation()}
-            className="nodrag nopan"
+            className="nodrag nopan relative z-30"
           >
             {toolbarRenderer(id)}
           </div>
@@ -264,14 +269,16 @@ export const FlowLabeledEdge: React.FC<FlowLabeledEdgeProps> = ({
             style={{
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-              pointerEvents: 'all',
+              // 标签容器透传点击至下方 SVG 连线热区，避免点击“命中/未命中”胶囊时无法选中或右键连线
+              pointerEvents: 'none',
             }}
             className="nodrag nopan z-10 flex items-center gap-1"
           >
             {data?.label && (
               <span
                 className={cn(
-                  'select-none rounded-full border px-2 py-0.5 text-[10px] font-medium leading-tight shadow-2xs',
+                  'pointer-events-none select-none rounded-full border px-2 py-0.5 text-[10px] font-medium leading-tight shadow-2xs',
+                  selected && 'ring-1 ring-[var(--abc-primary)]',
                   visual.labelClass,
                 )}
               >
@@ -280,7 +287,7 @@ export const FlowLabeledEdge: React.FC<FlowLabeledEdgeProps> = ({
             )}
 
             {hasActionButton && (
-              <div className="relative">
+              <div className="pointer-events-auto relative">
                 <Button
                   type="button"
                   variant="outline"

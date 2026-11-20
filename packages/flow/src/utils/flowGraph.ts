@@ -323,6 +323,23 @@ export function computeFlowHelperLines<N extends Node = Node>(
   const dragBottom = dragTop + dragSize.height
   const dragCenterY = dragTop + dragSize.height / 2
 
+  // 当拖拽节点嵌套在父分组容器内时，参考线需叠加祖先偏移换算为世界坐标以匹配 FlowViewportOverlay
+  let parentOffsetX = 0
+  let parentOffsetY = 0
+  if (draggingNode.parentId) {
+    const nodeMap = new Map(allNodes.map((n) => [n.id, n]))
+    const visited = new Set<string>()
+    let cursor: string | undefined = draggingNode.parentId
+    while (cursor && !visited.has(cursor)) {
+      visited.add(cursor)
+      const parent = nodeMap.get(cursor)
+      if (!parent) break
+      parentOffsetX += parent.position.x
+      parentOffsetY += parent.position.y
+      cursor = parent.parentId
+    }
+  }
+
   let bestVDist = threshold + 1
   let bestHDist = threshold + 1
   let vertical: number | undefined
@@ -348,7 +365,7 @@ export function computeFlowHelperLines<N extends Node = Node>(
     for (const [dist, linePos, targetX] of vCandidates) {
       if (dist < bestVDist) {
         bestVDist = dist
-        vertical = linePos
+        vertical = linePos + parentOffsetX
         snapX = targetX
       }
     }
@@ -361,7 +378,7 @@ export function computeFlowHelperLines<N extends Node = Node>(
     for (const [dist, linePos, targetY] of hCandidates) {
       if (dist < bestHDist) {
         bestHDist = dist
-        horizontal = linePos
+        horizontal = linePos + parentOffsetY
         snapY = targetY
       }
     }

@@ -186,4 +186,21 @@ describe('@abc-design/flow ReactFlow 套件组件', () => {
     expect(popover).toHaveAttribute('data-playground-theme', 'dark')
     expect(popover?.className).toContain('dark')
   })
+
+  it('FlowCanvasSurface 在暗色祖先容器下自动向 ReactFlow 传递 colorMode="dark"（杜绝 .react-flow.light 覆盖）', () => {
+    const { container } = render(
+      <div data-playground-theme="dark" data-abc-theme="dark" className="dark">
+        <FlowCanvasSurface
+          withProvider
+          nodes={[{ id: 'n1', position: { x: 0, y: 0 }, data: { label: 'Start' } }]}
+          edges={[]}
+        />
+      </div>,
+    )
+
+    const rfRoot = container.querySelector('.react-flow')
+    expect(rfRoot).not.toBeNull()
+    expect(rfRoot?.className).toContain('dark')
+    expect(rfRoot?.className).not.toContain('light')
+  })
 })

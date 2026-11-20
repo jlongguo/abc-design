@@ -31,7 +31,7 @@ export function PageHeader({
     <header data-slot="page-header" className={cn('space-y-2', className)} {...props}>
       {backLink ? <div>{backLink}</div> : null}
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[min(100%,300px)] flex-1">
           {eyebrow ? (
             <p className="mb-1.5 font-mono text-xs font-semibold uppercase tracking-[0.16em] text-[var(--abc-primary)]">
               {eyebrow}
